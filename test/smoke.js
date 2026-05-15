@@ -130,9 +130,9 @@ console.log('\n\x1b[36m6. Securite\x1b[0m');
 
 test('main.js ne contient pas de cles en clair', () => {
   const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-  // Les cles sont obfusquees via _e()
-  const hasObfuscation = main.includes('function _d(enc)') && main.includes('function _e(plain)');
-  assert(hasObfuscation, 'Missing key obfuscation functions');
+  // Les cles sont chargées depuis process.env
+  const usesEnv = main.includes('process.env.GROQ_KEY') || main.includes('process.env.GEMINI_KEY');
+  assert(usesEnv, 'Main.js should use process.env for keys');
 });
 
 test('main.js contient la CSP', () => {

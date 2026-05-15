@@ -664,8 +664,12 @@ ipcMain.handle('test-all-providers', function() {
     // Groq
     var groqData = JSON.stringify({ model: GROQ_MODELS.fast, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 });
     tests.push(httpsRequest({ hostname: 'api.groq.com', path: '/openai/v1/chat/completions', method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY, 'Content-Length': Buffer.byteLength(groqData) } }, groqData).then(function(r) { return { provider: 'groq', ok: r.status === 200 }; })['catch'](function() { return { provider: 'groq', ok: false }; }));
-    // Gemini (backup #3)
+    // Gemini
     tests.push(httpsRequest({ hostname: 'generativelanguage.googleapis.com', path: '/v1beta/models?key=' + getGeminiKey() + '&pageSize=1', method: 'GET', headers: {} }, null).then(function(r) { return { provider: 'gemini', ok: r.status === 200 }; })['catch'](function() { return { provider: 'gemini', ok: false }; }));
+    // Cerebras
+    var cerebrasData = JSON.stringify({ model: CEREBRAS_MODELS.fast, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 });
+    tests.push(httpsRequest({ hostname: 'api.cerebras.ai', path: '/v1/chat/completions', method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CEREBRAS_KEY, 'Content-Length': Buffer.byteLength(cerebrasData) } }, cerebrasData).then(function(r) { return { provider: 'cerebras', ok: r.status === 200 }; })['catch'](function() { return { provider: 'cerebras', ok: false }; }));
+
     return Promise.all(tests);
 });
 
