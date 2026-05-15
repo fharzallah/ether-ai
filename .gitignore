@@ -1,0 +1,27 @@
+# Clés API — NE JAMAIS COMMITER
+.env
+.env.local
+.env.*.local
+
+# Config locale avec clés
+api-config.json
+
+# Build outputs
+dist/
+out/
+
+# Dépendances
+node_modules/
+worker/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Electron
+.cache/

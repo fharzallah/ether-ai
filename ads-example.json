@@ -1,0 +1,46 @@
+[
+  {
+    "id": "ether-pro",
+    "emoji": "⚡",
+    "title": "ETHER Pro",
+    "desc": "Messages illimités, images illimitées, modes personnalisés. Passe au niveau supérieur.",
+    "cta": "Découvrir Pro",
+    "action": "pro"
+  },
+  {
+    "id": "exemple-restaurant",
+    "emoji": "🍕",
+    "image": "",
+    "title": "Pizza Mario",
+    "desc": "Les meilleures pizzas artisanales de Paris. Livraison gratuite dès 20€.",
+    "cta": "Commander",
+    "url": "https://example.com/pizza"
+  },
+  {
+    "id": "exemple-saas",
+    "emoji": "📊",
+    "image": "",
+    "title": "MonSaaS Analytics",
+    "desc": "Suivez vos KPIs en temps réel. Essai gratuit 14 jours.",
+    "cta": "Essai gratuit",
+    "url": "https://example.com/saas"
+  },
+  {
+    "id": "exemple-formation",
+    "emoji": "🎓",
+    "image": "",
+    "title": "Formation IA",
+    "desc": "Apprenez à créer votre propre assistant IA en 4 semaines.",
+    "cta": "S'inscrire",
+    "url": "https://example.com/formation"
+  },
+  {
+    "id": "exemple-affiliation",
+    "emoji": "🎧",
+    "image": "",
+    "title": "AirPods Pro 2",
+    "desc": "Réduction audio adaptative. -15% avec notre lien partenaire.",
+    "cta": "Voir l'offre",
+    "url": "https://amazon.fr/dp/XXXXXXX?tag=tonid-21"
+  }
+]

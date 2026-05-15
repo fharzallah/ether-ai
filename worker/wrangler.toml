@@ -1,0 +1,13 @@
+name = "ether-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+CORS_ORIGIN = "*"
+
+# Les cles API sont dans les secrets (pas ici)
+# Deployer avec: npx wrangler secret put GROQ_KEY
+#                npx wrangler secret put GEMINI_KEY
+#                npx wrangler secret put CEREBRAS_KEY
+#                npx wrangler secret put STRIPE_SECRET
+#                npx wrangler secret put JWT_SECRET

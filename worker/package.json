@@ -1,0 +1,13 @@
+{
+  "name": "ether-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "secrets": "echo 'Run: npx wrangler secret put GROQ_KEY && npx wrangler secret put GEMINI_KEY && npx wrangler secret put CEREBRAS_KEY && npx wrangler secret put JWT_SECRET'"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
