@@ -7,6 +7,42 @@ function webSearch(query) {
     return Promise.resolve({ results: [], extract: '' });
 }
 
+// Détecteur de complexité (simple / medium / complex)
+function detectComplexity(msg) {
+    var m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+    // 1. COMPLEX: raisonnement multi-étapes, code, débat, analyse
+    var complexPatterns = [
+        /(?:code|fonction|script|bug|erreur|algorithme|debug|programmation|java|python|javascript|cpp|html|css|php|rust|golang)/,
+        /(?:analyse|examine|critique|etude approfondie|comparaison detaillee|decortique)/,
+        /(?:raisonne|etape par etape|multi-etapes|logique|demonstration|pense)/,
+        /(?:debat|argumente|contre-argument|avocat du diable|polemique|ton avis|ton opinion)/
+    ];
+    for (var i = 0; i < complexPatterns.length; i++) { if (complexPatterns[i].test(m)) return 'complex'; }
+
+    // 2. MEDIUM: explication, résumé, traduction
+    var mediumPatterns = [
+        /(?:explique|comment fonctionne|pourquoi|vulgarise|eclaire-moi)/,
+        /(?:resume|synthetise|recapitule|synthese|recap)/,
+        /(?:traduis|traduction|en anglais|en francais|en espagnol|en allemand|en italien|en portugais|traduire)/
+    ];
+    for (var i = 0; i < mediumPatterns.length; i++) { if (mediumPatterns[i].test(m)) return 'medium'; }
+
+    // 3. SIMPLE: salutation, question courte, reformulation
+    var simplePatterns = [
+        /^(salut|bonjour|bonsoir|hello|hi|hey|coucou|yo|slt|cc|wesh)/,
+        /^(merci|ok|oui|non|d'accord|ca marche|super|cool|bien|genial|parfait|nickel)/,
+        /(?:reformule|dis-le autrement|change le ton|redit|reformulation)/
+    ];
+    for (var i = 0; i < simplePatterns.length; i++) { if (simplePatterns[i].test(m)) return 'simple'; }
+
+    // Question courte (moins de 50 caractères avec un point d'interrogation)
+    if (m.length < 50 && m.indexOf('?') !== -1) return 'simple';
+
+    // Par défaut, si c'est très court c'est simple, sinon medium
+    return m.length < 30 ? 'simple' : 'medium';
+}
+
 // Detecter si une question est factuelle (necessite une recherche web)
 function isFactualQuestion(msg) {
     var m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -37,6 +73,29 @@ function isFactualQuestion(msg) {
     return false;
 }
 
+// Health check des providers
+var providerHealth = { groq: true, gemini: true, cerebras: true };
+
+function checkProvidersHealth() {
+    if (!window.etherDesktop || !window.etherDesktop.testAllProviders) return;
+
+    console.log('[ENGINE] Checking providers health...');
+    window.etherDesktop.testAllProviders().then(function(results) {
+        for (var i = 0; i < results.length; i++) {
+            var r = results[i];
+            providerHealth[r.provider] = r.ok;
+            // On synchronise aussi l'ancienne variable pour la compatibilité
+            if (typeof providerStatus !== 'undefined') providerStatus[r.provider] = r.ok;
+        }
+        console.log('[ENGINE] Provider health:', JSON.stringify(providerHealth));
+    })['catch'](function(err) {
+        console.error('[ENGINE] Health check failed:', err);
+    });
+}
+
+// Lancer le health check au démarrage
+setTimeout(checkProvidersHealth, 2000);
+
 function testApiKey() {
     if (window.etherDesktop) {
         return window.etherDesktop.groqTest().then(function(r) {
@@ -44,6 +103,52 @@ function testApiKey() {
         });
     }
     return Promise.resolve({ success: false, apiWorks: false });
+}
+
+// Routing dynamique par règles
+function getSmartRoute(message, mode) {
+    if (typeof selectedModelOverride !== 'undefined' && selectedModelOverride) return selectedModelOverride;
+
+    var complexity = detectComplexity(message);
+    console.log('[ENGINE] Complexity detected:', complexity, 'Mode:', mode);
+
+    // 1. Creative mode (all complexities) -> Gemini 2.5 Flash
+    if (mode === 'creative' && providerHealth.gemini) {
+        return { provider: 'gemini', model: GEMINI_MODELS.main };
+    }
+
+    // 2. Simple complexity (all modes) -> Groq fast
+    if (complexity === 'simple' && providerHealth.groq) {
+        return { provider: 'groq', model: GROQ_MODELS.fast };
+    }
+
+    // 3. Medium complexity (base mode) -> Groq main
+    if (complexity === 'medium' && mode === 'base' && providerHealth.groq) {
+        return { provider: 'groq', model: GROQ_MODELS.main };
+    }
+
+    // 4. Complex complexity
+    if (complexity === 'complex') {
+        if (mode === 'teacher' && providerHealth.groq) {
+            return { provider: 'groq', model: GROQ_MODELS.reasoning };
+        }
+        if (mode === 'debate') {
+            return { provider: 'collab', model: 'multi' };
+        }
+        if (mode === 'base' && providerHealth.gemini) {
+            return { provider: 'gemini', model: GEMINI_MODELS.main };
+        }
+    }
+
+    // Fallback cascade
+    if (providerHealth.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
+    if (providerHealth.cerebras) return { provider: 'cerebras', model: CEREBRAS_MODELS.main };
+    return { provider: 'groq', model: GROQ_MODELS.main };
+}
+
+function getSmartModel(message, mode) {
+    var route = getSmartRoute(message, mode);
+    return route.model;
 }
 
 // (ancien code de recherche web supprime — maintenant gere par main.js IPC)
@@ -203,6 +308,11 @@ var ETHER_ENGINE = {
         };
 
         if (!window.etherDesktop) return Promise.resolve(self.getSimulatedResponse(userMessage));
+
+        // Mode COLLAB intelligent
+        if (route.provider === 'collab') {
+            return self._callCollab(userMessage, forcedSources, useJson);
+        }
 
         // Streaming avec fallback automatique entre providers
         return self._streamMulti(requestData, forcedSources, route, useJson);
@@ -419,58 +529,75 @@ var ETHER_ENGINE = {
         }
     },
 
-    // Streaming multi-provider avec fallback robuste
+    // Streaming multi-provider avec cascade de fallback : groq -> gemini -> cerebras -> groq-chat
     _streamMulti: function(requestData, forcedSources, route, useJson) {
         var self = this;
-        var provider = route.provider;
-        var model = route.model;
-        console.log('[ENGINE] Route: provider=' + provider + ', model=' + model);
 
-        var streamFn;
-        if (provider === 'gemini') streamFn = window.etherDesktop.geminiStream;
-        else if (provider === 'cerebras') streamFn = window.etherDesktop.cerebrasStream;
-        else streamFn = window.etherDesktop.groqStream;
+        // Ordre de la cascade de streaming
+        var cascade = [
+            { provider: 'groq', model: route.provider === 'groq' ? route.model : GROQ_MODELS.main, stream: window.etherDesktop.groqStream },
+            { provider: 'gemini', model: route.provider === 'gemini' ? route.model : GEMINI_MODELS.main, stream: window.etherDesktop.geminiStream },
+            { provider: 'cerebras', model: route.provider === 'cerebras' ? route.model : CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream }
+        ];
 
-        // Essayer le streaming principal
-        return self._streamWithProvider(streamFn, requestData, forcedSources, model, useJson, provider).then(function(result) {
-            return result;
-        })['catch'](function(err) {
-            console.log('[ENGINE] ' + provider + ' failed:', err && err.message);
-            providerStatus[provider] = false;
-            setTimeout(function() { providerStatus[provider] = true; }, 60000);
+        // On réordonne pour commencer par le provider recommandé par la route
+        var startIdx = 0;
+        for (var i = 0; i < cascade.length; i++) {
+            if (cascade[i].provider === route.provider) { startIdx = i; break; }
+        }
+        var orderedCascade = cascade.slice(startIdx).concat(cascade.slice(0, startIdx));
 
-            // === FALLBACK NON-STREAMING (simple, fiable, pas de race condition) ===
-            // Essayer dans l'ordre: Groq → Cerebras → Groq reasoning
-            var fallbackChain = [
-                { fn: window.etherDesktop.groqChat, model: GROQ_MODELS.main, name: 'Groq' },
-                { fn: window.etherDesktop.cerebrasChat, model: CEREBRAS_MODELS.main, name: 'Cerebras' },
-                { fn: window.etherDesktop.groqChat, model: GROQ_MODELS.reasoning, name: 'Groq-Qwen' }
-            ];
-
-            function tryFallback(idx) {
-                if (idx >= fallbackChain.length) {
-                    return Promise.resolve(self.getSimulatedResponse(requestData.messages[requestData.messages.length - 1].content));
-                }
-                var fb = fallbackChain[idx];
-                console.log('[ENGINE] Fallback #' + (idx + 1) + ': ' + fb.name);
-                requestData.model = fb.model;
-                return fb.fn(requestData).then(function(r) {
+        function tryStream(idx) {
+            if (idx >= orderedCascade.length) {
+                // FALLBACK ULTIME NON-STREAMING
+                console.log('[ENGINE] All streams failed — fallback non-streaming Groq');
+                return window.etherDesktop.groqChat({
+                    model: GROQ_MODELS.main,
+                    messages: requestData.messages,
+                    temperature: requestData.temperature,
+                    max_tokens: requestData.max_tokens
+                }).then(function(r) {
                     if (r.ok && r.text) {
                         var ct = (r.text || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
                         self.conversationHistory.push({ role: 'user', content: requestData.messages[requestData.messages.length - 1].content });
                         self.conversationHistory.push({ role: 'assistant', content: ct });
                         var result = self.parseResponse(ct);
-                        result._provider = fb.name;
-                        result._model = fb.model;
+                        result._provider = 'Groq-Chat';
+                        result._model = GROQ_MODELS.main;
                         return result;
                     }
-                    return tryFallback(idx + 1);
+                    return self.getSimulatedResponse(requestData.messages[requestData.messages.length - 1].content);
                 })['catch'](function() {
-                    return tryFallback(idx + 1);
+                    return self.getSimulatedResponse(requestData.messages[requestData.messages.length - 1].content);
                 });
             }
-            return tryFallback(0);
-        });
+
+            var step = orderedCascade[idx];
+
+            // Skip si provider connu comme étant "down"
+            if (!providerHealth[step.provider]) {
+                console.log('[ENGINE] Skipping unhealthy provider:', step.provider);
+                return tryStream(idx + 1);
+            }
+
+            console.log('[ENGINE] Trying stream: provider=' + step.provider + ', model=' + step.model);
+
+            return self._streamWithProvider(step.stream, requestData, forcedSources, step.model, useJson, step.provider).catch(function(err) {
+                console.log('[ENGINE] ' + step.provider + ' stream failed:', err && err.message);
+                providerHealth[step.provider] = false;
+                if (typeof providerStatus !== 'undefined') providerStatus[step.provider] = false;
+
+                // Marquer pour re-test plus tard
+                setTimeout(function() {
+                    providerHealth[step.provider] = true;
+                    if (typeof providerStatus !== 'undefined') providerStatus[step.provider] = true;
+                }, 60000);
+
+                return tryStream(idx + 1);
+            });
+        }
+
+        return tryStream(0);
     },
 
     // Streaming via IPC — multi-provider
