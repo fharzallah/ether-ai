@@ -1,0 +1,78 @@
+{
+  "name": "ether-ai",
+  "version": "1.1.0",
+  "description": "ETHER AI - IA franche et transparente",
+  "main": "main.js",
+  "homepage": "https://ether-ai.app",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:publish": "electron-builder --mac --publish always",
+    "release": "electron-builder --mac --publish always",
+    "lint": "node -c main.js && node -c preload.js && for f in renderer/*.js; do node -c \"$f\"; done"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fadiharzallah4-cyber/ether-ai.git"
+  },
+  "author": "ETHER Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "build": {
+    "appId": "com.ether.ai",
+    "productName": "ETHER",
+    "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "fadiharzallah4-cyber",
+        "repo": "ether-ai",
+        "releaseType": "release"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        { "target": "dmg", "arch": ["arm64"] }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "ETHER AI",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "style.css",
+      "marked.min.js",
+      "ads.json",
+      "renderer/**/*",
+      "node_modules/**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!node_modules/.cache"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "electron-updater": "^6.8.3",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
+  }
+}

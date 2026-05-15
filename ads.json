@@ -1,0 +1,66 @@
+[
+  {
+    "id": "ether-pro",
+    "emoji": "⚡",
+    "title": "ETHER Pro",
+    "desc": "Messages et images illimites. Plus de limites, plus de pubs. L'experience complete.",
+    "cta": "Passer a Pro",
+    "action": "pro"
+  },
+  {
+    "id": "ether-teacher",
+    "emoji": "🎓",
+    "title": "Mode Teacher",
+    "desc": "ETHER ne te donne pas la reponse — il t'apprend a la trouver. Parfait pour reviser.",
+    "cta": "Essayer",
+    "action": "teacher"
+  },
+  {
+    "id": "ether-debate",
+    "emoji": "⚔️",
+    "title": "Mode Debat",
+    "desc": "ETHER prend la position opposee et deconstruit tes arguments. Teste tes idees.",
+    "cta": "Essayer",
+    "action": "debate"
+  },
+  {
+    "id": "ether-creative",
+    "emoji": "💡",
+    "title": "Mode Creatif",
+    "desc": "Tu as un projet ? Le mode Creatif genere des dizaines d'idees en quelques secondes.",
+    "cta": "Essayer",
+    "action": "creative"
+  },
+  {
+    "id": "ether-custom",
+    "emoji": "🛠️",
+    "title": "Cree ton propre mode",
+    "desc": "Assistant cuisine, coach sport, avocat... Cree un mode 100% personnalise.",
+    "cta": "Creer un mode",
+    "action": "custom"
+  },
+  {
+    "id": "ether-share",
+    "emoji": "💬",
+    "title": "Partage ETHER",
+    "desc": "Tu aimes ETHER ? Fais decouvrir l'IA franche et honnete a tes amis.",
+    "cta": "Partager",
+    "action": "share"
+  },
+  {
+    "id": "ether-pro-2",
+    "emoji": "🚀",
+    "title": "Marre des limites ?",
+    "desc": "30 messages c'est pas assez ? Passe a Pro pour un acces illimite a ETHER.",
+    "cta": "Decouvrir Pro",
+    "action": "pro"
+  },
+  {
+    "id": "ether-writer",
+    "emoji": "✍️",
+    "title": "Mode Ecriture",
+    "desc": "Emails, articles, lettres de motivation — ETHER redige comme un pro.",
+    "cta": "Essayer",
+    "action": "writer"
+  }
+]
