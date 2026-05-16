@@ -152,8 +152,8 @@ var curLang=sGet('lang','fr'); G('SLG').value=curLang;
 G('SLG').onchange=function(){curLang=G('SLG').value;sSet('lang',curLang);applyLanguage();};
 applyLanguage();
 
-// CONTENT
-// CONTENT - images et documents generes
+// BIBLIOTHÈQUE
+// BIBLIOTHÈQUE - images et documents generes
 var generatedDocs = sGet('docs', []);
 
 // Afficher les documents RAG indexes
@@ -164,7 +164,7 @@ function updRagDocs() {
     if (!docs.length) { container.innerHTML = ''; return; }
     var h = '<div style="font-size:.7rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px;padding:0 4px 6px;display:flex;align-items:center;gap:6px">'
         + '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" fill="currentColor"/></svg>'
-        + 'Base de connaissances (' + docs.length + ')</div>';
+        + 'Bibliothèque (' + docs.length + ')</div>';
     for (var i = 0; i < docs.length; i++) {
         var d = docs[i];
         var sizeKb = Math.round(d.size / 1024);
@@ -209,7 +209,7 @@ function updCont() {
     items.sort(function(a, b) { return b.ts - a.ts; });
 
     var cl = G('CL');
-    if (!items.length) { cl.innerHTML = '<div class="il-e">Aucun contenu</div>'; return; }
+    if (!items.length) { cl.innerHTML = '<div class="il-e">Aucun document</div>'; return; }
     var h = '';
     for (var i = 0; i < Math.min(items.length, 30); i++) {
         var it = items[i];
@@ -236,7 +236,7 @@ function updCont() {
     }
 }
 
-// Preview d'une image depuis la section Contenu
+// Preview d'une image depuis la Bibliothèque
 function previewContentImage(cid) {
     if (!convs[cid]) return;
     var msgs = convs[cid].messages;
@@ -311,7 +311,7 @@ function previewContentImage(cid) {
     }
 }
 
-// Preview d'un document depuis la section Contenu
+// Preview d'un document depuis la Bibliothèque
 function previewContentDoc(idx) {
     if (!generatedDocs[idx]) return;
     var doc = generatedDocs[idx];
