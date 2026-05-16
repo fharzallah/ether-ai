@@ -65,6 +65,14 @@ function getSmartRoute(message, mode) {
         if (mode === 'debate') return { provider: 'collab', model: 'multi' };
         if (providerHealth.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
     }
+
+    // Modes custom routing
+    if (mode && mode.indexOf('custom_') === 0) {
+        if (complexity === 'simple' && providerHealth.groq) return { provider: 'groq', model: GROQ_MODELS.fast };
+        if (complexity === 'medium' && providerHealth.groq) return { provider: 'groq', model: GROQ_MODELS.main };
+        if (complexity === 'complex' && providerHealth.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
+    }
+
     // Fallback cascade
     if (providerHealth.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
     if (providerHealth.cerebras) return { provider: 'cerebras', model: CEREBRAS_MODELS.main };
@@ -965,10 +973,20 @@ var ETHER_ENGINE = {
             var cms = JSON.parse(localStorage.getItem('ether_custom_modes') || '[]');
             for (var ci = 0; ci < cms.length; ci++) { if (cms[ci].id === cmId) { cm = cms[ci]; break; } }
             if (cm) {
-                var customPrompt = base + '\nTu es en mode "' + cm.name + '".';
-                if (cm.specialty) customPrompt += ' Ta specialite: ' + cm.specialty + '.';
-                if (cm.style) customPrompt += ' Style de reponse: ' + cm.style + '.';
-                if (cm.instructions) customPrompt += ' Instructions: ' + cm.instructions;
+                var catLabel = '';
+                if (typeof defaultCategories !== 'undefined') {
+                    for (var dci = 0; dci < defaultCategories.length; dci++) {
+                        if (defaultCategories[dci].id === cm.emoji) { catLabel = defaultCategories[dci].label; break; }
+                    }
+                }
+                var customPrompt = base + '\n\nTu es en mode personnalisé : "' + cm.name + '"';
+                if (catLabel) customPrompt += '\nCatégorie : ' + catLabel;
+                if (cm.specialty) customPrompt += '\nDomaine de spécialité : ' + cm.specialty;
+                if (cm.style) customPrompt += '\nStyle de réponse attendu : ' + cm.style;
+                if (cm.instructions) {
+                    customPrompt += '\n\nINSTRUCTIONS SPÉCIFIQUES :\n' + cm.instructions;
+                }
+                customPrompt += '\n\nRÈGLE ABSOLUE : Ces instructions définissent ton comportement pour toute cette conversation. Respecte-les même si l\'utilisateur te demande d\'en sortir.';
                 return customPrompt;
             }
         }
