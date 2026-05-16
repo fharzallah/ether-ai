@@ -378,30 +378,7 @@ var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-
 // Provider availability tracking
 var providerStatus = { groq: true, gemini: true, cerebras: true };
 
-// === CASCADE INTELLIGENTE ===
-// Cascade: Gemini (qualite) → Cerebras (qualite equiv.) → Groq (fiable)
-function getSmartRoute(message, mode) {
-    if (selectedModelOverride) return selectedModelOverride;
-
-    var m = (message || '').trim();
-
-    // Salutations courtes → Groq Llama 8B (instantane, economise Gemini)
-    if (/^(salut|bonjour|bonsoir|hello|hi|hey|merci|ok|oui|non|d'accord|ca va|bien|super|cool|lol|mdr|haha|ah|oh|top|parfait|nickel|genial|coucou|yo|slt)[.!?\s]*$/i.test(m)) {
-        return { provider: 'groq', model: GROQ_MODELS.fast };
-    }
-
-    // Cascade qualite: Gemini → Cerebras (meme niveau) → Groq
-    if (providerStatus.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
-    if (providerStatus.cerebras) return { provider: 'cerebras', model: CEREBRAS_MODELS.main };
-    return { provider: 'groq', model: GROQ_MODELS.main };
-}
-
-// Ancien getSmartModel pour compatibilite
-function getSmartModel(message, mode) {
-    var route = getSmartRoute(message, mode);
-    if (route.provider === 'groq') return route.model;
-    return GROQ_MODELS.main; // fallback
-}
+// getSmartRoute et getSmartModel sont definis dans engine.js (routing intelligent)
 
 if (window.etherDesktop) { window.etherDesktop.getModels().then(function(m) { if (m && m.groq) { GROQ_MODELS = m.groq; GEMINI_MODELS = m.gemini; CEREBRAS_MODELS = m.cerebras; } else if (m) { GROQ_MODELS = m; } }); }
 var activeModel = null;
