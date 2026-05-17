@@ -395,7 +395,7 @@ function genDoc(format, desc) {
     } else if (format === 'html') {
         formatInstructions = 'Retourne UNIQUEMENT du HTML complet avec style CSS integre. Pas de texte explicatif.';
     } else if (format === 'word') {
-        formatInstructions = 'Structure le document avec un titre principal (# Titre), des sections (## Section), du texte en **gras** pour les points importants. Utilise des listes à puces. Crée un document professionnel et bien structuré. Retourne directement le contenu.';
+        formatInstructions = 'REGLES ABSOLUES: Ne dis JAMAIS bonjour, ne mentionne JAMAIS ce que tu vas faire, ne signe JAMAIS. Commence IMMEDIATEMENT par le titre du document en # Titre. Structure avec ## sections, **gras**, listes a puces. Document professionnel direct. AUCUN meta-commentaire.';
     } else {
         formatInstructions = 'Retourne UNIQUEMENT le contenu du document, bien structure et detaille. Pas de meta-commentaire, pas de refus, genere directement le contenu demande.';
     }
