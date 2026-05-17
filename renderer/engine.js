@@ -1023,12 +1023,11 @@ var ETHER_ENGINE = {
                 var thinkM = cleaned.match(/<think>([\s\S]*?)<\/think>/);
                 var cleanH = cleaned.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
                 if (!cleanH) cleanH = cleaned;
-                cleanH = renderMarkdown(cleanH);
                 var thinkReason = null;
                 if (thinkM && thinkM[1] && thinkM[1].trim().length > 10) {
                     thinkReason = { analyste: thinkM[1].trim().substring(0, 200), critique: '', synthese: '' };
                 }
-                return { reasoning: thinkReason, answer: cleanH, confidence: 'to-verify', sources: [] };
+                return { reasoning: thinkReason, answer: renderMarkdown(cleanH), raw: cleanH, confidence: 'to-verify', sources: [] };
             }
             // Extraire le PREMIER objet JSON valide du texte
             var jsonStart = cleaned.indexOf('{');
@@ -1047,6 +1046,7 @@ var ETHER_ENGINE = {
             return {
                 reasoning: parsed.reasoning || null,
                 answer: renderMarkdown(parsed.answer || 'Reponse recue.'),
+                raw: parsed.answer || 'Reponse recue.',
                 confidence: conf,
                 sources: Array.isArray(parsed.sources) ? parsed.sources : []
             };
@@ -1068,6 +1068,7 @@ var ETHER_ENGINE = {
             return {
                 reasoning: reasoning,
                 answer: html,
+                raw: cleanText,
                 confidence: 'to-verify',
                 sources: []
             };
