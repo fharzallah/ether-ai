@@ -315,7 +315,7 @@ function previewContentImage(cid) {
 function previewContentDoc(idx) {
     if (!generatedDocs[idx]) return;
     var doc = generatedDocs[idx];
-    var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b' };
+    var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b', markdown: '#8b5cf6' };
 
     var overlay = document.createElement('div');
     overlay.className = 'cont-preview-overlay';
@@ -360,7 +360,7 @@ var pendingDocFormat = null;
 function selectDocType(format) {
     pendingDocFormat = format;
     G('DOC-P').classList.add('hidden');
-    var labels = { word: 'Word', excel: 'Excel', text: 'Texte', html: 'Page web' };
+    var labels = { word: 'Word', excel: 'Excel', text: 'Texte', html: 'Page web', markdown: 'Markdown' };
     var label = labels[format] || format;
     // Pre-remplir la barre de chat avec un indicateur
     uiEl.value = '';
@@ -375,7 +375,7 @@ function selectDocType(format) {
         badge.style.cssText = 'max-width:680px;margin:0 auto 6px;display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--b2);border:1px solid var(--bd);border-radius:20px;font-size:.8rem;color:var(--t2)';
         G('uinp').parentNode.parentNode.insertBefore(badge, G('uinp').parentNode);
     }
-    var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b' };
+    var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b', markdown: '#8b5cf6' };
     badge.innerHTML = '<div style="width:24px;height:24px;border-radius:6px;background:' + (colors[format] || 'var(--ac)') + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700">' + format.toUpperCase().substring(0, 3) + '</div><span>Document ' + label + '</span><button onclick="cancelDoc()" style="margin-left:auto;background:none;border:none;color:var(--t3);cursor:pointer;font-size:1rem;line-height:1">&times;</button>';
     badge.classList.remove('hidden');
 }
@@ -394,6 +394,8 @@ function genDoc(format, desc) {
         formatInstructions = 'Retourne UNIQUEMENT des donnees CSV (separees par des virgules) avec les en-tetes en premiere ligne. Pas de texte explicatif.';
     } else if (format === 'html') {
         formatInstructions = 'Retourne UNIQUEMENT du HTML complet avec style CSS integre. Pas de texte explicatif.';
+    } else if (format === 'word') {
+        formatInstructions = 'Structure le document avec un titre principal (# Titre), des sections (## Section), du texte en **gras** pour les points importants. Utilise des listes à puces. Crée un document professionnel et bien structuré. Retourne directement le contenu.';
     } else {
         formatInstructions = 'Retourne UNIQUEMENT le contenu du document, bien structure et detaille. Pas de meta-commentaire, pas de refus, genere directement le contenu demande.';
     }
@@ -421,10 +423,13 @@ function genDoc(format, desc) {
         return ETHER_ENGINE.generateResponse(prompt);
     }).then(function(aiResp) {
         hideThink();
-        var content = (aiResp.answer || '').replace(/<[^>]+>/g, '').trim();
+        var content = (aiResp.answer || '').trim();
+        var contentPlain = content.replace(/<[^>]+>/g, '').trim();
         content = content.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/i, '');
+        contentPlain = contentPlain.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/i, '');
 
-        var doc = { title: desc.substring(0, 50), format: format, content: content, ts: Date.now() };
+        var finalContent = (format === 'word' || format === 'html' || format === 'markdown') ? content : contentPlain;
+        var doc = { title: desc.substring(0, 50), format: format, content: finalContent, ts: Date.now() };
         generatedDocs.push(doc);
         sSet('docs', generatedDocs);
         updCont();
@@ -439,10 +444,10 @@ function genDoc(format, desc) {
             sSet('convs', convs); updHist();
         }
         var docIdx = generatedDocs.length - 1;
-        var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b' };
+        var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b', markdown: '#8b5cf6' };
         var docResp = {
             reasoning: { analyste: 'Document genere via IA.', critique: 'Contenu genere par Groq.', synthese: 'Document pret au telechargement.' },
-            answer: '<p><strong>Document genere et telecharge :</strong></p><div style="background:var(--b3);border:1px solid var(--bd);border-radius:var(--radius);padding:16px;margin:10px 0"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:10px;background:' + (colors[format] || 'var(--ac)') + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700">' + format.toUpperCase().substring(0, 3) + '</div><div><strong>' + esc(desc) + '</strong><br><span style="font-size:.78rem;color:var(--t3)">' + format.toUpperCase() + ' - Genere par ETHER AI</span></div></div><button onclick="dlDoc(' + docIdx + ')" style="margin-top:12px;padding:8px 16px;border:1px solid var(--ac);border-radius:var(--radius);background:transparent;color:var(--ac);cursor:pointer;font-size:.82rem;transition:all .15s">Retelecharger</button></div><details style="margin-top:8px"><summary style="cursor:pointer;font-size:.82rem;color:var(--t3)">Voir le contenu</summary><pre style="background:var(--b3);padding:12px;border-radius:var(--radius);font-size:.78rem;overflow-x:auto;margin-top:8px;white-space:pre-wrap">' + esc(content.substring(0, 1000)) + '</pre></details>',
+            answer: '<p><strong>Document genere et telecharge :</strong></p><div style="background:var(--b3);border:1px solid var(--bd);border-radius:var(--radius);padding:16px;margin:10px 0"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:10px;background:' + (colors[format] || 'var(--ac)') + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700">' + format.toUpperCase().substring(0, 3) + '</div><div><strong>' + esc(desc) + '</strong><br><span style="font-size:.78rem;color:var(--t3)">' + format.toUpperCase() + ' - Genere par ETHER AI</span></div></div><button onclick="dlDoc(' + docIdx + ')" style="margin-top:12px;padding:8px 16px;border:1px solid var(--ac);border-radius:var(--radius);background:transparent;color:var(--ac);cursor:pointer;font-size:.82rem;transition:all .15s">Retelecharger</button></div><details style="margin-top:8px"><summary style="cursor:pointer;font-size:.82rem;color:var(--t3)">Voir le contenu</summary><pre style="background:var(--b3);padding:12px;border-radius:var(--radius);font-size:.78rem;overflow-x:auto;margin-top:8px;white-space:pre-wrap">' + esc(finalContent.substring(0, 1000)) + '</pre></details>',
             confidence: 'verified',
             sources: ['Groq AI'],
             _noSuggestions: true
@@ -459,13 +464,66 @@ function dlDoc(idx) {
 }
 
 function dlDocContent(doc) {
-    var ext = { word: 'doc', excel: 'csv', text: 'txt', html: 'html' };
-    var mime = { word: 'application/msword', excel: 'text/csv', text: 'text/plain', html: 'text/html' };
+    var ext = { word: 'doc', excel: 'csv', text: 'txt', html: 'html', markdown: 'md' };
+    var mime = { word: 'application/msword', excel: 'text/csv', text: 'text/plain', html: 'text/html', markdown: 'text/markdown' };
     var content = doc.content;
 
     if (doc.format === 'word') {
-        // Generer un fichier Word simple (HTML que Word peut ouvrir)
-        content = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="UTF-8"><style>body{font-family:Calibri,sans-serif;font-size:11pt;line-height:1.6;margin:2cm}</style></head><body>' + content.replace(/\n/g, '<br>') + '</body></html>';
+        var wordHtml = doc.content;
+        // Convertir les balises HTML en styles Word-compatibles
+        wordHtml = wordHtml
+            .replace(/<h1[^>]*>/gi, '<h1 style="font-size:24pt;font-weight:bold;color:#1a1a2e;margin-bottom:12pt">')
+            .replace(/<h2[^>]*>/gi, '<h2 style="font-size:18pt;font-weight:bold;color:#16213e;margin-bottom:8pt">')
+            .replace(/<h3[^>]*>/gi, '<h3 style="font-size:14pt;font-weight:bold;margin-bottom:6pt">')
+            .replace(/<strong[^>]*>/gi, '<strong style="font-weight:bold">')
+            .replace(/<em[^>]*>/gi, '<em style="font-style:italic">')
+            .replace(/<ul[^>]*>/gi, '<ul style="margin-left:20pt">')
+            .replace(/<li[^>]*>/gi, '<li style="margin-bottom:4pt">');
+
+        content = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" '
+            + 'xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+            + '<head><meta charset="UTF-8">'
+            + '<style>'
+            + 'body{font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.6;margin:2.5cm}'
+            + 'h1{font-size:24pt;color:#1a1a2e;border-bottom:2px solid #1a1a2e;padding-bottom:6pt;margin-top:0}'
+            + 'h2{font-size:18pt;color:#16213e;margin-top:18pt}'
+            + 'h3{font-size:14pt;margin-top:12pt}'
+            + 'p{margin-bottom:8pt}'
+            + 'ul,ol{margin-left:20pt;margin-bottom:8pt}'
+            + 'li{margin-bottom:3pt}'
+            + 'table{border-collapse:collapse;width:100%;margin-bottom:12pt}'
+            + 'td,th{border:1px solid #ccc;padding:6pt 8pt}'
+            + 'th{background:#f0f0f0;font-weight:bold}'
+            + 'code{font-family:Courier New;background:#f5f5f5;padding:1pt 3pt}'
+            + '.ether-header{text-align:center;padding:20pt 0 30pt;border-bottom:3px solid #1a1a2e;margin-bottom:24pt}'
+            + '.ether-footer{text-align:center;color:#999;font-size:9pt;margin-top:30pt;border-top:1px solid #ddd;padding-top:8pt}'
+            + '</style></head><body>'
+            + '<div class="ether-header">'
+            + '<div style="font-size:28pt;font-weight:800;color:#1a1a2e;letter-spacing:4px">ETHER</div>'
+            + '<div style="font-size:10pt;color:#666;margin-top:4pt">' + new Date().toLocaleDateString('fr-FR', {year:'numeric',month:'long',day:'numeric'}) + '</div>'
+            + '<div style="font-size:14pt;color:#333;margin-top:12pt;font-weight:600">' + esc(doc.title) + '</div>'
+            + '</div>'
+            + wordHtml
+            + '<div class="ether-footer">Généré par ETHER AI • ' + new Date().toLocaleDateString('fr-FR') + '</div>'
+            + '</body></html>';
+        ext[doc.format] = 'doc';
+    }
+    else if (doc.format === 'markdown') {
+        // Convertir HTML en Markdown propre
+        content = doc.content
+            .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+            .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
+            .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+            .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+            .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+            .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+            .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+        ext[doc.format] = 'md';
+        mime[doc.format] = 'text/markdown';
     }
 
     downloadFile('ether-' + doc.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) + '.' + (ext[doc.format] || 'txt'), content, mime[doc.format] || 'text/plain');
