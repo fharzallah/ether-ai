@@ -55,6 +55,8 @@ function getSmartRoute(message, mode) {
     console.log('[ENGINE] Complexity:', complexity, '| Mode:', mode);
     // Creative → Gemini (temperature haute)
     if (mode === 'creative' && providerHealth.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
+    // Image mode → Groq fast for prompt optimization
+    if (mode === 'image' && providerHealth.groq) return { provider: 'groq', model: GROQ_MODELS.fast };
     // Simple → Groq fast (economise les providers premium)
     if (complexity === 'simple' && providerHealth.groq) return { provider: 'groq', model: GROQ_MODELS.fast };
     // Medium base → Groq main
@@ -144,24 +146,31 @@ var ETHER_ENGINE = {
     },
 
     // === MEMOIRE CONTEXTUELLE LONGUE ===
-    // Quand l'historique depasse 12 messages, resumer les anciens
+    // Quand l'historique depasse 20 messages, resumer les plus anciens
     compactHistory: function() {
         var self = this;
-        if (this.conversationHistory.length <= 12) return Promise.resolve();
-        // Prendre les 8 premiers messages a resumer
-        var toSummarize = this.conversationHistory.slice(0, this.conversationHistory.length - 6);
-        var kept = this.conversationHistory.slice(this.conversationHistory.length - 6);
+        // Seuil augmente de 12 a 20 pour garder plus de contexte immediat
+        if (this.conversationHistory.length <= 20) return Promise.resolve();
+
+        // On garde les 10 derniers messages intacts (au lieu de 6)
+        var toSummarize = this.conversationHistory.slice(0, this.conversationHistory.length - 10);
+        var kept = this.conversationHistory.slice(this.conversationHistory.length - 10);
+
         var summaryText = '';
         for (var i = 0; i < toSummarize.length; i++) {
             var m = toSummarize[i];
-            summaryText += (m.role === 'user' ? 'User' : 'ETHER') + ': ' + m.content.substring(0, 200) + '\n';
+            summaryText += (m.role === 'user' ? 'User' : 'ETHER') + ': ' + m.content.substring(0, 400) + '\n';
         }
+
         if (!window.etherDesktop) { self.conversationHistory = kept; return Promise.resolve(); }
+
         return window.etherDesktop.groqChat({
             model: GROQ_MODELS.fast,
             messages: [
-                { role: 'system', content: 'Resume cette conversation en 2-3 phrases. Garde les faits importants, le contexte et les preferences. Francais. Resume UNIQUEMENT, rien d\'autre.' },
-                { role: 'user', content: (self.conversationSummary ? 'Resume precedent: ' + self.conversationSummary + '\n\n' : '') + 'Nouveaux messages:\n' + summaryText }
+                { role: 'system', content: 'Tu es un expert en gestion de contexte. Resume cette partie de conversation de maniere TRES DETAILLEE. '
+                    + 'Garde imperativement : 1. Les decisions prises 2. Les noms propres et chiffres 3. Les contraintes techniques ou stylistiques demandees par l\'utilisateur. '
+                    + 'Langue: Francais. Sois exhaustif mais structure.' },
+                { role: 'user', content: (self.conversationSummary ? 'Resume des echanges precedents: ' + self.conversationSummary + '\n\n' : '') + 'Nouveaux echanges a integrer au resume:\n' + summaryText }
             ],
             temperature: 0.2,
             max_tokens: 200
@@ -616,7 +625,16 @@ var ETHER_ENGINE = {
                     self._finalizeStreamElement(streamEl, result);
                 } else if (isComplex) {
                     // === MoA COMPLET: Critique + Reecriture (questions complexes) ===
-                    // Couche 2: Critique — Qwen3 32B cherche les failles et manques
+                    self._finalizeStreamElement(streamEl, result);
+
+                    // Ajouter un indicateur MoA discret sous le message
+                    var msgDiv = streamEl.closest('.msg.a');
+                    var mbd = msgDiv ? msgDiv.querySelector('.mbd') : null;
+                    var moaIndicator = document.createElement('div');
+                    moaIndicator.className = 'moa-status';
+                    moaIndicator.innerHTML = '<span class="moa-spinner"></span>Analyse critique et amelioration en cours...';
+                    if (mbd) mbd.appendChild(moaIndicator);
+
                     console.log('[MoA] Complex question detected — launching critique + rewrite');
                     window.etherDesktop.groqChat({
                         model: GROQ_MODELS.reasoning,
@@ -628,10 +646,13 @@ var ETHER_ENGINE = {
                     }).then(function(critiqueRes) {
                         var critique = (critiqueRes.ok && critiqueRes.text) ? critiqueRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : 'Ameliorer le style et ajouter des exemples concrets.';
 
-                        // Couche 3: TOUJOURS reecrire — Gemini reecrit avec un style journalistique
+                        // Couche 3: TOUJOURS reecrire
                         console.log('[MoA] Critique done (' + critique.length + ' chars) — launching rewrite');
                         var synthFn = providerStatus.gemini ? window.etherDesktop.geminiChat : window.etherDesktop.groqChat;
                         var synthModel = providerStatus.gemini ? GEMINI_MODELS.main : GROQ_MODELS.main;
+
+                        if (moaIndicator) moaIndicator.innerHTML = '<span class="moa-spinner"></span>Redaction de la version finale optimisee...';
+
                         synthFn({
                             model: synthModel,
                             messages: [
@@ -642,25 +663,47 @@ var ETHER_ENGINE = {
                         }).then(function(synthRes) {
                             if (synthRes.ok && synthRes.text && synthRes.text.length > 100) {
                                 var improved = synthRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
-                                result = self.parseResponse(improved);
-                                result._provider = 'moa';
-                                result._model = model;
-                                result._streamed = true;
-                                result._showBadge = false;
+                                var finalResult = self.parseResponse(improved);
+                                finalResult._provider = 'moa';
+                                finalResult._model = model;
+                                finalResult._streamed = true;
+                                finalResult._showBadge = false;
                                 self.conversationHistory[self.conversationHistory.length - 1].content = improved;
+
+                                // Remplacer avec transition douce si possible (ici on met à jour le contenu)
+                                if (mbd) {
+                                    var mt = mbd.querySelector('.mt');
+                                    if (mt) {
+                                        mt.style.opacity = '0.5';
+                                        setTimeout(function() {
+                                            mt.innerHTML = finalResult.answer;
+                                            mt.style.opacity = '1';
+                                            if (moaIndicator) moaIndicator.remove();
+                                            // Ajouter un petit badge d'optimisation
+                                            var badge = document.createElement('span');
+                                            badge.className = 'cb';
+                                            badge.style.cssText = 'background:rgba(139,92,246,.1);color:#8b5cf6;border:1px solid rgba(139,92,246,.2)';
+                                            badge.innerHTML = '<span class="cd" style="background:#8b5cf6"></span>Version optimisee (MoA)';
+                                            var ma = mbd.querySelector('.ma');
+                                            if (ma) mbd.insertBefore(badge, ma);
+                                        }, 300);
+                                    }
+                                }
+                            } else {
+                                if (moaIndicator) moaIndicator.remove();
                             }
-                            self._finalizeStreamElement(streamEl, result);
                         })['catch'](function() {
-                            self._finalizeStreamElement(streamEl, result);
+                            if (moaIndicator) moaIndicator.remove();
                         });
                     })['catch'](function() {
-                        self._finalizeStreamElement(streamEl, result);
+                        if (moaIndicator) moaIndicator.remove();
                     });
                 } else {
                     // === ENRICHISSEMENT SIMPLE (questions normales) ===
-                    // Un seul appel rapide pour ajouter ce qui manque
+                    self._finalizeStreamElement(streamEl, result);
+
                     window.etherDesktop.groqChat({
-                        model: GROQ_MODELS.fast, // Llama 8B = ultra-rapide
+                        model: GROQ_MODELS.fast,
                         messages: [
                             { role: 'system', content: 'On te donne une reponse. Ajoute UNIQUEMENT les infos manquantes (chiffres, dates, noms, exemples). NE REPETE RIEN. Si complet, reponds: COMPLET. Max 3 points.' },
                             { role: 'user', content: 'Q: ' + userMsg + '\nR: ' + plainAnswer.substring(0, 1500) + '\nManque:' }
@@ -671,18 +714,21 @@ var ETHER_ENGINE = {
                             var extra = enrichRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
                             if (extra.length > 30 && extra.length < plainAnswer.length) {
                                 var combined = cleanText + '\n\n' + extra;
-                                result = self.parseResponse(combined);
-                                result._provider = 'moa-light';
-                                result._model = model;
-                                result._streamed = true;
-                                result._showBadge = false;
+                                var finalResult = self.parseResponse(combined);
                                 self.conversationHistory[self.conversationHistory.length - 1].content = combined;
+
+                                var msgDiv = streamEl.closest('.msg.a');
+                                var mt = msgDiv ? msgDiv.querySelector('.mt') : null;
+                                if (mt) {
+                                    var extraEl = document.createElement('div');
+                                    extraEl.style.cssText = 'margin-top:12px;padding-top:12px;border-top:1px dashed var(--bd);opacity:0;transition:opacity .5s';
+                                    extraEl.innerHTML = renderMarkdown('**Infos complementaires :**\n' + extra);
+                                    mt.appendChild(extraEl);
+                                    setTimeout(function() { extraEl.style.opacity = '1'; }, 100);
+                                }
                             }
                         }
-                        self._finalizeStreamElement(streamEl, result);
-                    })['catch'](function() {
-                        self._finalizeStreamElement(streamEl, result);
-                    });
+                    })['catch'](function() {});
                 }
 
                 // Notification si fenetre pas au focus
@@ -1125,14 +1171,27 @@ var ETHER_ENGINE = {
 
         // ETAPE 1: Decomposition (Groq, rapide)
         setStep(1, 'active', 'Decomposition de la question...');
-        return window.etherDesktop.groqChat({
-            model: GROQ_MODELS.fast,
-            messages: [
-                { role: 'system', content: 'Decompose cette question en 3-4 sous-questions precises pour y repondre completement. Reponds UNIQUEMENT avec les sous-questions, une par ligne, sans numerotation. ' + langName + '.' },
-                { role: 'user', content: userMessage }
-            ],
-            temperature: 0.3, max_tokens: 300
-        }).then(function(res) {
+
+        function tryDecompose(dIdx) {
+            var dModels = [GROQ_MODELS.fast, GROQ_MODELS.main];
+            if (dIdx >= dModels.length) return Promise.resolve({ ok: false });
+
+            return window.etherDesktop.groqChat({
+                model: dModels[dIdx],
+                messages: [
+                    { role: 'system', content: 'Decompose cette question en 3-4 sous-questions precises pour y repondre completement. Reponds UNIQUEMENT avec les sous-questions, une par ligne, sans numerotation. ' + langName + '.' },
+                    { role: 'user', content: userMessage }
+                ],
+                temperature: 0.3, max_tokens: 300
+            }).then(function(res) {
+                if (res.ok && res.text) return res;
+                return tryDecompose(dIdx + 1);
+            })['catch'](function() {
+                return tryDecompose(dIdx + 1);
+            });
+        }
+
+        return tryDecompose(0).then(function(res) {
             if (res.ok && res.text) {
                 subQuestions = res.text.trim().split('\n').filter(function(q) { return q.trim().length > 5; }).slice(0, 4);
             }
@@ -1209,17 +1268,26 @@ var ETHER_ENGINE = {
             // ETAPE 4: Critique (Groq Qwen3 32B, fallback Groq Llama 70B)
             setStep(4, 'active', 'Verification des biais et erreurs...');
             var critiqueContent = mainAnalysis || userMessage; // Si pas d'analyse, critiquer la question directement
-            return window.etherDesktop.groqChat({
-                model: GROQ_MODELS.reasoning,
-                messages: [
-                    { role: 'system', content: 'Tu es un critique rigoureux. On te donne une analyse. Trouve les failles, biais, manques, erreurs factuelles ou logiques. Sois precis et constructif. Si l\'analyse est bonne, dis-le mais suggere des ameliorations. 3-5 points maximum. ' + langName + '.' },
-                    { role: 'user', content: 'Question: ' + userMessage + '\n\nAnalyse a critiquer:\n' + critiqueContent.substring(0, 3000) }
-                ],
-                temperature: 0.4, max_tokens: 1000
-            })['catch'](function() {
-                // Fallback: pas de critique, on passe direct a la synthese
-                return { ok: false, text: '' };
-            });
+
+            function tryCritique(cIdx) {
+                var cModels = [GROQ_MODELS.reasoning, GROQ_MODELS.main];
+                if (cIdx >= cModels.length) return Promise.resolve({ ok: false, text: '' });
+
+                return window.etherDesktop.groqChat({
+                    model: cModels[cIdx],
+                    messages: [
+                        { role: 'system', content: 'Tu es un critique rigoureux. On te donne une analyse. Trouve les failles, biais, manques, erreurs factuelles ou logiques. Sois precis et constructif. Si l\'analyse est bonne, dis-le mais suggere des ameliorations. 3-5 points maximum. ' + langName + '.' },
+                        { role: 'user', content: 'Question: ' + userMessage + '\n\nAnalyse a critiquer:\n' + critiqueContent.substring(0, 3000) }
+                    ],
+                    temperature: 0.4, max_tokens: 1000
+                }).then(function(res) {
+                    if (res.ok && res.text) return res;
+                    return tryCritique(cIdx + 1);
+                })['catch'](function() {
+                    return tryCritique(cIdx + 1);
+                });
+            }
+            return tryCritique(0);
 
         }).then(function(critiqueRes) {
             critique = (critiqueRes.ok && critiqueRes.text) ? critiqueRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : '';

@@ -163,34 +163,55 @@ function httpGetRaw(url, headers) {
 function duckDuckGoSearch(query) {
     var url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
     return httpGetRaw(url, {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://duckduckgo.com/'
+    }).then(function(html) {
+        var results = [];
+        if (!html || html.length < 500) return results;
+        html = html.replace(/&nbsp;/g, ' ');
+        var resultBlocks = html.split(/class="[^"]*result\b[^"]*"/);
+        for (var i = 1; i < resultBlocks.length && results.length < 5; i++) {
+            var block = resultBlocks[i];
+            var titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/) ||
+                            block.match(/<a[^>]+class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/a>/);
+            var title = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+            var snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/) ||
+                              block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/div>/);
+            var snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+            var urlMatch = block.match(/class="result__url"[^>]*>([\s\S]*?)<\/a>/) ||
+                          block.match(/href="([^"]+)"/);
+            var resultUrl = urlMatch ? urlMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+            if (resultUrl && resultUrl.indexOf('//') === 0) resultUrl = 'https:' + resultUrl;
+            var cleanText = function(str) { return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#39;/g, "'"); };
+            title = cleanText(title); snippet = cleanText(snippet);
+            if (title && snippet && snippet.length > 20) {
+                results.push({ title: title, snippet: snippet, url: resultUrl, source: 'DuckDuckGo' + (resultUrl ? ' — ' + resultUrl.split('/')[2] : '') });
+            }
+        }
+        return results;
+    }).catch(function() { return []; });
+}
+
+function swisscowsSearch(query) {
+    var url = 'https://swisscows.com/fr/web?query=' + encodeURIComponent(query);
+    return httpGetRaw(url, {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
     }).then(function(html) {
         var results = [];
         if (!html) return results;
-        // Parser les resultats DDG HTML — chaque resultat est dans un <div class="result">
-        // Titres dans <a class="result__a">, snippets dans <a class="result__snippet">
-        var resultBlocks = html.split(/class="result\s/);
-        for (var i = 1; i < resultBlocks.length && results.length < 4; i++) {
-            var block = resultBlocks[i];
-            // Extraire le titre
-            var titleMatch = block.match(/class="result__a"[^>]*>([^<]*(?:<[^>]*>[^<]*)*)<\/a>/);
-            var title = '';
-            if (titleMatch) {
-                title = titleMatch[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").trim();
-            }
-            // Extraire le snippet
-            var snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
-            var snippet = '';
-            if (snippetMatch) {
-                snippet = snippetMatch[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").trim();
-            }
-            // Extraire l'URL
-            var urlMatch = block.match(/class="result__url"[^>]*>([^<]*)/);
-            var resultUrl = urlMatch ? urlMatch[1].trim() : '';
-            if (title && snippet && snippet.length > 20) {
-                results.push({ title: title, snippet: snippet, source: 'DuckDuckGo Web' + (resultUrl ? ' — ' + resultUrl : '') });
+        var blocks = html.split(/<article/);
+        for (var i = 1; i < blocks.length && results.length < 3; i++) {
+            var block = blocks[i];
+            var titleMatch = block.match(/<h2[^>]*>([\s\S]*?)<\/h2>/);
+            var snippetMatch = block.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+            var urlMatch = block.match(/href="([^"]+)"/);
+            if (titleMatch && snippetMatch) {
+                var title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+                var snippet = snippetMatch[1].replace(/<[^>]*>/g, '').trim();
+                var resultUrl = urlMatch ? urlMatch[1] : '';
+                results.push({ title: title, snippet: snippet, url: resultUrl, source: 'Swisscows' + (resultUrl ? ' — ' + resultUrl.split('/')[2] : '') });
             }
         }
         return results;
@@ -824,13 +845,16 @@ ipcMain.handle('web-search', function(event, query) {
     // 3. Wikipedia EN (souvent plus complet/a jour)
     var wikiEnPromise = httpGet('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(query) + '&format=json&srlimit=2&origin=*').then(function(data) {
         if (!data || !data.query || !data.query.search || !data.query.search.length) return '';
-        var title = data.query.search[0].title;
-        return httpGet('https://en.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(title) + '&prop=extracts&exintro=1&explaintext=1&format=json&origin=*').then(function(d) {
+        var titles = data.query.search.map(function(s) { return s.title; });
+        return httpGet('https://en.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(titles.join('|')) + '&prop=extracts&exintro=1&explaintext=1&format=json&origin=*').then(function(d) {
             if (!d || !d.query || !d.query.pages) return '';
+            var extracts = [];
             for (var k in d.query.pages) {
-                if (d.query.pages[k].extract) return '=== ' + d.query.pages[k].title + ' (Wikipedia EN) ===\n' + d.query.pages[k].extract.substring(0, 600);
+                if (d.query.pages[k].extract && d.query.pages[k].extract.length > 50) {
+                    extracts.push('=== ' + d.query.pages[k].title + ' (Wikipedia EN) ===\n' + d.query.pages[k].extract.substring(0, 600));
+                }
             }
-            return '';
+            return extracts.join('\n\n');
         });
     }).catch(function() { return ''; });
 
@@ -845,13 +869,17 @@ ipcMain.handle('web-search', function(event, query) {
     // 5. DuckDuckGo HTML Search (vrais resultats web)
     var ddgHtmlPromise = duckDuckGoSearch(query);
 
+    // 6. Swisscows (fallback)
+    var swissPromise = swisscowsSearch(query);
+
     // Combiner tout
-    return Promise.all([smartTitlesPromise, ddgPromise, wikiEnPromise, wikidataPromise, ddgHtmlPromise]).then(function(r) {
+    return Promise.all([smartTitlesPromise, ddgPromise, wikiEnPromise, wikidataPromise, ddgHtmlPromise, swissPromise]).then(function(r) {
         var titles = r[0];
         var ddgResults = r[1];
         var wikiEnExtract = r[2];
         var wikidataResults = r[3];
         var ddgHtmlResults = r[4];
+        var swissResults = r[5];
 
         // Wikipedia FR extraits
         var wikiFrPromise = titles.length > 0
@@ -873,15 +901,16 @@ ipcMain.handle('web-search', function(event, query) {
                 extract = parts.join('\n\n');
             }
             if (wikiEnExtract) extract += (extract ? '\n\n' : '') + wikiEnExtract;
-            // Ajouter les snippets DDG HTML a l'extract pour enrichir le contexte
-            if (ddgHtmlResults && ddgHtmlResults.length > 0) {
-                var ddgExtract = '';
-                for (var d = 0; d < ddgHtmlResults.length; d++) {
-                    ddgExtract += '\n[' + ddgHtmlResults[d].source + '] ' + ddgHtmlResults[d].title + ': ' + ddgHtmlResults[d].snippet;
+            // Ajouter les snippets Web (DDG + Swisscows) a l'extract pour enrichir le contexte
+            var webExtract = '';
+            var allWebResults = (ddgHtmlResults || []).concat(swissResults || []);
+            if (allWebResults.length > 0) {
+                for (var d = 0; d < allWebResults.length; d++) {
+                    webExtract += '\n[' + allWebResults[d].source + '] ' + allWebResults[d].title + ': ' + allWebResults[d].snippet;
                 }
-                if (ddgExtract) extract += (extract ? '\n\n=== Resultats Web ===\n' : '') + ddgExtract;
+                if (webExtract) extract += (extract ? '\n\n=== Resultats Web ===\n' : '') + webExtract;
             }
-            var allResults = wikiResults.concat(ddgResults).concat(ddgHtmlResults || []).concat(wikidataResults);
+            var allResults = wikiResults.concat(ddgResults).concat(ddgHtmlResults || []).concat(swissResults || []).concat(wikidataResults);
             return { results: allResults, extract: extract };
         });
     }).catch(function() {
@@ -1285,43 +1314,70 @@ app.whenReady().then(function() {
 app.on('window-all-closed', function() { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', function() { if (mainWindow === null) createWindow(); });
 
-// === MEMOIRE PERSISTANTE (fichier JSON dans userData) ===
+// === MEMOIRE PERSISTANTE (Robuste — fichiers individuels) ===
 var userDataPath = app.getPath('userData');
-var persistPath = path.join(userDataPath, 'ether-data.json');
-
-function readPersist() {
-    try {
-        if (fs.existsSync(persistPath)) {
-            return JSON.parse(fs.readFileSync(persistPath, 'utf8'));
-        }
-    } catch(e) { console.error('[PERSIST] Read error:', e.message); }
-    return {};
+var storageDir = path.join(userDataPath, 'ether_storage');
+if (!fs.existsSync(storageDir)) {
+    try { fs.mkdirSync(storageDir, { recursive: true }); } catch(e) { console.error('[STORAGE] Failed to create dir:', e.message); }
 }
 
-function writePersist(data) {
+function getSafeFilename(key) {
+    return key.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json';
+}
+
+function readPersist() {
+    // Legacy support for single file
+    var legacyPath = path.join(userDataPath, 'ether-data.json');
+    var allData = {};
     try {
-        fs.writeFileSync(persistPath, JSON.stringify(data, null, 2), 'utf8');
-        return true;
-    } catch(e) { console.error('[PERSIST] Write error:', e.message); return false; }
+        if (fs.existsSync(legacyPath)) allData = JSON.parse(fs.readFileSync(legacyPath, 'utf8'));
+        // Read all files in storage dir
+        if (fs.existsSync(storageDir)) {
+            var files = fs.readdirSync(storageDir);
+            for (var i = 0; i < files.length; i++) {
+                if (!files[i].endsWith('.json')) continue;
+                try {
+                    var key = files[i].replace('.json', '');
+                    allData[key] = JSON.parse(fs.readFileSync(path.join(storageDir, files[i]), 'utf8'));
+                } catch(e) {}
+            }
+        }
+    } catch(e) { console.error('[PERSIST] Read error:', e.message); }
+    return allData;
 }
 
 ipcMain.handle('persist-read', function() {
     return readPersist();
 });
 
-ipcMain.handle('persist-write', function(event, data) {
-    return writePersist(data);
-});
-
 ipcMain.handle('persist-get', function(event, key) {
-    var data = readPersist();
-    return data[key] !== undefined ? data[key] : null;
+    try {
+        var filePath = path.join(storageDir, getSafeFilename(key));
+        if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        // Fallback legacy single file
+        var legacyPath = path.join(userDataPath, 'ether-data.json');
+        if (fs.existsSync(legacyPath)) {
+            var data = JSON.parse(fs.readFileSync(legacyPath, 'utf8'));
+            return data[key] !== undefined ? data[key] : null;
+        }
+    } catch(e) {}
+    return null;
 });
 
 ipcMain.handle('persist-set', function(event, key, value) {
-    var data = readPersist();
-    data[key] = value;
-    return writePersist(data);
+    try {
+        var filePath = path.join(storageDir, getSafeFilename(key));
+        fs.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8');
+        return true;
+    } catch(e) { console.error('[PERSIST] Write error for ' + key + ':', e.message); return false; }
+});
+
+ipcMain.handle('persist-delete', function(event, key) {
+    try {
+        var filePath = path.join(storageDir, getSafeFilename(key));
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        return true;
+    } catch(e) { return false; }
 });
 
 ipcMain.handle('get-user-data-path', function() {
