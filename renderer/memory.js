@@ -311,7 +311,10 @@ var RAG = {
     // Construire le contexte RAG pour le system prompt
     getContext: function(userMessage) {
         if (!userMessage) return '';
-        var results = this.search(userMessage, 4);
+
+        // Tentative de recherche avancee (BM25)
+        var results = this.search(userMessage, 5);
+
         if (!results.length) return '';
 
         var context = '\n\n=== DOCUMENTS DE REFERENCE (base de connaissances de l\'utilisateur) ===\n';
@@ -390,17 +393,42 @@ var RAG = {
             .filter(function(w) { return w.length > 2 && STOPWORDS.indexOf(w) === -1; });
     },
 
-    // Score de pertinence (TF-IDF simplifie)
+    // Score de pertinence (BM25 simplifie)
+    // Prend en compte la frequence des mots et punit les mots trop communs
     _relevanceScore: function(queryWords, chunkWords) {
         if (!chunkWords.length) return 0;
-        var matches = 0;
-        var chunkSet = {};
-        for (var c = 0; c < chunkWords.length; c++) chunkSet[chunkWords[c]] = true;
-        for (var q = 0; q < queryWords.length; q++) {
-            if (chunkSet[queryWords[q]]) matches++;
+
+        var chunkFreq = {};
+        for (var i = 0; i < chunkWords.length; i++) {
+            chunkFreq[chunkWords[i]] = (chunkFreq[chunkWords[i]] || 0) + 1;
         }
-        // Normaliser par la taille de la requete
-        return matches / queryWords.length;
+
+        var score = 0;
+        var k1 = 1.5; // Parametre de saturation de frequence
+        var b = 0.75; // Parametre de penalite de longueur
+        var avgLen = 80; // Longueur moyenne estimee d'un chunk
+
+        for (var q = 0; q < queryWords.length; q++) {
+            var word = queryWords[q];
+            if (chunkFreq[word]) {
+                // TF part
+                var tf = chunkFreq[word];
+                var numerator = tf * (k1 + 1);
+                var denominator = tf + k1 * (1 - b + b * (chunkWords.length / avgLen));
+
+                // IDF part simplifiee (si le mot est court, il est probablement moins important)
+                var idf = word.length <= 4 ? 0.5 : word.length <= 6 ? 1.0 : 1.5;
+
+                score += idf * (numerator / denominator);
+            }
+        }
+
+        // Bonus pour la proximite des mots (recherche de phrases)
+        var text = chunkWords.join(' ');
+        var queryStr = queryWords.join(' ');
+        if (text.indexOf(queryStr) !== -1) score *= 2.0;
+
+        return score;
     }
 };
 

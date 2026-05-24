@@ -55,28 +55,15 @@ var G = function(id) { return document.getElementById(id); };
 // (initialisées ici pour éviter les ReferenceError dans ui.js chargé avant app-main.js)
 var isPro = false; // sera écrasé par sGet('pro', false) dans app-main.js au boot
 function sSet(k,v) {
+    // 1. Sauvegarder dans le localStorage (cache rapide, mais limite)
     try {
         localStorage.setItem('ether_'+k, JSON.stringify(v));
     } catch(e) {
-        // localStorage plein ou indisponible — tenter de liberer de l'espace
-        console.warn('[STORAGE] localStorage write failed for', k, ':', e.message);
-        try {
-            // Supprimer les vieilles conversations pour liberer de l'espace
-            var toRemove = [];
-            for (var i = 0; i < localStorage.length; i++) {
-                var key = localStorage.key(i);
-                if (key && key.startsWith('ether_') && key !== 'ether_user' && key !== 'ether_sett' && key !== 'ether_mem') {
-                    toRemove.push(key);
-                }
-            }
-            if (toRemove.length > 5) {
-                // Supprimer les 5 plus anciennes entrees
-                for (var r = 0; r < Math.min(5, toRemove.length); r++) localStorage.removeItem(toRemove[r]);
-                localStorage.setItem('ether_'+k, JSON.stringify(v));
-            }
-        } catch(e2) { console.error('[STORAGE] Cannot free space:', e2.message); }
+        console.warn('[STORAGE] localStorage full, using only filesystem for', k);
+        // Si localStorage est plein, on ne bloque pas, car on a le filesystem en backup
     }
-    // Sauvegarder aussi dans le fichier persistant (async, fire-and-forget)
+
+    // 2. Sauvegarder dans le système de fichiers (persistance réelle et illimitée)
     if (window.etherDesktop && window.etherDesktop.persistSet) {
         window.etherDesktop.persistSet(k, v);
     }
@@ -93,7 +80,7 @@ function sGet(k,d) {
     }
 }
 
-// Au demarrage, restaurer les donnees du fichier persistant si localStorage est vide
+// Au demarrage, restaurer les donnees du fichier persistant dans le localStorage (cache)
 function restoreFromPersist() {
     if (!window.etherDesktop || !window.etherDesktop.persistRead) return Promise.resolve();
     return window.etherDesktop.persistRead().then(function(data) {
@@ -103,13 +90,11 @@ function restoreFromPersist() {
             var k = keys[i];
             // Valider la cle — uniquement des caracteres alphanumeriques et underscores
             if (!/^[\w-]+$/.test(k)) continue;
-            // Ne restaurer que si la cle n'existe pas dans localStorage
-            if (localStorage.getItem('ether_' + k) === null) {
-                try {
-                    localStorage.setItem('ether_' + k, JSON.stringify(data[k]));
-                } catch(e) {
-                    console.warn('[PERSIST] Failed to restore key:', k, e.message);
-                }
+            try {
+                // On restaure systématiquement pour s'assurer que le cache est à jour avec le filesystem
+                localStorage.setItem('ether_' + k, JSON.stringify(data[k]));
+            } catch(e) {
+                // Si ça échoue, c'est que localStorage est plein, on laisse tomber pour cette clé
             }
         }
     })['catch'](function(e) { console.warn('[PERSIST] Restore failed:', e); });
