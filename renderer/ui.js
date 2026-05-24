@@ -92,13 +92,17 @@ function sendMsg(text){
     var actualPrompt = message;
     if(hasFiles){
         actualPrompt = processStagedFiles(message);
+        // Ne pas ré-afficher le message si processStagedFiles l'a déjà inclus avec les fichiers
+        message = '';
     }
 
     // Detecter les URLs dans le message → fetch et injecter le contenu
     var urlMatch = message.match(/https?:\/\/[^\s<>"]+/);
     if (urlMatch && window.etherDesktop && window.etherDesktop.fetchUrlContent) {
-        if(message) addUserMsg(message);
-        if(curConv&&!isEphemeral) convs[curConv].messages.push({r:'u',t:message,ts:Date.now()});
+        // Ne pas appeler addUserMsg ici si un fichier est déjà en cours de traitement
+        // car le message est déjà inclus dans la bulle du fichier
+        if(message && !hasFiles) addUserMsg(message);
+        if(message && !hasFiles && curConv && !isEphemeral) convs[curConv].messages.push({r:'u',t:message,ts:Date.now()});
         showThink();
         window.etherDesktop.fetchUrlContent(urlMatch[0]).then(function(page) {
             hideThink();

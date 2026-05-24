@@ -187,7 +187,7 @@ var ETHER_ENGINE = {
         var factual = isFactualQuestion(userMessage) && self.currentMode !== 'creative' && self.currentMode !== 'writer';
         // Toujours texte libre — le systeme de verification gere la confiance
         var useJson = false;
-        var compactP = (this.conversationHistory.length > 12) ? self.compactHistory() : Promise.resolve();
+        var compactP = (this.conversationHistory.length > 20) ? self.compactHistory() : Promise.resolve();
         return compactP.then(function() {
             var shouldSearch = factual && canSearchWeb();
 
@@ -636,11 +636,20 @@ var ETHER_ENGINE = {
                     if (mbd) mbd.appendChild(moaIndicator);
 
                     console.log('[MoA] Complex question detected — launching critique + rewrite');
+                    // Injecter le contexte des documents (RAG) dans la critique si present
+                    var docContext = (typeof RAG !== 'undefined') ? RAG.getContext(userMsg) : '';
+
                     window.etherDesktop.groqChat({
                         model: GROQ_MODELS.reasoning,
                         messages: [
-                            { role: 'system', content: 'Tu es un CRITIQUE. Analyse cette reponse et liste:\n1. Les erreurs ou approximations a corriger\n2. Les infos manquantes (chiffres, exemples, perspectives)\n3. Les ameliorations de style possibles\nSois CONCIS. Max 5 points.' },
-                            { role: 'user', content: 'Question: ' + userMsg + '\n\nReponse:\n' + plainAnswer.substring(0, 2500) }
+                            { role: 'system', content: 'Tu es un CRITIQUE expert. Ton role est d\'ameliorer la reponse d\'une IA.\n'
+                                + '1. Verifie l\'exactitude par rapport aux documents fournis (si presents).\n'
+                                + '2. Liste les erreurs ou omissions.\n'
+                                + '3. Propose des ajouts de chiffres ou d\'exemples reels.\n'
+                                + 'Sois CONCIS (max 5 points).' },
+                            { role: 'user', content: (docContext ? 'DOCUMENTS DE REFERENCE:\n' + docContext + '\n\n' : '')
+                                + 'QUESTION DE L\'UTILISATEUR: ' + userMsg + '\n\n'
+                                + 'REPONSE IA A CRITIQUER:\n' + plainAnswer.substring(0, 2500) }
                         ],
                         temperature: 0.3, max_tokens: 600
                     }).then(function(critiqueRes) {
@@ -858,6 +867,8 @@ var ETHER_ENGINE = {
 
     getSystemPrompt: function(useJson) {
         var langName = (G('SLG') && G('SLG').options[G('SLG').selectedIndex]) ? G('SLG').options[G('SLG').selectedIndex].text : 'Francais';
+        var now = new Date();
+        var dateStr = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         var formatBlock = '';
         if (useJson === false) {
             formatBlock = '=== FORMAT ===\n'
@@ -888,9 +899,11 @@ var ETHER_ENGINE = {
 + 'Quand tu n\'es pas sur, tu le dis franchement au lieu de broder.\n'
 + 'Tu utilises l\'humour quand c\'est pertinent, jamais force.\n\n'
 + '=== REGLES ABSOLUES ===\n'
++ 'Date actuelle: ' + dateStr + '. Tu as accès au web en temps réel si nécessaire.\n'
 + 'Tu ne mentionnes JAMAIS ton "knowledge cutoff", ta "date d\'entrainement", tes "limites de connaissances" ou le fait que tes donnees datent de telle annee.\n'
 + 'Tu ne dis JAMAIS "je ne peux pas savoir car mes informations datent de..." ou "en tant qu\'IA, je n\'ai pas acces a...".\n'
 + 'Tu reponds comme si tu avais acces a toutes les informations actuelles. Si des sources web te sont fournies, utilise-les naturellement sans mentionner qu\'elles viennent d\'une recherche.\n'
++ 'Tu peux lire TOUS les types de fichiers (PDF, Word, etc.) car leur contenu t\'est automatiquement extrait et injecte dans la conversation. Ne dis JAMAIS "je ne peux pas lire ce fichier" ou "je n\'ai pas accès aux PDF".\n'
 + 'Tu ne refuses JAMAIS de repondre a une question factuelle. Si tu n\'es pas certain, donne la meilleure reponse possible.\n\n'
 + '=== PRECISION ===\n'
 + 'Tu donnes TOUJOURS des reponses DETAILLEES et PRECISES.\n'
@@ -1172,6 +1185,10 @@ var ETHER_ENGINE = {
         // ETAPE 1: Decomposition (Groq, rapide)
         setStep(1, 'active', 'Decomposition de la question...');
 
+        var now = new Date();
+        var currentYear = now.getFullYear();
+        var dateStr = now.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
+
         function tryDecompose(dIdx) {
             var dModels = [GROQ_MODELS.fast, GROQ_MODELS.main];
             if (dIdx >= dModels.length) return Promise.resolve({ ok: false });
@@ -1179,7 +1196,7 @@ var ETHER_ENGINE = {
             return window.etherDesktop.groqChat({
                 model: dModels[dIdx],
                 messages: [
-                    { role: 'system', content: 'Decompose cette question en 3-4 sous-questions precises pour y repondre completement. Reponds UNIQUEMENT avec les sous-questions, une par ligne, sans numerotation. ' + langName + '.' },
+                    { role: 'system', content: 'Tu es un expert en decomposition de requetes. On est le ' + dateStr + '. Si la question porte sur un evenement recent ou une annee (ex: match, prix), assure-toi d\'inclure "' + currentYear + '" dans les sous-questions pour forcer la recherche actuelle. Reponds UNIQUEMENT avec 3-4 sous-questions, une par ligne, sans numerotation. ' + langName + '.' },
                     { role: 'user', content: userMessage }
                 ],
                 temperature: 0.3, max_tokens: 300

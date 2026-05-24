@@ -812,22 +812,27 @@ function processStagedFiles(userPrompt) {
     var filesToProcess = stagedFiles.slice();
     clearStagedFiles();
 
+    var combinedFileHtml = '';
     for (var f = 0; f < filesToProcess.length; f++) {
         var sf = filesToProcess[f];
-        // Afficher le fichier dans le chat
         if (sf.isImage && sf.dataUrl) {
-            var d = document.createElement('div'); d.className = 'msg u';
-            d.innerHTML = '<div class="mb"><img src="' + sf.dataUrl + '" style="max-width:220px;border-radius:12px;display:block;margin-bottom:6px"><span style="font-size:.78rem;color:rgba(255,255,255,.7)">' + esc(sf.name) + ' - ' + sf.size + '</span></div>';
-            G('MG').appendChild(d);
-            if (curConv && !isEphemeral) convs[curConv].messages.push({ r: 'u', t: '[Image: ' + sf.name + ']', ts: Date.now() });
+            combinedFileHtml += '<img src="' + sf.dataUrl + '" style="max-width:220px;border-radius:12px;display:block;margin-bottom:6px"><span style="font-size:.78rem;color:rgba(255,255,255,.7)">' + esc(sf.name) + ' - ' + sf.size + '</span>';
         } else {
             var icons2 = { pdf: '#ef4444', doc: '#2563eb', docx: '#2563eb', txt: '#6b7280', csv: '#22c55e', xls: '#22c55e', xlsx: '#22c55e' };
             var iconColor2 = icons2[sf.ext] || '#8b5cf6';
-            var d2 = document.createElement('div'); d2.className = 'msg u';
-            d2.innerHTML = '<div class="mb"><div style="display:flex;align-items:center;gap:10px;padding:4px 0"><div style="width:36px;height:36px;border-radius:8px;background:' + iconColor2 + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">' + sf.ext.toUpperCase() + '</div><div><div style="font-size:.85rem">' + esc(sf.name) + '</div><div style="font-size:.72rem;color:rgba(255,255,255,.6)">' + sf.size + '</div></div></div></div>';
-            G('MG').appendChild(d2);
-            if (curConv && !isEphemeral) convs[curConv].messages.push({ r: 'u', t: '[Fichier: ' + sf.name + ']', ts: Date.now() });
+            combinedFileHtml += '<div style="display:flex;align-items:center;gap:10px;padding:4px 0"><div style="width:36px;height:36px;border-radius:8px;background:' + iconColor2 + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">' + sf.ext.toUpperCase() + '</div><div><div style="font-size:.85rem">' + esc(sf.name) + '</div><div style="font-size:.72rem;color:rgba(255,255,255,.6)">' + sf.size + '</div></div></div>';
         }
+        if (f < filesToProcess.length - 1) combinedFileHtml += '<div style="height:10px"></div>';
+    }
+
+    var d = document.createElement('div'); d.className = 'msg u';
+    var bgStyle = isEphemeral ? ' style="background:#b45309"' : '';
+    d.innerHTML = '<div class="mb"' + bgStyle + '>' + combinedFileHtml + (userPrompt ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15)">' + esc(userPrompt) + '</div>' : '') + '</div>';
+    G('MG').appendChild(d);
+
+    if (curConv && !isEphemeral) {
+        var fileNames = filesToProcess.map(function(f) { return f.name; }).join(', ');
+        convs[curConv].messages.push({ r: 'u', t: (userPrompt || '') + ' [Fichiers: ' + fileNames + ']', ts: Date.now() });
     }
 
     // Construire le prompt enrichi avec le contenu des fichiers
@@ -840,7 +845,8 @@ function processStagedFiles(userPrompt) {
             content = sf2.desktopFile.content;
         }
         if (content) {
-            fileContext += '\n\n--- Fichier: ' + sf2.name + ' ---\n' + content.substring(0, 4000);
+            // Injecter une plus grande partie du contenu pour une analyse immédiate sans RAG
+            fileContext += '\n\n--- Fichier: ' + sf2.name + ' ---\n' + content.substring(0, 15000);
             // Indexer automatiquement dans le RAG
             if (typeof ragIndexUploadedFile === 'function') {
                 ragIndexUploadedFile({ name: sf2.name, content: content });
