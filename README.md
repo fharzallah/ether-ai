@@ -53,9 +53,8 @@ ETHER operates as a **frankly honest intellectual partner**, not a passive yes-m
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/fadiharzallah4-cyber/ether-ai.git
+   git clone [https://github.com/fadiharzallah4-cyber/ether-ai.git](https://github.com/fadiharzallah4-cyber/ether-ai.git)
    cd ether-ai
-
 2. Install dependencies
 npm install
 
