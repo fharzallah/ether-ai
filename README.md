@@ -53,7 +53,7 @@ ETHER operates as a **frankly honest intellectual partner**, not a passive yes-m
 
 1. Clone the repository
 ```bash
-   git clone https://github.com/[OWNER]/ether-app.git
+   git clone https://github.com/fadiharzallah4-cyber/ether-app.git
    cd ether-app
 ```
 
