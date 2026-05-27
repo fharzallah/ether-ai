@@ -63,7 +63,9 @@ ETHER operates as a **frankly honest intellectual partner**, not a passive yes-m
 ```
 
 3. Set up environment variables
-   Create a `.env` file:GROQ_API_KEY=your_groq_key
+   Create a `.env` file:
+
+GROQ_API_KEY=your_groq_key
 GEMINI_API_KEYS=key1,key2,key3
 CEREBRAS_API_KEY=your_cerebras_key
 4. Start the app
