@@ -51,11 +51,10 @@ ETHER operates as a **frankly honest intellectual partner**, not a passive yes-m
 
 ### Installation
 
-1. Clone the repository
-```bash
-   git clone https://github.com/fadiharzallah4-cyber/ether-app.git
-   cd ether-app
-```
+1. **Clone the repository**
+   ```bash
+   git clone [https://github.com/fadiharzallah4-cyber/ether-ai.git](https://github.com/fadiharzallah4-cyber/ether-ai.git)
+   cd ether-ai
 
 2. Install dependencies
 ```bash
@@ -63,7 +62,7 @@ ETHER operates as a **frankly honest intellectual partner**, not a passive yes-m
 ```
 
 3. Set up environment variables
-   Create a `.env` file:
+   Create a .env file in the root directory:
 
 GROQ_API_KEY=your_groq_key
 GEMINI_API_KEYS=key1,key2,key3
