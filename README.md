@@ -70,33 +70,29 @@ Prerequisites
 
 Installation
 
-1.     Clone the repository
-
-
-git clone [https://github.com/fadiharzallah4-cyber/ether-ai.git](https://github.com/fadiharzallah4-cyber/ether-ai.git)
+1.	Clone the repository
+```
+git clone https://github.com/fadiharzallah4-cyber/ether-ai.git
 cd ether-ai
-
-
-2.     Install dependencies
-
-
+```
+	
+2.	Install dependencies
+```bash
 npm install
+```
 
-
-3.     Set up environment variables
-Create a .env file in the root directory:
-
-
+3.	Set up environment variables
+Create a .env file:
+```env
 GROQ_API_KEY=your_groq_key
 GEMINI_API_KEYS=key1,key2,key3
 CEREBRAS_API_KEY=your_cerebras_key
+```
 
-
-4.     Start the app
-
-
+4.	Start the app
+```bash
 npm start
-
+```
 
 How It Works
 
