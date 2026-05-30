@@ -2728,12 +2728,16 @@ function deleteCustomMode() {
 // Event listeners — Dropdown toggle
 G('CUSTOM-TOGGLE').onclick = function(e) {
     e.stopPropagation();
-    var drop = G('CUSTOM-DROP');
-    if (drop.classList.contains('hidden')) {
-        drop.classList.remove('hidden');
-        renderCustomModes(); // refresh
+    if (typeof SKILL_CREATOR !== 'undefined') {
+        SKILL_CREATOR.open();
     } else {
-        drop.classList.add('hidden');
+        var drop = G('CUSTOM-DROP');
+        if (drop.classList.contains('hidden')) {
+            drop.classList.remove('hidden');
+            renderCustomModes(); // refresh
+        } else {
+            drop.classList.add('hidden');
+        }
     }
 };
 // Fermer le dropdown quand on clique ailleurs

@@ -1023,8 +1023,18 @@ var ETHER_ENGINE = {
         if (this.currentMode && this.currentMode.indexOf('custom_') === 0) {
             var cmId = this.currentMode.replace('custom_', '');
             var cm = null;
-            var cms = JSON.parse(localStorage.getItem('ether_custom_modes') || '[]');
-            for (var ci = 0; ci < cms.length; ci++) { if (cms[ci].id === cmId) { cm = cms[ci]; break; } }
+            // First check SKILL_CREATOR cache if available
+            if (typeof SKILL_CREATOR !== 'undefined' && SKILL_CREATOR.modes) {
+                for (var i = 0; i < SKILL_CREATOR.modes.length; i++) {
+                    if (SKILL_CREATOR.modes[i].id === cmId) { cm = SKILL_CREATOR.modes[i]; break; }
+                }
+            }
+            // Fallback to localStorage
+            if (!cm) {
+                var cms = JSON.parse(localStorage.getItem('ether_custom_modes') || '[]');
+                for (var ci = 0; ci < cms.length; ci++) { if (cms[ci].id === cmId) { cm = cms[ci]; break; } }
+            }
+
             if (cm) {
                 var catLabel = '';
                 if (typeof defaultCategories !== 'undefined') {
@@ -1036,8 +1046,9 @@ var ETHER_ENGINE = {
                 if (catLabel) customPrompt += '\nCatégorie : ' + catLabel;
                 if (cm.specialty) customPrompt += '\nDomaine de spécialité : ' + cm.specialty;
                 if (cm.style) customPrompt += '\nStyle de réponse attendu : ' + cm.style;
-                if (cm.instructions) {
-                    customPrompt += '\n\nINSTRUCTIONS SPÉCIFIQUES :\n' + cm.instructions;
+                var instr = cm.systemPrompt || cm.instructions;
+                if (instr) {
+                    customPrompt += '\n\nINSTRUCTIONS SPÉCIFIQUES :\n' + instr;
                 }
                 customPrompt += '\n\nRÈGLE ABSOLUE : Ces instructions définissent ton comportement pour toute cette conversation. Respecte-les même si l\'utilisateur te demande d\'en sortir.';
                 return customPrompt;
