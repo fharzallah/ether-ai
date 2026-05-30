@@ -1321,6 +1321,13 @@ if (!fs.existsSync(storageDir)) {
     try { fs.mkdirSync(storageDir, { recursive: true }); } catch(e) { console.error('[STORAGE] Failed to create dir:', e.message); }
 }
 
+// Skill Modes Storage (~/.ether/modes/)
+var etherHome = path.join(os.homedir(), '.ether');
+var modesDir = path.join(etherHome, 'modes');
+if (!fs.existsSync(modesDir)) {
+    try { fs.mkdirSync(modesDir, { recursive: true }); } catch(e) { console.error('[MODES] Failed to create dir:', e.message); }
+}
+
 function getSafeFilename(key) {
     return key.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json';
 }
@@ -1376,6 +1383,47 @@ ipcMain.handle('persist-delete', function(event, key) {
     try {
         var filePath = path.join(storageDir, getSafeFilename(key));
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        return true;
+    } catch(e) { return false; }
+});
+
+// === IPC: MODES PERSONNALISÉS (Skill Creator) ===
+ipcMain.handle('modes-list', async function() {
+    try {
+        if (!fs.existsSync(modesDir)) return [];
+        const files = await fs.promises.readdir(modesDir);
+        const modes = [];
+        for (const file of files) {
+            if (!file.endsWith('.json')) continue;
+            try {
+                const content = await fs.promises.readFile(path.join(modesDir, file), 'utf8');
+                const m = JSON.parse(content);
+                m.id = file.replace('.json', '');
+                modes.push(m);
+            } catch(ex) {}
+        }
+        return modes;
+    } catch(e) { return []; }
+});
+
+ipcMain.handle('mode-save', async function(event, mode) {
+    try {
+        // Sanitize ID to prevent path traversal
+        let id = (mode.id || ('mode_' + Date.now())).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filePath = path.join(modesDir, id + '.json');
+        await fs.promises.writeFile(filePath, JSON.stringify(mode, null, 2), 'utf8');
+        return { ok: true, id: id };
+    } catch(e) { return { ok: false, error: e.message }; }
+});
+
+ipcMain.handle('mode-delete', async function(event, id) {
+    try {
+        // Sanitize ID
+        let safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filePath = path.join(modesDir, safeId + '.json');
+        if (fs.existsSync(filePath)) {
+            await fs.promises.unlink(filePath);
+        }
         return true;
     } catch(e) { return false; }
 });
