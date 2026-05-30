@@ -95,6 +95,11 @@ contextBridge.exposeInMainWorld('etherDesktop', {
     persistSet: function(key, value) { return ipcRenderer.invoke('persist-set', key, value); },
     getUserDataPath: function() { return safeInvoke('get-user-data-path'); },
 
+    // === Modes / Skills ===
+    modesList: function() { return safeInvoke('modes-list'); },
+    modeSave: function(mode) { return safeInvoke('mode-save', mode); },
+    modeDelete: function(id) { return safeInvoke('mode-delete', id); },
+
     // === Theme systeme ===
     getSystemTheme: function() { return safeInvoke('get-system-theme'); },
     onSystemThemeChanged: function(callback) { ipcRenderer.on('system-theme-changed', function(event, theme) { callback(theme); }); },
