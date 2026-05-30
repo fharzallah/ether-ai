@@ -87,9 +87,9 @@ function sSet(k,v) {
 function sGet(k,d) {
     try {
         var v = localStorage.getItem('ether_'+k);
-        if (v === null || v === undefined) return d;
+        if (v === null || v === undefined || v === "undefined") return d;
         var parsed = JSON.parse(v);
-        return parsed !== null && parsed !== undefined ? parsed : d;
+        return (parsed !== null && parsed !== undefined) ? parsed : d;
     } catch(e) {
         console.warn('[STORAGE] Failed to parse', k, ':', e.message);
         return d;

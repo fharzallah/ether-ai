@@ -1337,7 +1337,10 @@ function readPersist() {
     var legacyPath = path.join(userDataPath, 'ether-data.json');
     var allData = {};
     try {
-        if (fs.existsSync(legacyPath)) allData = JSON.parse(fs.readFileSync(legacyPath, 'utf8'));
+        if (fs.existsSync(legacyPath)) {
+            var content = fs.readFileSync(legacyPath, 'utf8');
+            if (content && content.trim()) allData = JSON.parse(content);
+        }
         // Read all files in storage dir
         if (fs.existsSync(storageDir)) {
             var files = fs.readdirSync(storageDir);
@@ -1345,12 +1348,26 @@ function readPersist() {
                 if (!files[i].endsWith('.json')) continue;
                 try {
                     var key = files[i].replace('.json', '');
-                    allData[key] = JSON.parse(fs.readFileSync(path.join(storageDir, files[i]), 'utf8'));
+                    var fileContent = fs.readFileSync(path.join(storageDir, files[i]), 'utf8');
+                    if (fileContent && fileContent.trim()) {
+                        allData[key] = JSON.parse(fileContent);
+                    }
                 } catch(e) {}
             }
         }
     } catch(e) { console.error('[PERSIST] Read error:', e.message); }
     return allData;
+}
+
+function writePersist(data) {
+    if (!data || typeof data !== 'object') return;
+    for (var key in data) {
+        if (data[key] === undefined) continue;
+        try {
+            var filePath = path.join(storageDir, getSafeFilename(key));
+            fs.writeFileSync(filePath, JSON.stringify(data[key], null, 2), 'utf8');
+        } catch(e) { console.error('[PERSIST] Global write error for ' + key + ':', e.message); }
+    }
 }
 
 ipcMain.handle('persist-read', function() {
@@ -1373,6 +1390,7 @@ ipcMain.handle('persist-get', function(event, key) {
 
 ipcMain.handle('persist-set', function(event, key, value) {
     try {
+        if (value === undefined) return false;
         var filePath = path.join(storageDir, getSafeFilename(key));
         fs.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8');
         return true;

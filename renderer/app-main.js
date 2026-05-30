@@ -2292,7 +2292,7 @@ function showQuotaExhausted() {
 // Restaurer les donnees persistantes avant d'initialiser l'etat
 restoreFromPersist();
 
-var user=sGet('user',null), convs=sGet('convs',{}), projs=sGet('projs',{}), trash=sGet('trash',{});
+var user=sGet('user',null), convs=sGet('convs',{}), projs=sGet('projs',{}), trash=sGet('trash',{}) || {};
 var curConv=null, curProj=null, thinking=false;
 isPro = sGet('pro', false); // Restaurer le statut Pro si deja active
 var isStreaming=false;

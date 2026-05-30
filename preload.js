@@ -15,6 +15,7 @@ var ALLOWED_CHANNELS = [
     'quota-check', 'quota-use', 'quota-ad-bonus', 'quota-verify-pro',
     'persist-read', 'persist-write', 'persist-get', 'persist-set',
     'get-user-data-path', 'get-system-theme', 'open-external',
+    'modes-list', 'mode-save', 'mode-delete',
     'send-email', 'set-api-key', 'get-api-port', 'get-local-ip', 'set-network-mode'
 ];
 
