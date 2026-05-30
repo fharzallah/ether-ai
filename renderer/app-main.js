@@ -2288,12 +2288,6 @@ function showQuotaExhausted() {
     scr();
 }
 
-function esc(t) { var d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
-// Echappement securise pour les attributs HTML (double-quotes, single-quotes, etc.)
-function escAttr(t) {
-    if (!t) return '';
-    return String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 // Restaurer les donnees persistantes avant d'initialiser l'etat
 restoreFromPersist();
@@ -2639,7 +2633,7 @@ function openEditCustomMode(id) {
     G('CM-NAME').value = m.name;
     G('CM-SPEC').value = m.specialty || '';
     G('CM-STYLE').value = m.style || '';
-    G('CM-INSTR').value = m.instructions || '';
+    G('CM-INSTR').value = m.systemPrompt || m.instructions || '';
     G('CM-EMOJI').value = m.emoji || '';
     G('CM-SAVE').textContent = 'Enregistrer';
     G('CM-DELETE').style.display = 'block';
@@ -2678,8 +2672,9 @@ function saveCustomMode() {
     var emoji = G('CM-EMOJI').value.trim() || 'autre';
     var specialty = G('CM-SPEC').value.trim();
     var style = G('CM-STYLE').value.trim();
-    var instructions = G('CM-INSTR').value.trim();
+    var promptContent = G('CM-INSTR').value.trim();
 
+    var modeObj = null;
     if (editingModeId) {
         // Modifier
         for (var i = 0; i < customModes.length; i++) {
@@ -2688,34 +2683,60 @@ function saveCustomMode() {
                 customModes[i].emoji = emoji;
                 customModes[i].specialty = specialty;
                 customModes[i].style = style;
-                customModes[i].instructions = instructions;
+                customModes[i].systemPrompt = promptContent;
+                customModes[i].instructions = promptContent; // Keep for legacy compat
+                modeObj = customModes[i];
                 break;
             }
         }
     } else {
         // Creer
-        customModes.push({
+        modeObj = {
             id: 'cm_' + Date.now(),
             name: name,
             emoji: emoji,
             specialty: specialty,
             style: style,
-            instructions: instructions
+            systemPrompt: promptContent,
+            instructions: promptContent,
+            createdDate: new Date().toISOString(),
+            source: 'manual'
+        };
+        customModes.push(modeObj);
+    }
+
+    sSet('custom_modes', customModes);
+
+    // Save to filesystem if in Electron
+    if (window.etherDesktop && window.etherDesktop.modeSave) {
+        window.etherDesktop.modeSave(modeObj).then(function() {
+            if (typeof SKILL_CREATOR !== 'undefined') SKILL_CREATOR.loadModes();
         });
     }
-    sSet('custom_modes', customModes);
+
     renderCustomModes();
     G('CM-MODAL').classList.add('hidden');
 }
 
 function deleteCustomMode() {
     if (!editingModeId) return;
-    if (!confirm('Supprimer le mode "' + (getCustomModeById(editingModeId) || {}).name + '" ?')) return;
-    customModes = customModes.filter(function(m) { return m.id !== editingModeId; });
-    sSet('custom_modes', customModes);
-    // Revenir au mode base si le mode supprime etait actif
-    if (ETHER_ENGINE.currentMode === 'custom_' + editingModeId) {
+    var mode = getCustomModeById(editingModeId);
+    if (!mode) return;
+    if (!confirm('Supprimer le mode "' + mode.name + '" ?')) return;
 
+    var mid = editingModeId;
+    customModes = customModes.filter(function(m) { return m.id !== mid; });
+    sSet('custom_modes', customModes);
+
+    // Delete from filesystem if in Electron
+    if (window.etherDesktop && window.etherDesktop.modeDelete) {
+        window.etherDesktop.modeDelete(mid).then(function() {
+            if (typeof SKILL_CREATOR !== 'undefined') SKILL_CREATOR.loadModes();
+        });
+    }
+
+    // Revenir au mode base si le mode supprime etait actif
+    if (ETHER_ENGINE.currentMode === 'custom_' + mid) {
         ETHER_ENGINE.currentMode = 'base';
         var allM = document.querySelectorAll('.mp');
         for (var i = 0; i < allM.length; i++) allM[i].classList.remove('on');

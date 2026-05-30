@@ -23,8 +23,8 @@ var SKILL_CREATOR = {
     modes: [],
     currentTab: 'manual', // 'manual' | 'ai' | 'imported'
     isWizardActive: false,
-    wizardStep: 0,
-    wizardData: { name: '', goal: '', traits: '', length: '' },
+    wizardConvId: null,
+    wizardHistory: [],
 
     init: function() {
         var self = this;
@@ -125,18 +125,21 @@ var SKILL_CREATOR = {
                 }
             }
 
+            var convBtn = m.creationConvId ? `<button class="sk-btn sk-conv" title="Voir la conversation"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="currentColor"/></svg></button>` : '';
+
             card.innerHTML = `
                 <div class="sk-top">
                     <div class="sk-icon">${esc(emoji)}</div>
-                    <div class="sk-actions">
-                        <button class="sk-btn sk-export" title="Exporter"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor" transform="rotate(180 12 12)"/></svg></button>
-                        <button class="sk-btn sk-edit" title="Modifier">✎</button>
-                        <button class="sk-btn sk-del" title="Supprimer">×</button>
-                    </div>
                 </div>
                 <div class="sk-name">${esc(m.name)}</div>
                 <div class="sk-desc">${esc(m.description || m.systemPrompt || m.instructions || '')}</div>
                 <div class="sk-date">${esc(dateStr)}</div>
+                <div class="sk-actions">
+                    ${convBtn}
+                    <button class="sk-btn sk-export" title="Exporter"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor" transform="rotate(180 12 12)"/></svg></button>
+                    <button class="sk-btn sk-edit" title="Modifier">✎</button>
+                    <button class="sk-btn sk-del" title="Supprimer">×</button>
+                </div>
             `;
 
             // Card click -> select mode
@@ -146,11 +149,21 @@ var SKILL_CREATOR = {
             };})(m);
 
             // Button actions
+            if (m.creationConvId) {
+                card.querySelector('.sk-conv').onclick = (function(cid) { return function() { self.viewCreationConv(cid); }; })(m.creationConvId);
+            }
             card.querySelector('.sk-export').onclick = (function(mode) { return function() { self.exportMode(mode); }; })(m);
             card.querySelector('.sk-edit').onclick = (function(mode) { return function() { openEditCustomMode(mode.id); }; })(m);
             card.querySelector('.sk-del').onclick = (function(mode) { return function() { self.deleteMode(mode.id); }; })(m);
 
             grid.appendChild(card);
+        }
+    },
+
+    viewCreationConv: function(convId) {
+        if (typeof loadConv === 'function') {
+            this.close();
+            loadConv(convId);
         }
     },
 
@@ -181,15 +194,21 @@ var SKILL_CREATOR = {
         }
     },
 
-    // === AI GUIDED FLOW ===
+    // === AI GUIDED FLOW ("Créer avec ETHER") ===
     startAIWizard: function() {
         this.isWizardActive = true;
-        this.wizardStep = 1;
-        this.wizardData = { name: '', goal: '', traits: '', length: '' };
+        this.wizardHistory = [];
+        this.wizardConvId = 'skill_conv_' + Date.now();
+
         G('SKILL-LIST-VIEW').classList.add('hidden');
         G('SKILL-AI-FLOW').classList.remove('hidden');
         G('SKILL-AI-MESSAGES').innerHTML = '';
-        this.addWizardMsg('ia', "Bonjour ! Je vais t'aider à créer un mode sur mesure. Pour commencer, quel **nom** souhaites-tu donner à ce mode ? (ex: Coach de Boxe, Expert SQL, Philologue...)");
+
+        var self = this;
+        var welcomeMsg = "Bonjour ! Je suis ETHER. Je vais t'aider à concevoir un mode sur mesure. Décris-moi ton idée, ou dis-moi simplement quel type d'assistant tu souhaites créer.";
+        this.addWizardMsg('ia', welcomeMsg);
+        this.wizardHistory.push({ role: 'assistant', content: welcomeMsg });
+
         G('SKILL-AI-INP').focus();
     },
 
@@ -209,59 +228,88 @@ var SKILL_CREATOR = {
     },
 
     handleWizardInput: function() {
+        var self = this;
         var inp = G('SKILL-AI-INP');
         var text = inp.value.trim();
-        if (!text) return;
+        if (!text || this.isThinking) return;
+
         inp.value = '';
         inp.style.height = 'auto';
 
         this.addWizardMsg('u', text);
+        this.wizardHistory.push({ role: 'user', content: text });
 
-        if (this.wizardStep === 1) {
-            this.wizardData.name = text;
-            this.wizardStep = 2;
-            this.addWizardMsg('ia', "C'est noté. Quel est l'**objectif principal** de ce mode ? Que doit-il accomplir pour toi ?");
-        } else if (this.wizardStep === 2) {
-            this.wizardData.goal = text;
-            this.wizardStep = 3;
-            this.addWizardMsg('ia', "Très bien. Quels sont les **traits de caractère** ou le **style** que tu souhaites lui donner ? (ex: direct et motivant, calme et pédagogique, cynique et drôle...)");
-        } else if (this.wizardStep === 3) {
-            this.wizardData.traits = text;
-            this.wizardStep = 4;
-            this.addWizardMsg('ia', "Dernière question : quelle doit être la **longueur habituelle** des réponses ? (ex: très courtes et percutantes, détaillées avec des exemples, ou adaptatives...)");
-        } else if (this.wizardStep === 4) {
-            this.wizardData.length = text;
-            this.wizardStep = 5;
-            this.synthesizeSkill();
-        } else if (this.wizardStep === 5) {
-            if (text.toUpperCase() === 'OUI') {
-                this.saveAISkill();
+        // Logic dynamic flow via LLM
+        this.isThinking = true;
+        var systemPrompt = `Tu es l'architecte de modes d'ETHER. Ton but est de guider l'utilisateur dans une conversation naturelle pour définir son nouveau mode personnalisé.
+Tu dois obtenir les informations suivantes : nom du mode, objectif, traits de caractère, et style de réponse.
+Ne pose pas toutes les questions d'un coup. Sois conversationnel.
+Quand tu as assez d'informations, propose une synthèse du SYSTEM PROMPT final dans un bloc de code et demande si l'utilisateur veut l'enregistrer.
+Si l'utilisateur dit "OUI" ou "VALIDE" après ta proposition, termine ta réponse par le mot-clé unique: ###SAVE_NOW### suivi du nom du mode et du prompt final formatés en JSON.
+Exemple de fin de conversation réussie: "C'est enregistré ! ###SAVE_NOW###{"name":"Chef","prompt":"Tu es un chef..."}`;
+
+        var messages = [{ role: 'system', content: systemPrompt }].concat(this.wizardHistory);
+
+        ETHER_ENGINE.generateResponse(text, { messages: messages, bypassHistory: true }).then(function(res) {
+            self.isThinking = false;
+            var aiText = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
+
+            // Check for save trigger
+            if (aiText.indexOf('###SAVE_NOW###') !== -1) {
+                var parts = aiText.split('###SAVE_NOW###');
+                var displayMsg = parts[0];
+                var jsonData = parts[1];
+                self.addWizardMsg('ia', displayMsg);
+                try {
+                    var data = JSON.parse(jsonData);
+                    self.saveAISkillFromWizard(data.name, data.prompt);
+                } catch(e) { console.error("JSON parse error", e); }
             } else {
-                this.addWizardMsg('ia', "C'est entendu. Dis-moi ce que tu souhaites changer dans ce profil.");
-                // Optionnel: logic to refine based on feedback
+                self.addWizardMsg('ia', aiText);
+                self.wizardHistory.push({ role: 'assistant', content: aiText });
             }
-        }
+        })['catch'](function() { self.isThinking = false; });
     },
 
-    synthesizeSkill: function() {
+    saveAISkillFromWizard: function(name, prompt) {
         var self = this;
-        this.addWizardMsg('ia', "*Synthèse en cours... je prépare ton mode personnalisé.*");
+        // Save conversation to main history
+        var conv = {
+            id: this.wizardConvId,
+            title: "Création : " + name,
+            messages: this.wizardHistory.map(function(h) {
+                if (h.role === 'user') {
+                    return { r: 'u', t: h.content, ts: Date.now() };
+                } else {
+                    return { r: 'a', d: { answer: renderMarkdown(h.content), raw: h.content }, ts: Date.now() };
+                }
+            }),
+            ts: new Date().toISOString()
+        };
 
-        var prompt = `Agis comme un architecte de prompts expert. À partir des informations suivantes, rédige un SYSTEM PROMPT complet et efficace pour une IA.
-Nom : ${this.wizardData.name}
-Objectif : ${this.wizardData.goal}
-Traits/Style : ${this.wizardData.traits}
-Longueur : ${this.wizardData.length}
+        // Update global convs object and storage
+        if (typeof convs !== 'undefined') {
+            convs[this.wizardConvId] = conv;
+        }
+        var currentConvs = sGet('convs', {});
+        currentConvs[this.wizardConvId] = conv;
+        sSet('convs', currentConvs);
 
-Le prompt doit être rédigé à la deuxième personne (ex: "Tu es..."). Il doit être structuré et inclure des règles claires.
-Réponds UNIQUEMENT avec le contenu du system prompt, sans texte autour.`;
+        var mode = {
+            id: 'mode_' + Date.now(),
+            name: name,
+            systemPrompt: prompt,
+            createdDate: new Date().toISOString(),
+            source: 'ai',
+            creationConvId: this.wizardConvId
+        };
 
-        if (typeof ETHER_ENGINE !== 'undefined') {
-            ETHER_ENGINE.generateResponse(prompt).then(function(res) {
-                var sysPrompt = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
-                self.proposedPrompt = sysPrompt;
-                self.addWizardMsg('ia', "Voici le profil que j'ai généré pour **" + self.wizardData.name + "** :\n\n" +
-                    "```\n" + sysPrompt + "\n```\n\nEst-ce que cela te convient ? Réponds **'OUI'** pour enregistrer, ou décris les modifications souhaitées.");
+        if (window.etherDesktop && window.etherDesktop.modeSave) {
+            window.etherDesktop.modeSave(mode).then(function() {
+                self.stopAIWizard();
+                self.switchTab('ai');
+                self.loadModes();
+                if (typeof updHist === 'function') updHist();
             });
         }
     },

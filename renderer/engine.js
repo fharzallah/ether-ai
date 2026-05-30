@@ -182,27 +182,28 @@ var ETHER_ENGINE = {
         });
     },
 
-    generateResponse: function(userMessage) {
+    generateResponse: function(userMessage, opts) {
         var self = this;
-        var factual = isFactualQuestion(userMessage) && self.currentMode !== 'creative' && self.currentMode !== 'writer';
+        opts = opts || {};
+        var factual = !opts.messages && isFactualQuestion(userMessage) && self.currentMode !== 'creative' && self.currentMode !== 'writer';
         // Toujours texte libre — le systeme de verification gere la confiance
-        var useJson = false;
-        var compactP = (this.conversationHistory.length > 12) ? self.compactHistory() : Promise.resolve();
+        var useJson = opts.useJson || false;
+        var compactP = (!opts.messages && this.conversationHistory.length > 12) ? self.compactHistory() : Promise.resolve();
         return compactP.then(function() {
             var shouldSearch = factual && canSearchWeb();
 
             if (shouldSearch) {
                 useDaily('web');
                 return webSearch(userMessage).then(function(webData) {
-                    return self.callGroqWithWeb(userMessage, webData, false);
+                    return self.callGroqWithWeb(userMessage, webData, useJson, opts);
                 })['catch'](function() {
-                    return self.callGroq(userMessage, null, false);
+                    return self.callGroq(userMessage, null, useJson, opts);
                 }).then(function(result) {
                     result._showBadge = false;
                     return result;
                 });
             }
-            return self.callGroq(userMessage, null, false)['catch'](function() {
+            return self.callGroq(userMessage, null, useJson, opts)['catch'](function() {
                 // Fallback ultime: appel NON-streaming a Groq (ne fail jamais)
                 console.log('[ENGINE] Streaming failed — fallback non-streaming Groq');
                 return window.etherDesktop.groqChat({
@@ -230,7 +231,7 @@ var ETHER_ENGINE = {
     },
 
     // === GROQ avec resultats web injectes ===
-    callGroqWithWeb: function(userMessage, webData, useJson) {
+    callGroqWithWeb: function(userMessage, webData, useJson, opts) {
         var self = this;
         var webContext = '';
         var webSources = [];
@@ -253,12 +254,13 @@ var ETHER_ENGINE = {
             enrichedPrompt = userMessage + '\n\n---\nSOURCES WEB collectees:' + webContext + '\n---\nConsigne: reponds en combinant ces sources ET tes propres connaissances. Donne TOUS les details que tu connais meme si les sources ne les mentionnent pas. Chiffres, pourcentages, noms, dates. Sois exhaustif et precis.';
         }
 
-        return self.callGroq(enrichedPrompt, webSources, useJson !== false);
+        return self.callGroq(enrichedPrompt, webSources, useJson, opts);
     },
 
     // === MULTI-PROVIDER: Gemini → Groq → Cerebras → Pollinations ===
-    callGroq: function(userMessage, forcedSources, useJson) {
+    callGroq: function(userMessage, forcedSources, useJson, opts) {
         var self = this;
+        opts = opts || {};
         var route = getSmartRoute(userMessage, self.currentMode);
 
         var sysPrompt = this.getSystemPrompt(useJson !== false);
@@ -273,12 +275,16 @@ var ETHER_ENGINE = {
         if (typeof RAG !== 'undefined') {
             sysPrompt += RAG.getContext(userMessage);
         }
-        var messages = [{ role: 'system', content: sysPrompt }];
-        var recent = this.conversationHistory.slice(-10);
-        for (var i = 0; i < recent.length; i++) {
-            messages.push({ role: recent[i].role === 'user' ? 'user' : 'assistant', content: recent[i].content });
+
+        var messages = opts.messages;
+        if (!messages) {
+            messages = [{ role: 'system', content: sysPrompt }];
+            var recent = this.conversationHistory.slice(-10);
+            for (var i = 0; i < recent.length; i++) {
+                messages.push({ role: recent[i].role === 'user' ? 'user' : 'assistant', content: recent[i].content });
+            }
+            messages.push({ role: 'user', content: userMessage });
         }
-        messages.push({ role: 'user', content: userMessage });
 
         var requestData = {
             model: route.model,

@@ -51,6 +51,22 @@ function renderMarkdown(md) {
 // === APP CODE ===
 var G = function(id) { return document.getElementById(id); };
 
+// Escaping for HTML/Attributes
+function esc(t) {
+    if (!t) return '';
+    var d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+}
+function escAttr(t) {
+    if (!t) return '';
+    return t.replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+}
+
 // Variables globales disponibles pour tous les scripts suivants
 // (initialisées ici pour éviter les ReferenceError dans ui.js chargé avant app-main.js)
 var isPro = false; // sera écrasé par sGet('pro', false) dans app-main.js au boot
