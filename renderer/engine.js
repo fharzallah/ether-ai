@@ -34,7 +34,7 @@ function detectComplexity(msg) {
 }
 
 // === HEALTH CHECK DES PROVIDERS ===
-var providerHealth = { groq: true, gemini: true, cerebras: true };
+var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true };
 function checkProvidersHealth() {
     if (!window.etherDesktop || !window.etherDesktop.testAllProviders) return;
     window.etherDesktop.testAllProviders().then(function(results) {
@@ -65,13 +65,17 @@ function getSmartRoute(message, mode) {
     if (complexity === 'complex') {
         if (mode === 'teacher' && providerHealth.groq) return { provider: 'groq', model: GROQ_MODELS.reasoning };
         if (mode === 'debate') return { provider: 'collab', model: 'multi' };
+        // Mistral Large en priorite pour les taches complexes (plus puissant)
+        if (providerHealth.mistral) return { provider: 'mistral', model: MISTRAL_MODELS.main };
         if (providerHealth.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
     }
 
     // Modes custom routing
     if (mode && mode.indexOf('custom_') === 0) {
         if (complexity === 'simple' && providerHealth.groq) return { provider: 'groq', model: GROQ_MODELS.fast };
+        if (complexity === 'medium' && providerHealth.mistral) return { provider: 'mistral', model: MISTRAL_MODELS.main };
         if (complexity === 'medium' && providerHealth.groq) return { provider: 'groq', model: GROQ_MODELS.main };
+        if (complexity === 'complex' && providerHealth.mistral) return { provider: 'mistral', model: MISTRAL_MODELS.main };
         if (complexity === 'complex' && providerHealth.gemini) return { provider: 'gemini', model: GEMINI_MODELS.main };
     }
 
@@ -331,22 +335,22 @@ var ETHER_ENGINE = {
             temperature: 0.6, max_tokens: 3000
         })['catch'](function() { return { ok: false }; }) : Promise.resolve({ ok: false });
 
-        // 2. Groq Llama 3.3 70B (ultra-rapide)
+        // 2. Mistral Large (puissance brute)
+        var mistralP = providerStatus.mistral ? window.etherDesktop.mistralChat({
+            model: MISTRAL_MODELS.main,
+            messages: collabMsgs,
+            temperature: 0.6, max_tokens: 3000
+        })['catch'](function() { return { ok: false }; }) : Promise.resolve({ ok: false });
+
+        // 3. Groq Llama 3.3 70B (ultra-rapide)
         var groqP = window.etherDesktop.groqChat({
             model: GROQ_MODELS.main,
             messages: collabMsgs,
             temperature: 0.6, max_tokens: 3000
         })['catch'](function() { return { ok: false }; });
 
-        // 3. Cerebras Qwen 235B
-        var cerebrasP = providerStatus.cerebras ? window.etherDesktop.cerebrasChat({
-            model: CEREBRAS_MODELS.main,
-            messages: collabMsgs,
-            temperature: 0.6, max_tokens: 3000
-        })['catch'](function() { return { ok: false }; }) : Promise.resolve({ ok: false });
-
         var received = 0;
-        var totalExpected = 1 + (providerStatus.gemini ? 1 : 0) + (providerStatus.cerebras ? 1 : 0);
+        var totalExpected = 1 + (providerStatus.gemini ? 1 : 0) + (providerStatus.mistral ? 1 : 0);
 
         function updateProgress(name) {
             received++;
@@ -361,12 +365,12 @@ var ETHER_ENGINE = {
         }
 
         geminiP = geminiP.then(function(r) { if (r.ok) updateProgress('Gemini'); return r; });
+        mistralP = mistralP.then(function(r) { if (r.ok) updateProgress('Mistral'); return r; });
         groqP = groqP.then(function(r) { if (r.ok) updateProgress('Groq'); return r; });
-        cerebrasP = cerebrasP.then(function(r) { if (r.ok) updateProgress('Cerebras'); return r; });
 
-        return Promise.all([geminiP, groqP, cerebrasP]).then(function(results) {
+        return Promise.all([geminiP, mistralP, groqP]).then(function(results) {
             var responses = [];
-            var providerNames = ['Gemini 2.5 Flash', 'Llama 3.3 70B (Groq)', 'Qwen 235B (Cerebras)'];
+            var providerNames = ['Gemini 2.5 Flash', 'Mistral Large', 'Llama 3.3 70B (Groq)'];
             for (var r = 0; r < results.length; r++) {
                 if (results[r].ok && results[r].text) {
                     var cleanText = (results[r].text || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
@@ -511,6 +515,7 @@ var ETHER_ENGINE = {
 
         // Ordre de la cascade: provider recommande en premier, puis les autres
         var allProviders = [
+            { provider: 'mistral',  model: MISTRAL_MODELS.main,  stream: window.etherDesktop.mistralStream },
             { provider: 'groq',     model: GROQ_MODELS.main,     stream: window.etherDesktop.groqStream },
             { provider: 'gemini',   model: GEMINI_MODELS.main,   stream: window.etherDesktop.geminiStream },
             { provider: 'cerebras', model: CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream }

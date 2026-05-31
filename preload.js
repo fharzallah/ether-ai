@@ -8,10 +8,10 @@ var _doneListeners = [];
 // Whitelist des canaux IPC autorises (defense en profondeur)
 var ALLOWED_CHANNELS = [
     'groq-chat', 'groq-stream', 'groq-test', 'groq-stop',
-    'gemini-chat', 'gemini-stream', 'cerebras-chat', 'cerebras-stream',
+    'gemini-chat', 'gemini-stream', 'mistral-chat', 'mistral-stream', 'cerebras-chat', 'cerebras-stream',
     'test-all-providers', 'transcribe-audio', 'pollinations-chat', 'fetch-image', 'fetch-url-content', 'gemini-vision',
     'web-search', 'get-models', 'open-file', 'save-file', 'browse-folder',
-    'read-file', 'install-update', 'set-groq-key', 'get-groq-key-status',
+    'read-file', 'install-update', 'set-groq-key', 'set-mistral-key', 'get-groq-key-status',
     'quota-check', 'quota-use', 'quota-ad-bonus', 'quota-verify-pro',
     'persist-read', 'persist-write', 'persist-get', 'persist-set',
     'get-user-data-path', 'get-system-theme', 'open-external',
@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld('etherDesktop', {
     groqStop: function() { return safeInvoke('groq-stop'); },
     geminiChat: function(data) { return safeInvoke('gemini-chat', data); },
     geminiStream: function(data) { return safeInvoke('gemini-stream', data); },
+    mistralChat: function(data) { return safeInvoke('mistral-chat', data); },
+    mistralStream: function(data) { return safeInvoke('mistral-stream', data); },
     cerebrasChat: function(data) { return safeInvoke('cerebras-chat', data); },
     cerebrasStream: function(data) { return safeInvoke('cerebras-stream', data); },
     testAllProviders: function() { return safeInvoke('test-all-providers'); },
@@ -80,6 +82,7 @@ contextBridge.exposeInMainWorld('etherDesktop', {
 
     // === Config API securisee ===
     setGroqKey: function(key) { return safeInvoke('set-groq-key', key); },
+    setMistralKey: function(key) { return safeInvoke('set-mistral-key', key); },
     getGroqKeyStatus: function() { return safeInvoke('get-groq-key-status'); },
 
     // === Quotas securises ===

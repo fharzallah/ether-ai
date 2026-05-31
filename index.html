@@ -207,6 +207,11 @@
 <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#4285F4;flex-shrink:0"></span><span style="font-weight:600;font-size:.84rem">Gemini 2.5 Flash</span></div>
 <span style="font-size:.7rem;color:var(--t3)">Thinking integre</span>
 </button>
+<div style="padding:6px 10px 4px;font-size:.64rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Mistral AI (puissance)</div>
+<button class="model-opt" data-provider="mistral" data-model="mistral-large-latest" onclick="selectModel(this)">
+<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#fd7e14;flex-shrink:0"></span><span style="font-weight:600;font-size:.84rem">Mistral Large</span></div>
+<span style="font-size:.7rem;color:var(--t3)">Modele francais souverain</span>
+</button>
 <div id="MODEL-DROP-USER" style="display:none">
 <div style="padding:6px 10px 4px;font-size:.64rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Vos modeles</div>
 </div>
@@ -274,11 +279,33 @@
 <div style="display:flex;flex-direction:column;gap:6px;font-size:.8rem">
 <div style="display:flex;align-items:center;gap:8px"><span style="background:#4285F4;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Gemini</span><span style="color:var(--t2)">2.5 Flash — thinking integre, principal</span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="background:#f55036;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Groq</span><span style="color:var(--t2)">Llama 70B / Qwen3 — ultra-rapide</span></div>
+<div style="display:flex;align-items:center;gap:8px"><span style="background:#fd7e14;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Mistral</span><span style="color:var(--t2)">Mistral Large — puissance souveraine, prioritaire</span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="background:#8b5cf6;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Cerebras</span><span style="color:var(--t2)">Qwen 235B — raisonnement avance</span></div>
-<div style="display:flex;align-items:center;gap:8px"><span style="background:linear-gradient(135deg,#4285F4,#f55036);color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Auto</span><span style="color:var(--t2)">Collaboration native — enrichissement automatique</span></div>
+<div style="display:flex;align-items:center;gap:8px"><span style="background:linear-gradient(135deg,#fd7e14,#4285F4);color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Auto</span><span style="color:var(--t2)">Collaboration native — Gemini + Mistral + Groq</span></div>
 </div>
 </div>
 <div class="prov-grid">
+<!-- MISTRAL — Prioritaire -->
+<div class="prov-card" id="PROV-MISTRAL">
+<div class="prov-card-top">
+<div class="prov-logo" style="background:#fff;border-radius:12px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><img src="https://mistral.ai/images/logo.svg" width="16" height="16" onerror="this.parentNode.innerHTML='M'" style="filter:grayscale(1) contrast(2)"></div>
+<div class="prov-meta">
+<div class="prov-name">Mistral AI <span class="prov-badge prov-badge-default" style="background:#fd7e14">Prioritaire</span></div>
+<div class="prov-models">Mistral Large, Mistral Small</div>
+</div>
+</div>
+<div class="prov-status" id="PROV-MISTRAL-STATUS"><span class="prov-dot prov-dot-gray"></span>Verification...</div>
+<div class="prov-body">
+<div class="prov-key-row">
+<input type="password" id="KEY-MISTRAL" class="prov-key-input" placeholder="Cle Mistral..." value="">
+<button type="button" class="prov-key-toggle" onclick="toggleKeyVis(this)">Voir</button>
+</div>
+<div class="prov-footer">
+<span class="prov-hint">Fleuron francais</span>
+<a href="#" onclick="if(window.etherDesktop)window.etherDesktop.openExternal('https://console.mistral.ai/api-keys/');return false" style="font-size:.72rem;color:var(--ac)">Obtenir une cle</a>
+</div>
+</div>
+</div>
 <!-- GEMINI — Principal -->
 <div class="prov-card" id="PROV-GEMINI">
 <div class="prov-card-top">
