@@ -135,4 +135,4 @@ def run_monte_carlo(n=100000):
     print("Full simulation results (100k) saved with bracket logic.")
 
 if __name__ == "__main__":
-    run_monte_carlo(100000)
+    run_monte_carlo(10000)

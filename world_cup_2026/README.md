@@ -15,9 +15,18 @@ Ce projet simule la Coupe du Monde 2026 à 48 équipes en utilisant le modèle m
 - Python 3.8+
 - pip (gestionnaire de paquets Python)
 
-### Étapes
-1. Clonez ce répertoire.
-2. Installez les dépendances nécessaires :
+### Étapes (Recommandé pour Mac/Linux)
+Il est fortement conseillé d'utiliser un environnement virtuel :
+
+1. **Ouvrez votre terminal** dans le dossier du projet.
+2. **Créez l'environnement virtuel** :
+   ```bash
+   python3 -m venv venv
+   ```
+3. **Activez-le** :
+   - Sur macOS/Linux : `source venv/bin/activate`
+   - Sur Windows : `venv\Scripts\activate`
+4. **Installez les dépendances** :
    ```bash
    pip install pandas openpyxl scipy numpy
    ```
@@ -28,39 +37,25 @@ Le projet est divisé en étapes logiques :
 
 1. **Pré-traitement des données** :
    ```bash
-   python world_cup_2026/preprocess.py
+   python3 world_cup_2026/preprocess.py
    ```
-   *Nettoie les noms d'équipes et prépare les fichiers CSV.*
-
 2. **Entraînement du modèle** :
    ```bash
-   python world_cup_2026/model.py
-   python world_cup_2026/adjust_model.py
+   python3 world_cup_2026/model.py
+   python3 world_cup_2026/adjust_model.py
    ```
-   *Calcule les forces Dixon-Coles et applique les ajustements de performance des joueurs.*
-
 3. **Lancement de la simulation (100k itérations)** :
    ```bash
-   python world_cup_2026/simulator_parallel.py
+   python3 world_cup_2026/simulator_parallel.py
    ```
-   *Cette étape peut prendre quelques minutes selon votre processeur.*
-
 4. **Génération du rapport** :
    ```bash
-   python world_cup_2026/report.py
+   python3 world_cup_2026/report.py
    ```
-   *Crée le fichier `world_cup_2026/prediction_report.html`.*
-
-## Structure des fichiers
-- `data/` : Contient les datasets bruts et les résultats de simulation.
-- `preprocess.py` : Script de nettoyage des données.
-- `model.py` : Implémentation du modèle Dixon-Coles.
-- `adjust_model.py` : Intégration des statistiques joueurs.
-- `simulator_parallel.py` : Moteur de simulation haute performance.
-- `report.py` : Générateur de l'interface visuelle.
+   *Ouvrez ensuite `world_cup_2026/prediction_report.html` dans votre navigateur.*
 
 ## Tests
-Pour vérifier que tout fonctionne correctement, lancez :
+Pour vérifier que tout fonctionne correctement :
 ```bash
-python world_cup_2026/test_logic.py
+python3 world_cup_2026/test_logic.py
 ```

@@ -1,7 +1,42 @@
 import pandas as pd
+import numpy as np
 
 def generate_report():
-    df = pd.read_csv('world_cup_2026/data/simulation_results_100k.csv', index_col=0)
+    # Read simulation results
+    try:
+        df = pd.read_csv('world_cup_2026/data/simulation_results_100k.csv', index_col=0)
+    except FileNotFoundError:
+        print("Erreur : Le fichier de résultats est introuvable. Lancez d'abord la simulation.")
+        return
+
+    df = df.fillna(0)
+
+    # Internal keys from fixtures.xlsx/simulator
+    # 'Group Stage', 'Round of 32', 'Round of 16', 'Quarterfinals', 'Semifinals', 'Final', 'Winner'
+
+    cum_df = pd.DataFrame(index=df.index)
+
+    # Probability of being Winner
+    cum_df['Vainqueur'] = df.get('Winner', 0)
+
+    # Reaching Final = Winner + Lost in Final
+    cum_df['Finale'] = cum_df['Vainqueur'] + df.get('Final', 0)
+
+    # Reaching Semis = Reaching Final + Lost in Semis
+    cum_df['Demis'] = cum_df['Finale'] + df.get('Semifinals', 0)
+
+    # Reaching Quarts = Reaching Semis + Lost in Quarts
+    cum_df['Quarts'] = cum_df['Demis'] + df.get('Quarterfinals', 0)
+
+    # Reaching 8èmes = Reaching Quarts + Lost in R16
+    cum_df['8èmes'] = cum_df['Quarts'] + df.get('Round of 16', 0)
+
+    # Reaching 16èmes = Reaching 8èmes + Lost in R32
+    cum_df['16èmes'] = cum_df['8èmes'] + df.get('Round of 32', 0)
+
+    # Reaching Group Stage is 100% for everyone who participated
+    cum_df['Groupes'] = 100.0
+
     html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -9,50 +44,59 @@ def generate_report():
         <meta charset="UTF-8">
         <title>Simulation Coupe du Monde 2026 - Prédictions Dixon-Coles</title>
         <style>
-            body {{ font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }}
-            h1, h2 {{ color: #333; text-align: center; }}
-            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }}
-            th, td {{ border: 1px solid #ddd; padding: 12px; text-align: center; }}
-            th {{ background-color: #007bff; color: white; }}
-            tr:nth-child(even) {{ background-color: #f2f2f2; }}
-            tr:hover {{ background-color: #ddd; }}
-            .winner {{ font-weight: bold; color: #28a745; }}
-            .container {{ max-width: 1200px; margin: auto; }}
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }}
+            .container {{ max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            h1 {{ color: #1a73e8; text-align: center; margin-bottom: 10px; }}
+            p.subtitle {{ text-align: center; color: #666; margin-bottom: 30px; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th, td {{ padding: 15px; text-align: center; border-bottom: 1px solid #eee; }}
+            th {{ background-color: #1a73e8; color: white; position: sticky; top: 0; }}
+            tr:hover {{ background-color: #f8f9fa; }}
+            .winner-cell {{ font-weight: bold; color: #2e7d32; background-color: #e8f5e9; }}
+            .team-name {{ text-align: left; font-weight: 600; color: #333; }}
+            .prob-bar {{ height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 5px; overflow: hidden; }}
+            .prob-fill {{ height: 100%; background: #1a73e8; }}
         </style>
     </head>
     <body>
         <div class="container">
             <h1>Simulation Coupe du Monde 2026</h1>
-            <p style="text-align: center;">Basée sur 100 000 itérations du modèle Dixon-Coles avec ajustements individuels des joueurs.</p>
-            <h2>Probabilités par Équipe (%)</h2>
+            <p class="subtitle">Modèle Dixon-Coles (Time-Decay) + Statistiques Individuelles Joueurs<br>100 000 itérations Monte Carlo</p>
+
             <table>
                 <thead>
                     <tr>
-                        <th>Équipe</th>
-                        <th>Phase de Groupes</th>
-                        <th>16èmes</th>
-                        <th>8èmes</th>
-                        <th>Quarts</th>
-                        <th>Demis</th>
-                        <th>Finale</th>
-                        <th class="winner">Vainqueur</th>
+                        <th style="text-align: left;">Équipe</th>
+                        <th>Atteint 16èmes</th>
+                        <th>Atteint 8èmes</th>
+                        <th>Atteint Quarts</th>
+                        <th>Atteint Demis</th>
+                        <th>Atteint Finale</th>
+                        <th class="winner-cell">Vainqueur</th>
                     </tr>
                 </thead>
                 <tbody>
     """
-    for team, row in df.iterrows():
+
+    # Sort by winner probability
+    cum_df = cum_df.sort_values(by='Vainqueur', ascending=False)
+
+    for team, row in cum_df.iterrows():
         html_content += f"""
                     <tr>
-                        <td>{team}</td>
-                        <td>{row.get('Group Stage', 0):.2f}%</td>
-                        <td>{row.get('Round of 32', 0):.2f}%</td>
-                        <td>{row.get('Round of 16', 0):.2f}%</td>
-                        <td>{row.get('Quarter-finals', 0):.2f}%</td>
-                        <td>{row.get('Semi-finals', 0):.2f}%</td>
-                        <td>{row.get('Final', 0):.2f}%</td>
-                        <td class="winner">{row.get('Winner', 0):.2f}%</td>
+                        <td class="team-name">{team}</td>
+                        <td>{row['16èmes']:.1f}%</td>
+                        <td>{row['8èmes']:.1f}%</td>
+                        <td>{row['Quarts']:.1f}%</td>
+                        <td>{row['Demis']:.1f}%</td>
+                        <td>{row['Finale']:.1f}%</td>
+                        <td class="winner-cell">
+                            {row['Vainqueur']:.1f}%
+                            <div class="prob-bar"><div class="prob-fill" style="width: {row['Vainqueur']}%"></div></div>
+                        </td>
                     </tr>
         """
+
     html_content += """
                 </tbody>
             </table>
@@ -60,9 +104,10 @@ def generate_report():
     </body>
     </html>
     """
+
     with open('world_cup_2026/prediction_report.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
-    print("HTML report generated: world_cup_2026/prediction_report.html")
+    print("HTML report updated: world_cup_2026/prediction_report.html")
 
 if __name__ == "__main__":
     generate_report()

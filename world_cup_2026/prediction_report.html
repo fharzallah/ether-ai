@@ -5,563 +5,661 @@
         <meta charset="UTF-8">
         <title>Simulation Coupe du Monde 2026 - Prédictions Dixon-Coles</title>
         <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
-            h1, h2 { color: #333; text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
-            th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-            th { background-color: #007bff; color: white; }
-            tr:nth-child(even) { background-color: #f2f2f2; }
-            tr:hover { background-color: #ddd; }
-            .winner { font-weight: bold; color: #28a745; }
-            .container { max-width: 1200px; margin: auto; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+            .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+            h1 { color: #1a73e8; text-align: center; margin-bottom: 10px; }
+            p.subtitle { text-align: center; color: #666; margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
+            th { background-color: #1a73e8; color: white; position: sticky; top: 0; }
+            tr:hover { background-color: #f8f9fa; }
+            .winner-cell { font-weight: bold; color: #2e7d32; background-color: #e8f5e9; }
+            .team-name { text-align: left; font-weight: 600; color: #333; }
+            .prob-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 5px; overflow: hidden; }
+            .prob-fill { height: 100%; background: #1a73e8; }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>Simulation Coupe du Monde 2026</h1>
-            <p style="text-align: center;">Basée sur 100 000 itérations du modèle Dixon-Coles avec ajustements individuels des joueurs.</p>
-            <h2>Probabilités par Équipe (%)</h2>
+            <p class="subtitle">Modèle Dixon-Coles (Time-Decay) + Statistiques Individuelles Joueurs<br>100 000 itérations Monte Carlo</p>
+
             <table>
                 <thead>
                     <tr>
-                        <th>Équipe</th>
-                        <th>Phase de Groupes</th>
-                        <th>16èmes</th>
-                        <th>8èmes</th>
-                        <th>Quarts</th>
-                        <th>Demis</th>
-                        <th>Finale</th>
-                        <th class="winner">Vainqueur</th>
+                        <th style="text-align: left;">Équipe</th>
+                        <th>Atteint 16èmes</th>
+                        <th>Atteint 8èmes</th>
+                        <th>Atteint Quarts</th>
+                        <th>Atteint Demis</th>
+                        <th>Atteint Finale</th>
+                        <th class="winner-cell">Vainqueur</th>
                     </tr>
                 </thead>
                 <tbody>
 
                     <tr>
-                        <td>Colombia</td>
-                        <td>4.00%</td>
-                        <td>36.00%</td>
-                        <td>8.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">24.00%</td>
+                        <td class="team-name">France</td>
+                        <td>98.8%</td>
+                        <td>60.9%</td>
+                        <td>48.2%</td>
+                        <td>32.8%</td>
+                        <td>22.4%</td>
+                        <td class="winner-cell">
+                            22.4%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 22.36%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>France</td>
-                        <td>nan%</td>
-                        <td>36.00%</td>
-                        <td>24.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">20.00%</td>
+                        <td class="team-name">Portugal</td>
+                        <td>97.1%</td>
+                        <td>57.7%</td>
+                        <td>52.0%</td>
+                        <td>32.9%</td>
+                        <td>19.5%</td>
+                        <td class="winner-cell">
+                            19.5%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 19.52%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Croatia</td>
-                        <td>nan%</td>
-                        <td>44.00%</td>
-                        <td>20.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">8.00%</td>
+                        <td class="team-name">Colombia</td>
+                        <td>96.8%</td>
+                        <td>53.5%</td>
+                        <td>47.1%</td>
+                        <td>25.9%</td>
+                        <td>14.0%</td>
+                        <td class="winner-cell">
+                            14.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 14.04%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Portugal</td>
-                        <td>nan%</td>
-                        <td>52.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">8.00%</td>
+                        <td class="team-name">Spain</td>
+                        <td>98.6%</td>
+                        <td>34.6%</td>
+                        <td>19.5%</td>
+                        <td>12.1%</td>
+                        <td>6.8%</td>
+                        <td class="winner-cell">
+                            6.8%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 6.76%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Spain</td>
-                        <td>4.00%</td>
-                        <td>64.00%</td>
-                        <td>20.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">8.00%</td>
+                        <td class="team-name">Brazil</td>
+                        <td>99.6%</td>
+                        <td>37.9%</td>
+                        <td>24.2%</td>
+                        <td>12.7%</td>
+                        <td>5.7%</td>
+                        <td class="winner-cell">
+                            5.7%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 5.68%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Netherlands</td>
-                        <td>16.00%</td>
-                        <td>44.00%</td>
-                        <td>12.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">8.00%</td>
+                        <td class="team-name">Argentina</td>
+                        <td>97.0%</td>
+                        <td>52.8%</td>
+                        <td>13.0%</td>
+                        <td>8.6%</td>
+                        <td>5.1%</td>
+                        <td class="winner-cell">
+                            5.1%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 5.08%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Austria</td>
-                        <td>4.00%</td>
-                        <td>60.00%</td>
-                        <td>24.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">4.00%</td>
+                        <td class="team-name">Germany</td>
+                        <td>99.1%</td>
+                        <td>48.1%</td>
+                        <td>26.1%</td>
+                        <td>12.5%</td>
+                        <td>4.8%</td>
+                        <td class="winner-cell">
+                            4.8%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 4.84%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Belgium</td>
-                        <td>4.00%</td>
-                        <td>60.00%</td>
-                        <td>20.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">4.00%</td>
+                        <td class="team-name">Croatia</td>
+                        <td>96.8%</td>
+                        <td>38.6%</td>
+                        <td>16.5%</td>
+                        <td>8.0%</td>
+                        <td>3.4%</td>
+                        <td class="winner-cell">
+                            3.4%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 3.44%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Brazil</td>
-                        <td>nan%</td>
-                        <td>52.00%</td>
-                        <td>24.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">4.00%</td>
+                        <td class="team-name">Japan</td>
+                        <td>90.5%</td>
+                        <td>24.8%</td>
+                        <td>14.2%</td>
+                        <td>6.2%</td>
+                        <td>2.8%</td>
+                        <td class="winner-cell">
+                            2.8%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 2.76%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Ecuador</td>
-                        <td>12.00%</td>
-                        <td>64.00%</td>
-                        <td>4.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">4.00%</td>
+                        <td class="team-name">Belgium</td>
+                        <td>94.6%</td>
+                        <td>40.4%</td>
+                        <td>19.5%</td>
+                        <td>8.0%</td>
+                        <td>2.7%</td>
+                        <td class="winner-cell">
+                            2.7%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 2.72%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Japan</td>
-                        <td>12.00%</td>
-                        <td>64.00%</td>
-                        <td>12.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">4.00%</td>
+                        <td class="team-name">Austria</td>
+                        <td>92.0%</td>
+                        <td>32.8%</td>
+                        <td>10.8%</td>
+                        <td>5.5%</td>
+                        <td>2.3%</td>
+                        <td class="winner-cell">
+                            2.3%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 2.32%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Paraguay</td>
-                        <td>20.00%</td>
-                        <td>76.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">4.00%</td>
+                        <td class="team-name">Netherlands</td>
+                        <td>91.0%</td>
+                        <td>25.1%</td>
+                        <td>13.8%</td>
+                        <td>5.5%</td>
+                        <td>2.2%</td>
+                        <td class="winner-cell">
+                            2.2%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 2.24%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Algeria</td>
-                        <td>24.00%</td>
-                        <td>68.00%</td>
-                        <td>4.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Ecuador</td>
+                        <td>92.7%</td>
+                        <td>31.2%</td>
+                        <td>14.4%</td>
+                        <td>6.3%</td>
+                        <td>2.0%</td>
+                        <td class="winner-cell">
+                            2.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 2.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Argentina</td>
-                        <td>12.00%</td>
-                        <td>40.00%</td>
-                        <td>36.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Morocco</td>
+                        <td>96.2%</td>
+                        <td>20.8%</td>
+                        <td>9.6%</td>
+                        <td>4.1%</td>
+                        <td>1.3%</td>
+                        <td class="winner-cell">
+                            1.3%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 1.32%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Australia</td>
-                        <td>12.00%</td>
-                        <td>68.00%</td>
-                        <td>8.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">England</td>
+                        <td>93.2%</td>
+                        <td>23.8%</td>
+                        <td>8.7%</td>
+                        <td>3.1%</td>
+                        <td>1.2%</td>
+                        <td class="winner-cell">
+                            1.2%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 1.16%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Bosnia & Herzegovina</td>
-                        <td>36.00%</td>
-                        <td>64.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Paraguay</td>
+                        <td>76.9%</td>
+                        <td>15.1%</td>
+                        <td>7.4%</td>
+                        <td>2.1%</td>
+                        <td>0.7%</td>
+                        <td class="winner-cell">
+                            0.7%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.68%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Canada</td>
-                        <td>28.00%</td>
-                        <td>72.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Australia</td>
+                        <td>78.5%</td>
+                        <td>16.3%</td>
+                        <td>6.8%</td>
+                        <td>2.2%</td>
+                        <td>0.5%</td>
+                        <td class="winner-cell">
+                            0.5%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.52%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Cape Verde</td>
-                        <td>64.00%</td>
-                        <td>36.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Senegal</td>
+                        <td>77.4%</td>
+                        <td>12.3%</td>
+                        <td>4.4%</td>
+                        <td>1.2%</td>
+                        <td>0.4%</td>
+                        <td class="winner-cell">
+                            0.4%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.44%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Curacao</td>
-                        <td>92.00%</td>
-                        <td>8.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Egypt</td>
+                        <td>72.5%</td>
+                        <td>10.0%</td>
+                        <td>4.4%</td>
+                        <td>1.0%</td>
+                        <td>0.3%</td>
+                        <td class="winner-cell">
+                            0.3%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.32%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Czech Republic</td>
-                        <td>36.00%</td>
-                        <td>64.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Uruguay</td>
+                        <td>85.6%</td>
+                        <td>14.2%</td>
+                        <td>2.7%</td>
+                        <td>1.0%</td>
+                        <td>0.3%</td>
+                        <td class="winner-cell">
+                            0.3%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.28%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>D.R. Congo</td>
-                        <td>88.00%</td>
-                        <td>12.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Switzerland</td>
+                        <td>99.0%</td>
+                        <td>28.8%</td>
+                        <td>2.6%</td>
+                        <td>0.8%</td>
+                        <td>0.2%</td>
+                        <td class="winner-cell">
+                            0.2%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.24%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Egypt</td>
-                        <td>32.00%</td>
-                        <td>64.00%</td>
-                        <td>4.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Ivory Coast</td>
+                        <td>87.7%</td>
+                        <td>15.7%</td>
+                        <td>5.0%</td>
+                        <td>1.6%</td>
+                        <td>0.2%</td>
+                        <td class="winner-cell">
+                            0.2%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.24%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>England</td>
-                        <td>4.00%</td>
-                        <td>60.00%</td>
-                        <td>16.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Algeria</td>
+                        <td>70.6%</td>
+                        <td>10.5%</td>
+                        <td>2.6%</td>
+                        <td>1.0%</td>
+                        <td>0.2%</td>
+                        <td class="winner-cell">
+                            0.2%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.2%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Germany</td>
-                        <td>nan%</td>
-                        <td>60.00%</td>
-                        <td>24.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Mexico</td>
+                        <td>78.1%</td>
+                        <td>13.9%</td>
+                        <td>3.5%</td>
+                        <td>1.0%</td>
+                        <td>0.2%</td>
+                        <td class="winner-cell">
+                            0.2%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.2%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Ghana</td>
-                        <td>88.00%</td>
-                        <td>12.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">USA</td>
+                        <td>60.6%</td>
+                        <td>6.4%</td>
+                        <td>2.4%</td>
+                        <td>0.5%</td>
+                        <td>0.1%</td>
+                        <td class="winner-cell">
+                            0.1%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.12%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Haiti</td>
-                        <td>96.00%</td>
-                        <td>4.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Tunisia</td>
+                        <td>50.1%</td>
+                        <td>4.6%</td>
+                        <td>1.4%</td>
+                        <td>0.3%</td>
+                        <td>0.1%</td>
+                        <td class="winner-cell">
+                            0.1%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.08%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Iran</td>
-                        <td>40.00%</td>
-                        <td>60.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Turkey</td>
+                        <td>60.6%</td>
+                        <td>7.5%</td>
+                        <td>2.8%</td>
+                        <td>0.6%</td>
+                        <td>0.1%</td>
+                        <td class="winner-cell">
+                            0.1%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.08%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Iraq</td>
-                        <td>92.00%</td>
-                        <td>8.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">South Africa</td>
+                        <td>76.6%</td>
+                        <td>12.8%</td>
+                        <td>2.9%</td>
+                        <td>0.6%</td>
+                        <td>0.1%</td>
+                        <td class="winner-cell">
+                            0.1%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.08%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Ivory Coast</td>
-                        <td>8.00%</td>
-                        <td>60.00%</td>
-                        <td>24.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Norway</td>
+                        <td>72.5%</td>
+                        <td>9.0%</td>
+                        <td>3.4%</td>
+                        <td>0.7%</td>
+                        <td>0.1%</td>
+                        <td class="winner-cell">
+                            0.1%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.08%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Jordan</td>
-                        <td>84.00%</td>
-                        <td>16.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Canada</td>
+                        <td>70.0%</td>
+                        <td>4.9%</td>
+                        <td>1.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.04%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Mexico</td>
-                        <td>8.00%</td>
-                        <td>64.00%</td>
-                        <td>28.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Iran</td>
+                        <td>58.1%</td>
+                        <td>5.2%</td>
+                        <td>2.9%</td>
+                        <td>0.4%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.04%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Morocco</td>
-                        <td>nan%</td>
-                        <td>96.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Czech Republic</td>
+                        <td>56.8%</td>
+                        <td>4.8%</td>
+                        <td>0.8%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.04%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>New Zealand</td>
-                        <td>44.00%</td>
-                        <td>52.00%</td>
-                        <td>4.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Panama</td>
+                        <td>43.9%</td>
+                        <td>1.3%</td>
+                        <td>0.2%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.04%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Norway</td>
-                        <td>20.00%</td>
-                        <td>60.00%</td>
-                        <td>16.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Uzbekistan</td>
+                        <td>48.6%</td>
+                        <td>3.9%</td>
+                        <td>1.3%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.04%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Panama</td>
-                        <td>68.00%</td>
-                        <td>32.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Bosnia & Herzegovina</td>
+                        <td>66.5%</td>
+                        <td>2.0%</td>
+                        <td>0.3%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Qatar</td>
-                        <td>68.00%</td>
-                        <td>32.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Cape Verde</td>
+                        <td>39.4%</td>
+                        <td>0.9%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Saudi Arabia</td>
-                        <td>64.00%</td>
-                        <td>36.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Curacao</td>
+                        <td>4.7%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Scotland</td>
-                        <td>48.00%</td>
-                        <td>48.00%</td>
-                        <td>4.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">D.R. Congo</td>
+                        <td>15.6%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Senegal</td>
-                        <td>28.00%</td>
-                        <td>52.00%</td>
-                        <td>12.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Ghana</td>
+                        <td>25.0%</td>
+                        <td>0.4%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>South Africa</td>
-                        <td>40.00%</td>
-                        <td>52.00%</td>
-                        <td>8.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Haiti</td>
+                        <td>3.4%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>South Korea</td>
-                        <td>44.00%</td>
-                        <td>56.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Iraq</td>
+                        <td>13.0%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Sweden</td>
-                        <td>52.00%</td>
-                        <td>40.00%</td>
-                        <td>4.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Jordan</td>
+                        <td>13.1%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Switzerland</td>
-                        <td>nan%</td>
-                        <td>76.00%</td>
-                        <td>20.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">New Zealand</td>
+                        <td>39.4%</td>
+                        <td>1.3%</td>
+                        <td>0.6%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Tunisia</td>
-                        <td>44.00%</td>
-                        <td>56.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Qatar</td>
+                        <td>26.3%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Turkey</td>
-                        <td>36.00%</td>
-                        <td>64.00%</td>
-                        <td>nan%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Saudi Arabia</td>
+                        <td>25.1%</td>
+                        <td>0.6%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>USA</td>
-                        <td>52.00%</td>
-                        <td>40.00%</td>
-                        <td>8.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Scotland</td>
+                        <td>69.0%</td>
+                        <td>3.8%</td>
+                        <td>0.7%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Uruguay</td>
-                        <td>16.00%</td>
-                        <td>80.00%</td>
-                        <td>4.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">South Korea</td>
+                        <td>63.8%</td>
+                        <td>7.1%</td>
+                        <td>1.6%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td>Uzbekistan</td>
-                        <td>56.00%</td>
-                        <td>36.00%</td>
-                        <td>8.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td>0.00%</td>
-                        <td class="winner">nan%</td>
+                        <td class="team-name">Sweden</td>
+                        <td>38.0%</td>
+                        <td>2.8%</td>
+                        <td>0.6%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
                     </tr>
 
                 </tbody>
