@@ -22,7 +22,7 @@ ETHER operates as a frankly honest intellectual partner, not a passive yes-man:
 
 Core Features
 
-•     Multi-API Routing – Intelligently switches between Groq, Gemini (3 accounts), and Cerebras based on task requirements
+•     Multi-API Routing – Intelligently switches between Groq, Gemini (3 accounts), Mistral and Cerebras based on task requirements
 
 •     Multiple Modes – Teacher mode, Creative mode, Image generation mode
 
