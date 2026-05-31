@@ -358,14 +358,15 @@ function applyLanguage() {
 // Defaults — seront remplacés par les valeurs de main.js via IPC au boot
 var GROQ_MODELS = { main: 'llama-3.3-70b-versatile', reasoning: 'qwen/qwen3-32b', fast: 'llama-3.1-8b-instant' };
 var GEMINI_MODELS = { main: 'gemini-2.5-flash', fast: 'gemini-2.5-flash-lite' };
+var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest' };
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };
 
 // Provider availability tracking
-var providerStatus = { groq: true, gemini: true, cerebras: true };
+var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true };
 
 // getSmartRoute et getSmartModel sont definis dans engine.js (routing intelligent)
 
-if (window.etherDesktop) { window.etherDesktop.getModels().then(function(m) { if (m && m.groq) { GROQ_MODELS = m.groq; GEMINI_MODELS = m.gemini; CEREBRAS_MODELS = m.cerebras; } else if (m) { GROQ_MODELS = m; } }); }
+if (window.etherDesktop) { window.etherDesktop.getModels().then(function(m) { if (m && m.groq) { GROQ_MODELS = m.groq; GEMINI_MODELS = m.gemini; MISTRAL_MODELS = m.mistral; CEREBRAS_MODELS = m.cerebras; } else if (m) { GROQ_MODELS = m; } }); }
 var activeModel = null;
 var apiAvailable = false;
 
