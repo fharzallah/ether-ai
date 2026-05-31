@@ -44,6 +44,8 @@ export default {
         let result;
         if (provider === 'gemini') {
           result = await callGemini(env, model, messages, temperature, maxTokens);
+        } else if (provider === 'mistral') {
+          result = await callMistral(env, model, messages, temperature, maxTokens);
         } else if (provider === 'cerebras') {
           result = await callCerebras(env, model, messages, temperature, maxTokens);
         } else {
@@ -64,6 +66,8 @@ export default {
 
         if (provider === 'gemini') {
           return streamGemini(env, model, messages, temperature, maxTokens);
+        } else if (provider === 'mistral') {
+          return streamOpenAICompat(env, 'api.mistral.ai', env.MISTRAL_KEY, model, messages, temperature, maxTokens);
         } else if (provider === 'cerebras') {
           return streamOpenAICompat(env, 'api.cerebras.ai', env.CEREBRAS_KEY, model, messages, temperature, maxTokens);
         } else {
@@ -277,6 +281,18 @@ async function callCerebras(env, model, messages, temperature, maxTokens) {
   return { ok: true, text: data.choices[0].message.content, model, provider: 'cerebras' };
 }
 
+// --- MISTRAL (OpenAI-compatible) ---
+async function callMistral(env, model, messages, temperature, maxTokens) {
+  const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.MISTRAL_KEY },
+    body: JSON.stringify({ model: model || 'mistral-large-latest', messages, temperature, max_tokens: maxTokens })
+  });
+  if (!resp.ok) return { ok: false, error: 'Mistral error ' + resp.status, provider: 'mistral' };
+  const data = await resp.json();
+  return { ok: true, text: data.choices[0].message.content, model, provider: 'mistral' };
+}
+
 // === STREAMING ===
 
 // Gemini SSE streaming
@@ -353,6 +369,12 @@ async function testProviders(env) {
     const r = await callCerebras(env, 'llama3.1-8b', [{ role: 'user', content: 'ok' }], 0.1, 5);
     results.push({ provider: 'cerebras', ok: r.ok });
   } catch { results.push({ provider: 'cerebras', ok: false }); }
+
+  // Mistral
+  try {
+    const r = await callMistral(env, 'mistral-small-latest', [{ role: 'user', content: 'ok' }], 0.1, 5);
+    results.push({ provider: 'mistral', ok: r.ok });
+  } catch { results.push({ provider: 'mistral', ok: false }); }
 
   return results;
 }
