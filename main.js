@@ -27,6 +27,7 @@ var GROQ_MODELS = {
     fast: 'llama-3.1-8b-instant'
 };
 var GEMINI_MODELS = { main: 'gemini-2.5-flash', fast: 'gemini-2.5-flash-lite' };
+var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest' };
 // Legacy Cerebras — garde pour fallback
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };
 
@@ -40,6 +41,7 @@ var os = require('os');
 // Chargées depuis .env — aucune clé en dur dans le code source
 var GROQ_KEY = process.env.GROQ_KEY || '';
 var CEREBRAS_KEY = process.env.CEREBRAS_KEY || '';
+var MISTRAL_KEY = process.env.MISTRAL_KEY || '';
 var DEFAULT_GROQ_KEY = GROQ_KEY;
 
 // Gemini — rotation automatique entre les clés disponibles dans .env
@@ -84,10 +86,11 @@ function loadApiConfig() {
             if (config.groqKey) GROQ_KEY = config.groqKey;
             if (config.geminiKey) GEMINI_KEY = config.geminiKey;
             if (config.cerebrasKey) CEREBRAS_KEY = config.cerebrasKey;
+            if (config.mistralKey) MISTRAL_KEY = config.mistralKey;
             if (config.models) {
                 for (var k in config.models) { if (config.models[k]) GROQ_MODELS[k] = config.models[k]; }
             }
-            console.log('[CONFIG] Loaded — Groq: OK | Gemini:', GEMINI_KEY ? 'OK' : '-', '| Cerebras:', CEREBRAS_KEY ? 'OK' : '-');
+            console.log('[CONFIG] Loaded — Groq: OK | Gemini:', GEMINI_KEY ? 'OK' : '-', '| Mistral:', MISTRAL_KEY ? 'OK' : '-', '| Cerebras:', CEREBRAS_KEY ? 'OK' : '-');
         }
     } catch(e) { console.warn('[CONFIG] Failed to load config:', e.message); }
 }
@@ -99,6 +102,7 @@ function saveApiConfig() {
             groqKey: GROQ_KEY,
             geminiKey: GEMINI_KEY,
             cerebrasKey: CEREBRAS_KEY,
+            mistralKey: MISTRAL_KEY,
             models: GROQ_MODELS
         }, null, 2), 'utf8');
         return true;
@@ -679,6 +683,106 @@ ipcMain.handle('cerebras-stream', function(event, data) {
     });
 });
 
+// === IPC: MISTRAL AI (format OpenAI-compatible) ===
+ipcMain.handle('mistral-chat', function(event, data) {
+    var postData = JSON.stringify({
+        model: data.model || MISTRAL_MODELS.main,
+        messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000
+    });
+    return httpsRequest({
+        hostname: 'api.mistral.ai',
+        path: '/v1/chat/completions',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + MISTRAL_KEY,
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    }, postData).then(function(res) {
+        if (res.status === 200) {
+            var d = JSON.parse(res.body);
+            return { ok: true, text: d.choices[0].message.content, model: data.model, provider: 'mistral' };
+        }
+        console.log('[MISTRAL] Error:', res.status, res.body.substring(0, 200));
+        return { ok: false, error: 'Status ' + res.status, provider: 'mistral' };
+    })['catch'](function(e) {
+        console.log('[MISTRAL] Exception:', e.message);
+        return { ok: false, error: e.message, provider: 'mistral' };
+    });
+});
+
+// === IPC: MISTRAL STREAMING ===
+ipcMain.handle('mistral-stream', function(event, data) {
+    if (!checkRateLimit('mistral-stream')) {
+        return Promise.resolve({ ok: false, error: 'Rate limit exceeded.', provider: 'mistral' });
+    }
+    var postData = JSON.stringify({
+        model: data.model || MISTRAL_MODELS.main,
+        messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000,
+        stream: true
+    });
+
+    return new Promise(function(resolve) {
+        var req = https.request({
+            hostname: 'api.mistral.ai',
+            path: '/v1/chat/completions',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + MISTRAL_KEY,
+                'Content-Length': Buffer.byteLength(postData)
+            }
+        }, function(res) {
+            if (res.statusCode !== 200) {
+                var errBody = '';
+                res.on('data', function(c) { errBody += c; });
+                res.on('end', function() {
+                    resolve({ ok: false, error: 'Status ' + res.statusCode, provider: 'mistral' });
+                });
+                return;
+            }
+            var fullText = '';
+            var buffer = '';
+            var _decoder = new StringDecoder('utf8');
+            res.on('data', function(chunk) {
+                buffer += _decoder.write(chunk);
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line || !line.startsWith('data: ')) continue;
+                    var jsonStr = line.substring(6);
+                    if (jsonStr === '[DONE]') continue;
+                    try {
+                        var parsed = JSON.parse(jsonStr);
+                        var delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+                        if (delta && delta.content) {
+                            fullText += delta.content;
+                            if (mainWindow && !mainWindow.isDestroyed()) {
+                                mainWindow.webContents.send('groq-chunk', delta.content);
+                            }
+                        }
+                    } catch(e) { /* skip */ }
+                }
+            });
+            res.on('end', function() {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('groq-done', fullText);
+                }
+                setTimeout(function() { resolve({ ok: true, text: fullText, model: data.model, provider: 'mistral' }); }, 100);
+            });
+        });
+        req.on('error', function(e) { resolve({ ok: false, error: e.message, provider: 'mistral' }); });
+        req.setTimeout(30000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'mistral' }); });
+        req.write(postData);
+        req.end();
+    });
+});
+
 // === IPC: Test tous les providers ===
 ipcMain.handle('test-all-providers', function() {
     var tests = [];
@@ -687,6 +791,9 @@ ipcMain.handle('test-all-providers', function() {
     tests.push(httpsRequest({ hostname: 'api.groq.com', path: '/openai/v1/chat/completions', method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY, 'Content-Length': Buffer.byteLength(groqData) } }, groqData).then(function(r) { return { provider: 'groq', ok: r.status === 200 }; })['catch'](function() { return { provider: 'groq', ok: false }; }));
     // Gemini (backup #3)
     tests.push(httpsRequest({ hostname: 'generativelanguage.googleapis.com', path: '/v1beta/models?key=' + getGeminiKey() + '&pageSize=1', method: 'GET', headers: {} }, null).then(function(r) { return { provider: 'gemini', ok: r.status === 200 }; })['catch'](function() { return { provider: 'gemini', ok: false }; }));
+    // Mistral
+    var mistralData = JSON.stringify({ model: MISTRAL_MODELS.fast, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 });
+    tests.push(httpsRequest({ hostname: 'api.mistral.ai', path: '/v1/chat/completions', method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + MISTRAL_KEY, 'Content-Length': Buffer.byteLength(mistralData) } }, mistralData).then(function(r) { return { provider: 'mistral', ok: r.status === 200 }; })['catch'](function() { return { provider: 'mistral', ok: false }; }));
     return Promise.all(tests);
 });
 
@@ -920,7 +1027,7 @@ ipcMain.handle('web-search', function(event, query) {
 
 // === IPC: Obtenir les noms de modeles (sans exposer les cles) ===
 ipcMain.handle('get-models', function() {
-    return { groq: GROQ_MODELS, gemini: GEMINI_MODELS, cerebras: CEREBRAS_MODELS };
+    return { groq: GROQ_MODELS, gemini: GEMINI_MODELS, mistral: MISTRAL_MODELS, cerebras: CEREBRAS_MODELS };
 });
 
 ipcMain.handle('set-api-key', function(event, key) {
@@ -932,6 +1039,16 @@ ipcMain.handle('set-api-key', function(event, key) {
 ipcMain.handle('set-groq-key', function(event, key) {
     if (key && key.trim()) {
         GROQ_KEY = key.trim();
+        saveApiConfig();
+        return { ok: true };
+    }
+    return { ok: false, error: 'Cle vide' };
+});
+
+// Mettre a jour la cle Mistral
+ipcMain.handle('set-mistral-key', function(event, key) {
+    if (key && key.trim()) {
+        MISTRAL_KEY = key.trim();
         saveApiConfig();
         return { ok: true };
     }
