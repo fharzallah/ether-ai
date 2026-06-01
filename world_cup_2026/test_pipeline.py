@@ -21,9 +21,10 @@ def run_test_simulation(n=100):
     final_results = {t: Counter() for t in params['alpha'].keys()}
 
     for _ in range(n):
-        stages = sim.simulate_tournament()
-        for t, stage in stages.items():
-            final_results[t][stage] += 1
+        all_reached = sim.simulate_tournament()
+        for t, stages in all_reached.items():
+            for s in stages:
+                final_results[t][s] += 1
 
     df_results = pd.DataFrame(final_results).T
     df_results = (df_results / n * 100).round(2)

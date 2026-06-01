@@ -16,23 +16,17 @@ def generate_report():
 
     cum_df = pd.DataFrame(index=df.index)
 
-    # Probability of being Winner
+    # Directly use the columns from the simulator since they are now cumulative
+    # Ensure we use the correct column names from the CSV
     cum_df['Vainqueur'] = df.get('Winner', 0)
+    cum_df['Finale'] = df.get('Final', 0)
+    cum_df['Demis'] = df.get('Semifinals', 0)
+    cum_df['Quarts'] = df.get('Quarterfinals', 0)
+    cum_df['8èmes'] = df.get('Round of 16', 0)
+    cum_df['16èmes'] = df.get('Round of 32', 0)
 
-    # Reaching Final = Winner + Lost in Final
-    cum_df['Finale'] = cum_df['Vainqueur'] + df.get('Final', 0)
-
-    # Reaching Semis = Reaching Final + Lost in Semis
-    cum_df['Demis'] = cum_df['Finale'] + df.get('Semifinals', 0)
-
-    # Reaching Quarts = Reaching Semis + Lost in Quarts
-    cum_df['Quarts'] = cum_df['Demis'] + df.get('Quarterfinals', 0)
-
-    # Reaching 8èmes = Reaching Quarts + Lost in R16
-    cum_df['8èmes'] = cum_df['Quarts'] + df.get('Round of 16', 0)
-
-    # Reaching 16èmes = Reaching 8èmes + Lost in R32
-    cum_df['16èmes'] = cum_df['8èmes'] + df.get('Round of 32', 0)
+    # Sort columns logic check - we want to ensure Final >= Winner etc.
+    # The simulator should have handled this, but we can verify if needed.
 
     # Reaching Group Stage is 100% for everyone who participated
     cum_df['Groupes'] = 100.0

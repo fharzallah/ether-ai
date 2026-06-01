@@ -21,6 +21,7 @@ class WorldCupSimulator:
         return np.random.poisson(lam), np.random.poisson(mu)
 
     def simulate_tournament(self, _=None):
+        # 1. Group Stage
         group_standings = {}
         all_stats = {}
         group_matches_fixtures = self.fixtures[self.fixtures['Stage'] == 'Group Stage']
@@ -62,45 +63,67 @@ class WorldCupSimulator:
         results_map["3EFGIJ"] = best_thirds[6][0]
         results_map["3DEIJL"] = best_thirds[7][0]
 
-        stage_reached = {t: 'Group Stage' for t in self.teams}
+        # Cumulative stages reached
+        stages_reached = {t: {'Group Stage'} for t in self.teams}
         for t in results_map.values():
-            if t in stage_reached: stage_reached[t] = 'Round of 32'
+            if t in stages_reached:
+                stages_reached[t].add('Round of 32')
 
         knockout_fixtures = self.fixtures[self.fixtures['Stage'] != 'Group Stage'].sort_values('Match')
         match_winners = {}
+        match_losers = {}
+
+        stage_map = {
+            'Round of 32': 'Round of 16',
+            'Round of 16': 'Quarterfinals',
+            'Quarterfinals': 'Semifinals',
+            'Semifinals': 'Final',
+            'Final': 'Winner'
+        }
 
         for _, m in knockout_fixtures.iterrows():
             m_id = str(int(m['Match']))
             h_ref = str(m['Home Team'])
             a_ref = str(m['Away Team'])
 
-            t1 = results_map.get(h_ref) or match_winners.get(h_ref.replace('W', ''))
-            t2 = results_map.get(a_ref) or match_winners.get(a_ref.replace('W', ''))
+            # Resolve team references
+            def resolve(ref):
+                if ref in results_map: return results_map[ref]
+                if ref.startswith('W'): return match_winners.get(ref[1:])
+                if ref.startswith('RU'): return match_losers.get(ref[2:])
+                return match_winners.get(ref) # Fallback
+
+            t1 = resolve(h_ref)
+            t2 = resolve(a_ref)
 
             if not t1 or not t2:
                  winner = t1 or t2 or self.teams[0]
+                 loser = t2 if winner == t1 else t1
             else:
                 hg, ag = self.simulate_match(t1, t2)
                 while hg == ag: hg, ag = self.simulate_match(t1, t2)
-                winner = t1 if hg > ag else t2
+                if hg > ag:
+                    winner, loser = t1, t2
+                else:
+                    winner, loser = t2, t1
 
             match_winners[m_id] = winner
-            if m['Stage'] != 'Third Place Playoff':
-                if winner in stage_reached:
-                    stage_reached[winner] = m['Stage']
+            match_losers[m_id] = loser
 
-        winner_name = match_winners.get('104', 'Unknown')
-        if winner_name in stage_reached:
-            stage_reached[winner_name] = 'Winner'
+            reached = stage_map.get(m['Stage'])
+            if reached and winner in stages_reached:
+                stages_reached[winner].add(reached)
 
-        return stage_reached
+        return stages_reached
 
 def run_simulation_batch(n_batch, params, fixtures):
     sim = WorldCupSimulator(params, fixtures)
     batch_results = {t: Counter() for t in sim.teams}
     for _ in range(n_batch):
-        stages = sim.simulate_tournament()
-        for t, stage in stages.items(): batch_results[t][stage] += 1
+        all_reached = sim.simulate_tournament()
+        for t, stages in all_reached.items():
+            for s in stages:
+                batch_results[t][s] += 1
     return batch_results
 
 def run_monte_carlo(n=100000):
@@ -108,16 +131,17 @@ def run_monte_carlo(n=100000):
     fixtures = pd.read_csv('world_cup_2026/data/fixtures_cleaned.csv')
     num_cores = multiprocessing.cpu_count()
     batch_size = max(1, n // num_cores)
+    total_sims = batch_size * num_cores
     with multiprocessing.Pool(num_cores) as pool:
         results_list = pool.starmap(run_simulation_batch, [(batch_size, params, fixtures)] * num_cores)
     final_results = {t: Counter() for t in params['alpha'].keys()}
     for batch_res in results_list:
         for team, stages in batch_res.items(): final_results[team].update(stages)
     df_results = pd.DataFrame(final_results).T
-    df_results = (df_results / (batch_size * num_cores) * 100).round(2)
+    df_results = (df_results / total_sims * 100).round(2)
     df_results = df_results.sort_values(by='Winner', ascending=False)
     df_results.to_csv('world_cup_2026/data/simulation_results_100k.csv')
-    print("Full simulation results saved.")
+    print(f"Full simulation results ({total_sims}) saved with corrected stage logic.")
 
 if __name__ == "__main__":
     run_monte_carlo(100000)
