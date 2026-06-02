@@ -34,11 +34,11 @@ def adjust_params():
     team_stats['form_factor'] = team_stats['Non penalty goals and assists'] / avg_form
 
     for team, alpha in params['alpha'].items():
-        # 1. Player form adjustment (max 10%)
+        # 1. Player form adjustment (weight: 50%)
         stats = team_stats[team_stats['Team'] == team]
         if not stats.empty:
             factor = stats['form_factor'].values[0]
-            form_adj = (factor - 1) * 0.10
+            form_adj = (factor - 1) * 0.50
             params['alpha'][team] += form_adj
             params['beta'][team] -= form_adj
 
@@ -49,7 +49,7 @@ def adjust_params():
 
     with open('world_cup_2026/data/model_params_adjusted.json', 'w') as f:
         json.dump(params, f)
-    print("Adjusted model parameters with FINAL V3 REALISM boosts.")
+    print("Adjusted model parameters: Player form now accounts for 50% of the team adjustment.")
 
 if __name__ == "__main__":
     adjust_params()

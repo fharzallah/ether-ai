@@ -70,16 +70,6 @@ TEAM_MAPPING = {
 }
 
 # Prestige weights (multipliers for Dixon-Coles likelihood or rating boost)
-PRESTIGE_TEAMS = {
-    'Spain': 1.25,      # Euro 2024 Winner, Nations League
-    'Argentina': 1.25,  # WC 2022, Copa America 2024
-    'France': 1.15,     # World Class squad consistency
-    'Brazil': 1.10,     # Historical prestige
-    'England': 1.10,    # Top squad value
-    'Netherlands': 1.05,
-    'Italy': 1.05,
-    'Portugal': 1.05
-}
 
 def clean_name(name):
     if pd.isna(name): return name

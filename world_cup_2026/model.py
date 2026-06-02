@@ -37,7 +37,7 @@ def log_likelihood(params, games_data, n_teams, time_decay_phi):
     return -log_l
 
 class DixonColesModel:
-    def __init__(self, phi=0.5):
+    def __init__(self, phi=1.2):
         self.phi = phi
         self.teams = []
         self.alpha = {}
@@ -88,8 +88,8 @@ if __name__ == "__main__":
 
     df_matches_wc = df_matches[df_matches['Home'].isin(wc_teams) & df_matches['Away'].isin(wc_teams)]
 
-    # We use a higher phi (0.8) to give even more weight to very recent games (Euro 2024, Copa 2024)
-    model = DixonColesModel(phi=0.8)
+    # We use a higher phi (1.2) to give even more weight to very recent games (Euro 2024, Copa 2024)
+    model = DixonColesModel(phi=1.2)
     model.fit(df_matches_wc)
 
     results = {
