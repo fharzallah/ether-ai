@@ -66,10 +66,10 @@ TEAM_MAPPING = {
     'Nethernlands': 'Netherlands',
     'Switzlernad': 'Switzerland',
     'Korea': 'South Korea',
-    'Congo DR': 'D.R. Congo'
+    'Congo DR': 'D.R. Congo',
+    'Cape Verde Islands': 'Cape Verde',
+    "Côte d'Ivoire": 'Ivory Coast'
 }
-
-# Prestige weights (multipliers for Dixon-Coles likelihood or rating boost)
 
 def clean_name(name):
     if pd.isna(name): return name
@@ -77,47 +77,41 @@ def clean_name(name):
     return TEAM_MAPPING.get(name, name)
 
 def preprocess():
+    # Matches
     df_matches = pd.read_excel('world_cup_2026/data/matches.xlsx')
     df_matches['Date'] = pd.to_datetime(df_matches['Date'])
-
-    # Keep matches from 2022
     df_matches = df_matches[df_matches['Date'] >= '2022-01-01']
-
     df_matches['Home'] = df_matches['Home'].apply(clean_name)
     df_matches['Away'] = df_matches['Away'].apply(clean_name)
-
-    # Include ranking data to weight game importance
-    # If a team with high rank beats another high rank, it should weight more
-    # We use Home Ranking and Away Ranking (Lower is better)
-
     df_matches = df_matches.rename(columns={'Home.1': 'HomeGoals', 'Away.1': 'AwayGoals'})
-
-    # Fill missing rankings with a high number (poor rank)
     df_matches['Home Ranking'] = df_matches['Home Ranking'].fillna(150)
     df_matches['Away Ranking'] = df_matches['Away Ranking'].fillna(150)
 
-    # Calculate match importance based on prestige of opponents
-    # We use a formula: weight = 1 / sqrt(Avg Ranking)
     df_matches['PrestigeWeight'] = 1.0 / np.sqrt((df_matches['Home Ranking'] + df_matches['Away Ranking']) / 2.0)
-    # Normalize weight to mean 1.0
     df_matches['PrestigeWeight'] = df_matches['PrestigeWeight'] / df_matches['PrestigeWeight'].mean()
 
     df_matches = df_matches[['Date', 'Home', 'Away', 'HomeGoals', 'AwayGoals', 'PrestigeWeight']]
     df_matches = df_matches.dropna(subset=['HomeGoals', 'AwayGoals'])
+    df_matches.to_csv('world_cup_2026/data/matches_cleaned.csv', index=False)
 
     # Players
     df_players = pd.read_excel('world_cup_2026/data/players.xlsx', header=1)
     df_players['Team'] = df_players['Team'].apply(clean_name)
+    df_players.to_csv('world_cup_2026/data/players_cleaned.csv', index=False)
+
+    # Advanced Stats (mapping names)
+    if pd.io.common.file_exists('world_cup_2026/data/advanced_stats_combined.csv'):
+        df_adv = pd.read_csv('world_cup_2026/data/advanced_stats_combined.csv')
+        df_adv['team'] = df_adv['team'].apply(clean_name)
+        df_adv.to_csv('world_cup_2026/data/advanced_stats_cleaned.csv', index=False)
 
     # Fixtures
     df_fixtures = pd.read_excel('world_cup_2026/data/fixtures.xlsx')
     df_fixtures['Home Team'] = df_fixtures['Home Team'].apply(clean_name)
     df_fixtures['Away Team'] = df_fixtures['Away Team'].apply(clean_name)
-
-    df_matches.to_csv('world_cup_2026/data/matches_cleaned.csv', index=False)
-    df_players.to_csv('world_cup_2026/data/players_cleaned.csv', index=False)
     df_fixtures.to_csv('world_cup_2026/data/fixtures_cleaned.csv', index=False)
-    print("Preprocessing complete with Prestige weighting.")
+
+    print("Preprocessing complete with Prestige weighting and Advanced Stats mapping.")
 
 if __name__ == "__main__":
     preprocess()

@@ -3,31 +3,32 @@
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>Simulation Coupe du Monde 2026 - Prédictions Dixon-Coles</title>
+        <title>Simulation Coupe du Monde 2026 - Opta-Style Predictions</title>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
-            .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+            .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
             h1 { color: #1a73e8; text-align: center; margin-bottom: 10px; }
             p.subtitle { text-align: center; color: #666; margin-bottom: 30px; }
             table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
+            th, td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
             th { background-color: #1a73e8; color: white; position: sticky; top: 0; }
             tr:hover { background-color: #f8f9fa; }
             .winner-cell { font-weight: bold; color: #2e7d32; background-color: #e8f5e9; }
             .team-name { text-align: left; font-weight: 600; color: #333; }
+            .style-tag { font-size: 0.8em; color: #777; font-weight: normal; display: block; }
             .prob-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 5px; overflow: hidden; }
             .prob-fill { height: 100%; background: #1a73e8; }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>Simulation Coupe du Monde 2026</h1>
-            <p class="subtitle">Modèle Dixon-Coles (Time-Decay) + Statistiques Individuelles Joueurs<br>100 000 itérations Monte Carlo</p>
+            <h1>Simulation Coupe du Monde 2026 - V4 (Opta Engine)</h1>
+            <p class="subtitle">Modèle Dixon-Coles + xG/xGA (40%) + Forme Joueurs (30%) + Style & Prestige (30%)<br>Calculé sur les données StatsBomb (2022-2024)</p>
 
             <table>
                 <thead>
                     <tr>
-                        <th style="text-align: left;">Équipe</th>
+                        <th style="text-align: left;">Équipe & Style</th>
                         <th>Atteint 16èmes</th>
                         <th>Atteint 8èmes</th>
                         <th>Atteint Quarts</th>
@@ -39,90 +40,127 @@
                 <tbody>
 
                     <tr>
-                        <td class="team-name">France</td>
+                        <td class="team-name">
+                            France
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 50.9%)</span>
+                        </td>
                         <td>100.0%</td>
                         <td>99.4%</td>
-                        <td>91.2%</td>
+                        <td>92.2%</td>
                         <td>87.8%</td>
-                        <td>56.1%</td>
+                        <td>71.2%</td>
                         <td class="winner-cell">
-                            37.3%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 37.3%"></div></div>
+                            47.6%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 47.6%"></div></div>
                         </td>
                     </tr>
 
                     <tr>
-                        <td class="team-name">Spain</td>
+                        <td class="team-name">
+                            Spain
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 66.8%)</span>
+                        </td>
                         <td>100.0%</td>
-                        <td>91.1%</td>
-                        <td>85.3%</td>
-                        <td>81.3%</td>
-                        <td>71.9%</td>
+                        <td>96.3%</td>
+                        <td>87.4%</td>
+                        <td>86.0%</td>
+                        <td>72.0%</td>
                         <td class="winner-cell">
-                            34.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 34.01%"></div></div>
+                            35.8%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 35.76%"></div></div>
                         </td>
                     </tr>
 
                     <tr>
-                        <td class="team-name">Argentina</td>
+                        <td class="team-name">
+                            Portugal
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 63.6%)</span>
+                        </td>
+                        <td>99.7%</td>
+                        <td>94.2%</td>
+                        <td>74.6%</td>
+                        <td>73.4%</td>
+                        <td>25.8%</td>
+                        <td class="winner-cell">
+                            9.7%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 9.68%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Germany
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 60.8%)</span>
+                        </td>
                         <td>100.0%</td>
-                        <td>93.6%</td>
-                        <td>92.4%</td>
-                        <td>68.8%</td>
-                        <td>35.2%</td>
+                        <td>97.8%</td>
+                        <td>96.0%</td>
+                        <td>65.8%</td>
+                        <td>16.4%</td>
                         <td class="winner-cell">
-                            20.2%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 20.25%"></div></div>
+                            4.2%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 4.2%"></div></div>
                         </td>
                     </tr>
 
                     <tr>
-                        <td class="team-name">Portugal</td>
+                        <td class="team-name">
+                            Argentina
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 57.6%)</span>
+                        </td>
                         <td>100.0%</td>
-                        <td>95.9%</td>
-                        <td>73.0%</td>
-                        <td>31.9%</td>
-                        <td>13.1%</td>
-                        <td class="winner-cell">
-                            5.1%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 5.09%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Germany</td>
-                        <td>100.0%</td>
-                        <td>94.4%</td>
-                        <td>92.6%</td>
-                        <td>69.6%</td>
-                        <td>13.6%</td>
-                        <td class="winner-cell">
-                            2.2%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 2.25%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Netherlands</td>
-                        <td>100.0%</td>
-                        <td>87.3%</td>
-                        <td>17.5%</td>
-                        <td>11.3%</td>
-                        <td>2.3%</td>
-                        <td class="winner-cell">
-                            0.4%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.41%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">New Zealand</td>
-                        <td>94.9%</td>
-                        <td>83.3%</td>
-                        <td>48.3%</td>
-                        <td>6.4%</td>
+                        <td>97.8%</td>
+                        <td>96.8%</td>
                         <td>1.7%</td>
+                        <td>1.4%</td>
+                        <td class="winner-cell">
+                            1.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.96%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Brazil
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 57.8%)</span>
+                        </td>
+                        <td>100.0%</td>
+                        <td>87.5%</td>
+                        <td>75.0%</td>
+                        <td>31.0%</td>
+                        <td>5.3%</td>
+                        <td class="winner-cell">
+                            0.8%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.84%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Netherlands
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 53.2%)</span>
+                        </td>
+                        <td>100.0%</td>
+                        <td>81.1%</td>
+                        <td>11.3%</td>
+                        <td>6.2%</td>
+                        <td>2.4%</td>
+                        <td class="winner-cell">
+                            0.6%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.56%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            England
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 59.0%)</span>
+                        </td>
+                        <td>100.0%</td>
+                        <td>81.3%</td>
+                        <td>64.1%</td>
+                        <td>6.9%</td>
+                        <td>2.3%</td>
                         <td class="winner-cell">
                             0.2%
                             <div class="prob-bar"><div class="prob-fill" style="width: 0.24%"></div></div>
@@ -130,427 +168,62 @@
                     </tr>
 
                     <tr>
-                        <td class="team-name">Austria</td>
-                        <td>97.9%</td>
-                        <td>16.6%</td>
-                        <td>12.7%</td>
-                        <td>4.2%</td>
-                        <td>1.0%</td>
+                        <td class="team-name">
+                            Colombia
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 54.4%)</span>
+                        </td>
+                        <td>98.7%</td>
+                        <td>73.3%</td>
+                        <td>22.8%</td>
+                        <td>20.5%</td>
+                        <td>1.9%</td>
                         <td class="winner-cell">
                             0.1%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.12%"></div></div>
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.08%"></div></div>
                         </td>
                     </tr>
 
                     <tr>
-                        <td class="team-name">Belgium</td>
-                        <td>98.0%</td>
-                        <td>89.5%</td>
-                        <td>61.6%</td>
-                        <td>6.3%</td>
-                        <td>1.7%</td>
-                        <td class="winner-cell">
-                            0.1%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.11%"></div></div>
+                        <td class="team-name">
+                            Belgium
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 55.9%)</span>
                         </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Brazil</td>
-                        <td>100.0%</td>
-                        <td>68.1%</td>
-                        <td>42.6%</td>
-                        <td>13.2%</td>
-                        <td>1.4%</td>
-                        <td class="winner-cell">
-                            0.1%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.1%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">England</td>
-                        <td>99.7%</td>
-                        <td>76.2%</td>
-                        <td>52.3%</td>
-                        <td>5.6%</td>
-                        <td>0.9%</td>
-                        <td class="winner-cell">
-                            0.1%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.1%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Norway</td>
-                        <td>96.0%</td>
-                        <td>72.1%</td>
-                        <td>33.7%</td>
-                        <td>7.8%</td>
-                        <td>0.7%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.02%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Colombia</td>
-                        <td>98.3%</td>
-                        <td>58.8%</td>
-                        <td>10.8%</td>
-                        <td>1.2%</td>
-                        <td>0.1%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.01%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Switzerland</td>
-                        <td>99.8%</td>
-                        <td>75.1%</td>
-                        <td>3.3%</td>
-                        <td>0.4%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.01%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Algeria</td>
-                        <td>36.2%</td>
-                        <td>7.8%</td>
-                        <td>1.2%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Australia</td>
-                        <td>80.2%</td>
-                        <td>24.8%</td>
-                        <td>2.7%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Bosnia & Herzegovina</td>
-                        <td>94.0%</td>
-                        <td>49.1%</td>
-                        <td>1.5%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Canada</td>
-                        <td>45.5%</td>
-                        <td>5.6%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Cape Verde</td>
-                        <td>79.8%</td>
-                        <td>8.3%</td>
-                        <td>2.5%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Croatia</td>
-                        <td>98.8%</td>
-                        <td>51.1%</td>
-                        <td>20.8%</td>
-                        <td>0.9%</td>
-                        <td>0.1%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Curacao</td>
-                        <td>4.2%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Czech Republic</td>
-                        <td>82.3%</td>
-                        <td>33.9%</td>
-                        <td>3.2%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">D.R. Congo</td>
-                        <td>4.5%</td>
-                        <td>0.2%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Ecuador</td>
-                        <td>80.0%</td>
-                        <td>17.5%</td>
-                        <td>3.8%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Egypt</td>
-                        <td>38.2%</td>
-                        <td>12.8%</td>
-                        <td>2.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Ghana</td>
-                        <td>14.8%</td>
-                        <td>0.7%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Haiti</td>
-                        <td>6.5%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Iran</td>
-                        <td>30.4%</td>
-                        <td>8.2%</td>
-                        <td>1.1%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Iraq</td>
-                        <td>1.4%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Ivory Coast</td>
-                        <td>95.3%</td>
-                        <td>25.2%</td>
-                        <td>5.8%</td>
-                        <td>0.3%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Japan</td>
-                        <td>94.8%</td>
-                        <td>33.4%</td>
-                        <td>11.9%</td>
-                        <td>1.7%</td>
-                        <td>0.1%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Jordan</td>
-                        <td>18.0%</td>
-                        <td>2.8%</td>
-                        <td>0.2%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Mexico</td>
-                        <td>64.8%</td>
-                        <td>18.4%</td>
-                        <td>0.9%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Morocco</td>
-                        <td>96.5%</td>
-                        <td>18.7%</td>
-                        <td>3.9%</td>
-                        <td>0.3%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Panama</td>
-                        <td>49.9%</td>
-                        <td>5.6%</td>
-                        <td>0.4%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Paraguay</td>
-                        <td>42.6%</td>
-                        <td>6.3%</td>
-                        <td>0.3%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Qatar</td>
-                        <td>20.9%</td>
-                        <td>0.9%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Saudi Arabia</td>
-                        <td>5.5%</td>
-                        <td>0.1%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Scotland</td>
-                        <td>52.5%</td>
-                        <td>6.2%</td>
+                        <td>97.4%</td>
+                        <td>87.4%</td>
+                        <td>69.2%</td>
+                        <td>8.1%</td>
                         <td>0.6%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
                         <td class="winner-cell">
                             0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.04%"></div></div>
                         </td>
                     </tr>
 
                     <tr>
-                        <td class="team-name">Senegal</td>
-                        <td>73.4%</td>
-                        <td>29.9%</td>
-                        <td>6.5%</td>
+                        <td class="team-name">
+                            New Zealand
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>70.1%</td>
+                        <td>44.1%</td>
+                        <td>12.1%</td>
+                        <td>3.4%</td>
                         <td>0.2%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.04%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Algeria
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 68.4%)</span>
+                        </td>
+                        <td>45.2%</td>
+                        <td>9.6%</td>
+                        <td>1.4%</td>
+                        <td>0.1%</td>
                         <td>0.0%</td>
                         <td class="winner-cell">
                             0.0%
@@ -559,23 +232,45 @@
                     </tr>
 
                     <tr>
-                        <td class="team-name">South Africa</td>
-                        <td>71.6%</td>
-                        <td>23.1%</td>
-                        <td>1.3%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        <td class="team-name">
+                            Australia
+                            <span class="style-tag">Contre-attaque / Ligne Haute (Poss: 38.3%)</span>
                         </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">South Korea</td>
-                        <td>65.1%</td>
-                        <td>18.5%</td>
+                        <td>63.2%</td>
+                        <td>14.3%</td>
                         <td>1.1%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Austria
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 52.7%)</span>
+                        </td>
+                        <td>95.6%</td>
+                        <td>10.3%</td>
+                        <td>6.0%</td>
+                        <td>0.6%</td>
+                        <td>0.2%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Bosnia & Herzegovina
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>92.2%</td>
+                        <td>40.9%</td>
+                        <td>0.7%</td>
                         <td>0.0%</td>
                         <td>0.0%</td>
                         <td class="winner-cell">
@@ -585,9 +280,60 @@
                     </tr>
 
                     <tr>
-                        <td class="team-name">Sweden</td>
-                        <td>16.5%</td>
-                        <td>1.2%</td>
+                        <td class="team-name">
+                            Canada
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 50.0%)</span>
+                        </td>
+                        <td>62.0%</td>
+                        <td>11.2%</td>
+                        <td>0.3%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Cape Verde
+                            <span class="style-tag">Standard (Poss: 53.5%)</span>
+                        </td>
+                        <td>74.2%</td>
+                        <td>9.2%</td>
+                        <td>2.2%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Croatia
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 55.0%)</span>
+                        </td>
+                        <td>99.0%</td>
+                        <td>36.2%</td>
+                        <td>14.0%</td>
+                        <td>0.4%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Curacao
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>2.0%</td>
+                        <td>0.1%</td>
                         <td>0.0%</td>
                         <td>0.0%</td>
                         <td>0.0%</td>
@@ -598,22 +344,12 @@
                     </tr>
 
                     <tr>
-                        <td class="team-name">Tunisia</td>
-                        <td>52.5%</td>
-                        <td>8.2%</td>
-                        <td>1.2%</td>
-                        <td>0.0%</td>
-                        <td>0.0%</td>
-                        <td class="winner-cell">
-                            0.0%
-                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        <td class="team-name">
+                            Czech Republic
+                            <span class="style-tag">Contre-attaque / Ligne Haute (Poss: 40.4%)</span>
                         </td>
-                    </tr>
-
-                    <tr>
-                        <td class="team-name">Turkey</td>
-                        <td>74.7%</td>
-                        <td>19.9%</td>
+                        <td>80.4%</td>
+                        <td>30.4%</td>
                         <td>1.8%</td>
                         <td>0.0%</td>
                         <td>0.0%</td>
@@ -624,10 +360,13 @@
                     </tr>
 
                     <tr>
-                        <td class="team-name">USA</td>
-                        <td>86.3%</td>
-                        <td>31.1%</td>
-                        <td>3.0%</td>
+                        <td class="team-name">
+                            D.R. Congo
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 45.6%)</span>
+                        </td>
+                        <td>13.3%</td>
+                        <td>1.6%</td>
+                        <td>0.1%</td>
                         <td>0.0%</td>
                         <td>0.0%</td>
                         <td class="winner-cell">
@@ -637,9 +376,364 @@
                     </tr>
 
                     <tr>
-                        <td class="team-name">Uruguay</td>
-                        <td>61.6%</td>
-                        <td>7.2%</td>
+                        <td class="team-name">
+                            Ecuador
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 47.8%)</span>
+                        </td>
+                        <td>90.6%</td>
+                        <td>33.6%</td>
+                        <td>7.7%</td>
+                        <td>0.5%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Egypt
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 57.0%)</span>
+                        </td>
+                        <td>62.2%</td>
+                        <td>33.8%</td>
+                        <td>8.3%</td>
+                        <td>3.0%</td>
+                        <td>0.1%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Ghana
+                            <span class="style-tag">Contre-attaque (Poss: 42.6%)</span>
+                        </td>
+                        <td>15.4%</td>
+                        <td>0.6%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Haiti
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>5.7%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Iran
+                            <span class="style-tag">Contre-attaque (Poss: 37.3%)</span>
+                        </td>
+                        <td>37.9%</td>
+                        <td>13.8%</td>
+                        <td>1.8%</td>
+                        <td>0.4%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Iraq
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>2.2%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Ivory Coast
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 58.2%)</span>
+                        </td>
+                        <td>95.3%</td>
+                        <td>33.9%</td>
+                        <td>5.9%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Japan
+                            <span class="style-tag">Contre-attaque / Ligne Haute (Poss: 36.0%)</span>
+                        </td>
+                        <td>91.8%</td>
+                        <td>18.1%</td>
+                        <td>7.0%</td>
+                        <td>0.6%</td>
+                        <td>0.1%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Jordan
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>15.0%</td>
+                        <td>2.1%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Mexico
+                            <span class="style-tag">Possession / Ligne Haute (Poss: 56.7%)</span>
+                        </td>
+                        <td>83.9%</td>
+                        <td>38.0%</td>
+                        <td>3.5%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Morocco
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 46.9%)</span>
+                        </td>
+                        <td>98.6%</td>
+                        <td>19.5%</td>
+                        <td>3.6%</td>
+                        <td>0.4%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Norway
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>85.2%</td>
+                        <td>43.4%</td>
+                        <td>9.4%</td>
+                        <td>0.7%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Panama
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 53.6%)</span>
+                        </td>
+                        <td>46.4%</td>
+                        <td>4.3%</td>
+                        <td>0.4%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Paraguay
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 48.4%)</span>
+                        </td>
+                        <td>56.1%</td>
+                        <td>12.0%</td>
+                        <td>0.6%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Qatar
+                            <span class="style-tag">Contre-attaque (Poss: 43.2%)</span>
+                        </td>
+                        <td>15.2%</td>
+                        <td>0.6%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Saudi Arabia
+                            <span class="style-tag">Contre-attaque (Poss: 44.6%)</span>
+                        </td>
+                        <td>3.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Scotland
+                            <span class="style-tag">Contre-attaque / Ligne Haute (Poss: 44.2%)</span>
+                        </td>
+                        <td>31.8%</td>
+                        <td>2.4%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Senegal
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 48.4%)</span>
+                        </td>
+                        <td>81.5%</td>
+                        <td>39.1%</td>
+                        <td>6.6%</td>
+                        <td>0.6%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            South Africa
+                            <span class="style-tag">Standard (Poss: 51.9%)</span>
+                        </td>
+                        <td>68.6%</td>
+                        <td>21.1%</td>
+                        <td>1.1%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            South Korea
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 48.4%)</span>
+                        </td>
+                        <td>51.0%</td>
+                        <td>11.0%</td>
+                        <td>0.3%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Sweden
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>21.0%</td>
+                        <td>1.3%</td>
+                        <td>0.1%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Switzerland
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 47.9%)</span>
+                        </td>
+                        <td>99.8%</td>
+                        <td>75.0%</td>
+                        <td>2.2%</td>
+                        <td>0.0%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Tunisia
+                            <span class="style-tag">Standard (Poss: 47.8%)</span>
+                        </td>
+                        <td>54.9%</td>
+                        <td>7.7%</td>
                         <td>1.2%</td>
                         <td>0.0%</td>
                         <td>0.0%</td>
@@ -650,11 +744,62 @@
                     </tr>
 
                     <tr>
-                        <td class="team-name">Uzbekistan</td>
-                        <td>75.8%</td>
+                        <td class="team-name">
+                            Turkey
+                            <span class="style-tag">Standard (Poss: 49.5%)</span>
+                        </td>
+                        <td>74.7%</td>
                         <td>22.1%</td>
-                        <td>3.6%</td>
-                        <td>0.1%</td>
+                        <td>2.0%</td>
+                        <td>0.3%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            USA
+                            <span class="style-tag">Standard / Ligne Haute (Poss: 49.4%)</span>
+                        </td>
+                        <td>89.6%</td>
+                        <td>39.4%</td>
+                        <td>4.6%</td>
+                        <td>0.4%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Uruguay
+                            <span class="style-tag">Standard (Poss: 50.2%)</span>
+                        </td>
+                        <td>76.4%</td>
+                        <td>9.0%</td>
+                        <td>2.4%</td>
+                        <td>0.2%</td>
+                        <td>0.0%</td>
+                        <td class="winner-cell">
+                            0.0%
+                            <div class="prob-bar"><div class="prob-fill" style="width: 0.0%"></div></div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="team-name">
+                            Uzbekistan
+                            <span class="style-tag">Standard (Poss: 50.0%)</span>
+                        </td>
+                        <td>53.5%</td>
+                        <td>13.8%</td>
+                        <td>2.3%</td>
+                        <td>0.3%</td>
                         <td>0.0%</td>
                         <td class="winner-cell">
                             0.0%

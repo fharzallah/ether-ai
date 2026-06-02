@@ -10,12 +10,30 @@ class WorldCupSimulator:
         self.params = params
         self.fixtures = fixtures
         self.teams = sorted(list(self.params['alpha'].keys()))
+        self.styles = self.params.get('styles', {})
 
     def simulate_match(self, home, away):
         alpha_h = self.params['alpha'].get(home, 0)
         beta_h = self.params['beta'].get(home, 0)
         alpha_a = self.params['alpha'].get(away, 0)
         beta_a = self.params['beta'].get(away, 0)
+
+        # Style interaction: Counter-attack vs High line
+        # If A has high line and B is counter-attacking (low possession)
+        style_h = self.styles.get(home, {'possession': 50, 'def_height': 40})
+        style_a = self.styles.get(away, {'possession': 50, 'def_height': 40})
+
+        # High line vs Low Block / Counter
+        # If Home has high line (>50) and Away has low possession (<45)
+        # Give Away an attack boost and Home an attack boost (more goals in transition)
+        if style_h['def_height'] > 55 and style_a['possession'] < 45:
+            alpha_a += 0.2
+            alpha_h += 0.1
+
+        if style_a['def_height'] > 55 and style_h['possession'] < 45:
+            alpha_h += 0.2
+            alpha_a += 0.1
+
         lam = np.exp(alpha_h + beta_a)
         mu = np.exp(alpha_a + beta_h)
         return np.random.poisson(lam), np.random.poisson(mu)
@@ -86,12 +104,11 @@ class WorldCupSimulator:
             h_ref = str(m['Home Team'])
             a_ref = str(m['Away Team'])
 
-            # Resolve team references
             def resolve(ref):
                 if ref in results_map: return results_map[ref]
                 if ref.startswith('W'): return match_winners.get(ref[1:])
                 if ref.startswith('RU'): return match_losers.get(ref[2:])
-                return match_winners.get(ref) # Fallback
+                return match_winners.get(ref)
 
             t1 = resolve(h_ref)
             t2 = resolve(a_ref)
@@ -109,7 +126,6 @@ class WorldCupSimulator:
 
             match_winners[m_id] = winner
             match_losers[m_id] = loser
-
             reached = stage_map.get(m['Stage'])
             if reached and winner in stages_reached:
                 stages_reached[winner].add(reached)
@@ -141,7 +157,7 @@ def run_monte_carlo(n=100000):
     df_results = (df_results / total_sims * 100).round(2)
     df_results = df_results.sort_values(by='Winner', ascending=False)
     df_results.to_csv('world_cup_2026/data/simulation_results_100k.csv')
-    print(f"Full simulation results ({total_sims}) saved with corrected stage logic.")
+    print(f"Full simulation results ({total_sims}) saved with Style-based interactions.")
 
 if __name__ == "__main__":
     run_monte_carlo(100000)
