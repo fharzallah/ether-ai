@@ -147,7 +147,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .mav{width:32px;height:32px;border-radius:50%;flex-shrink:0;overflow:hidden;margin-top:2px}
 .mav canvas{display:block;width:100%;height:100%}
 .mbd{flex:1;min-width:0}
-.mt{font-size:.9rem;line-height:1.85;color:var(--t1);letter-spacing:.005em;transition:opacity .3s ease}
+.mt{font-size:.9rem;line-height:1.85;color:var(--t1);letter-spacing:.005em}
 .mt p{margin-bottom:14px}.mt p:last-child{margin-bottom:0}
 .mt strong{font-weight:600;color:var(--t1)}.mt ul,.mt ol{margin:12px 0;padding-left:24px}.mt li{margin-bottom:6px;line-height:1.75;color:var(--t2)}.mt li strong{color:var(--t1)}
 .rt{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;margin-bottom:12px;border:1px solid var(--bd);border-radius:20px;background:var(--b2);color:var(--t3);font-size:.76rem;cursor:pointer;transition:all .2s}
@@ -411,10 +411,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .ms{gap:4px}.mp{padding:5px 10px;font-size:.72rem}
 .fab-btn{bottom:80px;right:14px;width:42px;height:42px}
 }
-/* MoA Status */
-.moa-status{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--t3);margin-top:10px;padding:6px 12px;background:var(--b3);border-radius:10px;animation:fi .3s ease}
-.moa-spinner{width:12px;height:12px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin .8s linear infinite}
-
 /* STOP BUTTON */
 .sndb.stop-mode{background:#dc2626;opacity:1;animation:pulse-stop 1.2s ease-in-out infinite}
 @keyframes pulse-stop{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}50%{box-shadow:0 0 0 8px rgba(220,38,38,0)}}
