@@ -1003,6 +1003,7 @@ function loadProviderKeys() {
     var keys = sGet('provider_keys', {});
     if (keys.groq) G('KEY-GROQ').value = keys.groq;
     if (keys.gemini) G('KEY-GEMINI').value = keys.gemini;
+    if (keys.mistral) G('KEY-MISTRAL').value = keys.mistral;
     if (keys.cerebras) G('KEY-CEREBRAS').value = keys.cerebras;
     if (keys.openai) G('KEY-OPENAI').value = keys.openai;
     if (keys.anthropic) G('KEY-ANTHROPIC').value = keys.anthropic;
@@ -1020,6 +1021,7 @@ G('SAVE-KEYS').onclick = function() {
     var keys = {
         groq: G('KEY-GROQ').value.trim(),
         gemini: G('KEY-GEMINI').value.trim(),
+        mistral: G('KEY-MISTRAL').value.trim(),
         cerebras: G('KEY-CEREBRAS').value.trim(),
         openai: G('KEY-OPENAI').value.trim(),
         anthropic: G('KEY-ANTHROPIC').value.trim()
@@ -1032,8 +1034,9 @@ G('SAVE-KEYS').onclick = function() {
         model: G('CUST-MODEL').value.trim()
     });
     // Mettre a jour les cles dans main.js
-    if (window.etherDesktop && window.etherDesktop.setGroqKey && keys.groq) {
-        window.etherDesktop.setGroqKey(keys.groq);
+    if (window.etherDesktop) {
+        if (window.etherDesktop.setGroqKey && keys.groq) window.etherDesktop.setGroqKey(keys.groq);
+        if (window.etherDesktop.setMistralKey && keys.mistral) window.etherDesktop.setMistralKey(keys.mistral);
     }
     updProviderStatuses();
     var btn = G('SAVE-KEYS');
@@ -1044,7 +1047,7 @@ G('SAVE-KEYS').onclick = function() {
 
 function updProviderStatuses() {
     // Providers principaux avec cles integrees
-    var mainProviders = ['gemini', 'cerebras', 'groq'];
+    var mainProviders = ['gemini', 'mistral', 'cerebras', 'groq'];
     for (var i = 0; i < mainProviders.length; i++) {
         var p = mainProviders[i];
         var statusEl = G('PROV-' + p.toUpperCase() + '-STATUS');
@@ -1093,6 +1096,13 @@ function testProvider(provider) {
                 statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur';
             }
         });
+    } else if (provider === 'mistral') {
+        if (window.etherDesktop && window.etherDesktop.mistralChat) {
+            window.etherDesktop.mistralChat({ messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }).then(function(r) {
+                if (r.ok) statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif';
+                else statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur';
+            })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; });
+        }
     } else if (provider === 'custom') {
         // Test fournisseur personnalise
         var custUrl = G('CUST-URL').value.trim();
@@ -1693,6 +1703,8 @@ var modelNames = {
     'llama-3.1-8b-instant': 'Llama 8B',
     'gemini-2.5-flash': 'Gemini 2.5 Flash',
     'gemini-2.5-flash-lite': 'Gemini Flash Lite',
+    'mistral-large-latest': 'Mistral Large',
+    'mistral-small-latest': 'Mistral Small',
     'qwen-3-235b-a22b-instruct-2507': 'Qwen 235B (Cerebras)'
 };
 
