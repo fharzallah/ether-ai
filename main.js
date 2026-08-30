@@ -762,6 +762,129 @@ ipcMain.handle('mistral-stream', function(event, data) {
     });
 });
 
+// === IPC: FOURNISSEUR PERSONNALISE (n'importe quel endpoint compatible OpenAI) ===
+// Couvre Ollama, LM Studio, vLLM, OpenRouter, Together, DeepSeek, xAI, Azure OpenAI, etc.
+function parseCustomBaseUrl(baseUrl) {
+    var u = new (require('url').URL)(baseUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Protocole non supporte');
+    return {
+        mod: u.protocol === 'http:' ? http : https,
+        hostname: u.hostname,
+        port: u.port || undefined,
+        basePath: u.pathname.replace(/\/+$/, '')
+    };
+}
+
+ipcMain.handle('custom-chat', function(event, data) {
+    var parsed;
+    try { parsed = parseCustomBaseUrl(data.baseUrl); } catch(e) {
+        return Promise.resolve({ ok: false, error: 'URL de base invalide', provider: 'custom' });
+    }
+    var postData = JSON.stringify({
+        model: data.model,
+        messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000
+    });
+    var headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) };
+    if (data.apiKey) headers['Authorization'] = 'Bearer ' + data.apiKey;
+
+    return new Promise(function(resolve) {
+        var req = parsed.mod.request({
+            hostname: parsed.hostname, port: parsed.port,
+            path: parsed.basePath + '/chat/completions', method: 'POST', headers: headers
+        }, function(res) {
+            var body = '';
+            res.on('data', function(c) { body += c; });
+            res.on('end', function() {
+                if (res.statusCode === 200) {
+                    try {
+                        var d = JSON.parse(body);
+                        resolve({ ok: true, text: d.choices[0].message.content, model: data.model, provider: 'custom' });
+                    } catch(e) { resolve({ ok: false, error: 'Reponse invalide', provider: 'custom' }); }
+                } else {
+                    console.log('[CUSTOM] Error:', res.statusCode, body.substring(0, 200));
+                    resolve({ ok: false, error: 'Status ' + res.statusCode, provider: 'custom' });
+                }
+            });
+        });
+        req.on('error', function(e) { resolve({ ok: false, error: e.message, provider: 'custom' }); });
+        req.setTimeout(30000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'custom' }); });
+        req.write(postData);
+        req.end();
+    });
+});
+
+// === IPC: FOURNISSEUR PERSONNALISE — STREAMING ===
+ipcMain.handle('custom-stream', function(event, data) {
+    if (!checkRateLimit('custom-stream')) {
+        return Promise.resolve({ ok: false, error: 'Rate limit exceeded.', provider: 'custom' });
+    }
+    var parsed;
+    try { parsed = parseCustomBaseUrl(data.baseUrl); } catch(e) {
+        return Promise.resolve({ ok: false, error: 'URL de base invalide', provider: 'custom' });
+    }
+    var postData = JSON.stringify({
+        model: data.model,
+        messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000,
+        stream: true
+    });
+    var headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) };
+    if (data.apiKey) headers['Authorization'] = 'Bearer ' + data.apiKey;
+
+    return new Promise(function(resolve) {
+        var req = parsed.mod.request({
+            hostname: parsed.hostname, port: parsed.port,
+            path: parsed.basePath + '/chat/completions', method: 'POST', headers: headers
+        }, function(res) {
+            if (res.statusCode !== 200) {
+                var errBody = '';
+                res.on('data', function(c) { errBody += c; });
+                res.on('end', function() {
+                    resolve({ ok: false, error: 'Status ' + res.statusCode, provider: 'custom' });
+                });
+                return;
+            }
+            var fullText = '';
+            var buffer = '';
+            var _decoder = new StringDecoder('utf8');
+            res.on('data', function(chunk) {
+                buffer += _decoder.write(chunk);
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line || !line.startsWith('data: ')) continue;
+                    var jsonStr = line.substring(6);
+                    if (jsonStr === '[DONE]') continue;
+                    try {
+                        var parsedChunk = JSON.parse(jsonStr);
+                        var delta = parsedChunk.choices && parsedChunk.choices[0] && parsedChunk.choices[0].delta;
+                        if (delta && delta.content) {
+                            fullText += delta.content;
+                            if (mainWindow && !mainWindow.isDestroyed()) {
+                                mainWindow.webContents.send('groq-chunk', delta.content);
+                            }
+                        }
+                    } catch(e) { /* skip */ }
+                }
+            });
+            res.on('end', function() {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('groq-done', fullText);
+                }
+                setTimeout(function() { resolve({ ok: true, text: fullText, model: data.model, provider: 'custom' }); }, 100);
+            });
+        });
+        req.on('error', function(e) { resolve({ ok: false, error: e.message, provider: 'custom' }); });
+        req.setTimeout(30000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'custom' }); });
+        req.write(postData);
+        req.end();
+    });
+});
+
 // === IPC: Test tous les providers ===
 ipcMain.handle('test-all-providers', function() {
     var tests = [];

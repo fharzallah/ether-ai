@@ -513,6 +513,19 @@ var ETHER_ENGINE = {
             { provider: 'cerebras', model: CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream }
         ];
 
+        // Fournisseur personnalise (n'importe quel endpoint compatible OpenAI) si configure
+        var _cust = (typeof sGet === 'function') ? sGet('custom_provider', {}) : {};
+        if (_cust.url && _cust.model) {
+            if (providerHealth.custom === undefined) providerHealth.custom = true;
+            allProviders.push({
+                provider: 'custom',
+                model: _cust.model,
+                stream: function(data) {
+                    return window.etherDesktop.customStream(Object.assign({}, data, { baseUrl: _cust.url, apiKey: _cust.key }));
+                }
+            });
+        }
+
         // Reordonner: provider recommande en premier
         var startIdx = 0;
         for (var i = 0; i < allProviders.length; i++) {

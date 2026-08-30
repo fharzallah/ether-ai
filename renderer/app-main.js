@@ -1121,27 +1121,16 @@ function testProvider(provider) {
             xhrM.send(JSON.stringify({ model: 'mistral-small-latest', messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }));
         }
     } else if (provider === 'custom') {
-        // Test fournisseur personnalise
+        // Test fournisseur personnalise — via IPC (le renderer n'a pas le droit de sortir en reseau, CSP connect-src 'self')
         var custUrl = G('CUST-URL').value.trim();
         var custKey = G('KEY-CUSTOM').value.trim();
         var custModel = G('CUST-MODEL').value.trim();
         if (!custUrl || !custModel) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>URL et modele requis'; return; }
-        var testUrl = custUrl.replace(/\/+$/, '') + '/chat/completions';
-        var xhr2 = new XMLHttpRequest();
-        xhr2.open('POST', testUrl, true);
-        xhr2.setRequestHeader('Content-Type', 'application/json');
-        if (custKey) xhr2.setRequestHeader('Authorization', 'Bearer ' + custKey);
-        xhr2.timeout = 10000;
-        xhr2.onload = function() {
-            if (xhr2.status === 200) {
-                statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif — ' + esc(custModel);
-            } else {
-                statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur ' + xhr2.status;
-            }
-        };
-        xhr2.onerror = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur reseau'; };
-        xhr2.ontimeout = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Timeout'; };
-        xhr2.send(JSON.stringify({ model: custModel, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }));
+        if (!window.etherDesktop || !window.etherDesktop.customChat) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; return; }
+        window.etherDesktop.customChat({ baseUrl: custUrl, apiKey: custKey, model: custModel, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }).then(function(r) {
+            if (r.ok) statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif — ' + esc(custModel);
+            else statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>' + esc(r.error || 'Erreur');
+        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; });
     } else {
         var keyInput = G('KEY-' + provider.toUpperCase());
         var key = keyInput ? keyInput.value.trim() : '';
