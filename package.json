@@ -9,11 +9,12 @@
     "build": "electron-builder --mac",
     "build:publish": "electron-builder --mac --publish always",
     "release": "electron-builder --mac --publish always",
-    "lint": "node -c main.js && node -c preload.js && for f in renderer/*.js; do node -c \"$f\"; done"
+    "lint": "node -c main.js && node -c preload.js && for f in renderer/*.js; do node -c \"$f\"; done",
+    "test": "node test/smoke.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fadiharzallah4-cyber/ether-ai.git"
+    "url": "https://github.com/fharzallah/ether-ai.git"
   },
   "author": "ETHER Team",
   "license": "MIT",
@@ -27,7 +28,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "fadiharzallah4-cyber",
+        "owner": "fharzallah",
         "repo": "ether-ai",
         "releaseType": "release"
       }

@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+worker/.dev.vars
 
 # Config locale avec clés
 api-config.json
@@ -25,3 +26,6 @@ npm-debug.log*
 
 # Electron
 .cache/
+
+# Cloudflare Workers local dev
+worker/.wrangler/

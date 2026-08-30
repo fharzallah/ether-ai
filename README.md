@@ -1,121 +1,105 @@
-ETHER – Your Ruthless Intellectual Partner
+# ETHER — Ton partenaire intellectuel sans complaisance
 
-ETHER is an Electron-based AI chat application that routes requests intelligently across multiple API providers (Groq, Gemini, Cerebras) while maintaining a distinct personality: honest, direct, and unapologetically critical.
+ETHER est une application de chat IA de bureau (Electron) qui route intelligemment tes requêtes entre plusieurs fournisseurs d'API — **Groq, Gemini, Mistral AI et Cerebras** — tout en gardant une personnalité distincte : honnête, directe, sans complaisance.
 
-What Makes ETHER Different
+La plupart des assistants IA sont conçus pour valider tes idées. ETHER fait l'inverse : il les challenge.
 
-Most AI assistants are built to validate your ideas. ETHER does the opposite.
+## Ce qui rend ETHER différent
 
-The Ruthless Mentoring Principle
+- **Aucune fausse politesse** — La contradiction est attendue, pas évitée.
+- **Analyse critique systématique** — Une idée faible se fait démonter, avec les raisons et la correction.
+- **Longueur de réponse adaptative** — Concis quand il le faut, détaillé avec exemples concrets quand le sujet l'exige.
+- **Pas de blabla creux** — Les réponses vides et les tutoriels trop techniques sont évités par design.
 
-ETHER operates as a frankly honest intellectual partner, not a passive yes-man:
+## Fonctionnalités principales
 
-•     Active Voice & Directness – No emojis, no fluff. Straight to the point.
+- **Routing multi-provider intelligent** — Bascule entre Groq (Llama 3.3 70B, Qwen3 32B), Gemini 2.5 Flash (rotation automatique sur jusqu'à 3 clés), Mistral Large/Small et Cerebras selon la tâche.
+- **Providers personnalisés** — Possibilité de brancher un endpoint compatible OpenAI ou l'API Anthropic directement dans les réglages.
+- **Modes de conversation** — Teacher (apprentissage guidé), Créatif, Débat (argumentation contradictoire), Écriture, et modes 100% personnalisés.
+- **Génération et lecture de documents** — Import/analyse de PDF, Word (`.docx`) et Excel (`.xlsx`) via `pdf-parse`, `mammoth` et `xlsx`.
+- **Recherche web** — Intégration DuckDuckGo pour enrichir les réponses avec des résultats récents.
+- **Thèmes** — Dark, Light et Midnight.
+- **Auto-update** — Mise à jour automatique via GitHub Releases (`electron-updater`).
+- **Backend Cloudflare Workers** (optionnel) — API serverless pour l'orchestration multi-utilisateurs, l'authentification et un futur module de paiement Stripe (`worker/`).
 
-•     Critical Analysis – Every idea gets scrutinized. If it's weak, ETHER will tell you why and how to fix it.
+## Stack technique
 
-•     No False Politeness – Disagreement is expected. Contradiction is welcome.
+- **Application** — Electron (process principal `main.js`, UI en HTML/CSS/JS vanilla dans `index.html` + `renderer/`, `preload.js` en `contextBridge` avec `contextIsolation`)
+- **Providers IA** — Groq, Google Gemini, Mistral AI, Cerebras
+- **Backend optionnel** — Cloudflare Workers (`worker/`)
+- **Environnement** — Node.js 18+, clés API chargées via `.env` (jamais committées)
 
-•     Adaptive Response Length – Summary needed? Ultra-concise. Complex work? Detailed with concrete examples.
+## Démarrage
 
-•     Refuses Empty Answers – Long useless explanations and overly technical guides are rejected by design.
+### Prérequis
 
-Core Features
+- Node.js 18+
+- Au moins une clé API parmi : Groq, Gemini, Mistral, Cerebras
 
-•     Multi-API Routing – Intelligently switches between Groq, Gemini (3 accounts), Mistral and Cerebras based on task requirements
+### Installation
 
-•     Multiple Modes – Teacher mode, Creative mode, Image generation mode
-
-•     Cloudflare Workers Backend – Serverless integration for API orchestration
-
-•     Electron Desktop App – Cross-platform, local-first architecture
-
-•     Custom Personality – Adapted to your exact communication preferences
-
-Current Status
-
-v1.1.0 – In active development.
-
-•     ✅ Core routing & API integration working
-
-•     ✅ Multi-mode functionality stable
-
-•     ✅ Cloudflare Workers backend deployed
-
-•     ⚙️ DuckDuckGo search parser (fragile, planned replacement with Serper/Tavily)
-
-•     🔄 Stripe monetization planned (~€9.99/month)
-
-Tech Stack
-
-•     Frontend – Electron, React
-
-•     APIs – Groq, Google Gemini, Cerebras
-
-•     Backend – Cloudflare Workers
-
-•     Environment – Node.js with dotenv for secure API key management
-
-•     Search – DuckDuckGo (planned: Serper or Tavily API)
-
-Getting Started
-
-Prerequisites
-
-•     Node.js 16+
-
-•     Electron
-
-•     API keys for Groq, Gemini, and/or Cerebras
-
-Installation
-
-1.	Clone the repository
-```
-git clone https://github.com/fadiharzallah4-cyber/ether-ai.git
-cd ether-ai
-```
-	
-2.	Install dependencies
 ```bash
+git clone https://github.com/fharzallah/ether-ai.git
+cd ether-ai
 npm install
 ```
 
-3.	Set up environment variables
-Create a .env file:
+### Configuration
+
+Crée un fichier `.env` à la racine du projet :
+
 ```env
-GROQ_API_KEY=your_groq_key
-GEMINI_API_KEYS=key1,key2,key3
-CEREBRAS_API_KEY=your_cerebras_key
+GROQ_KEY=ta_cle_groq
+GEMINI_KEY_1=ta_cle_gemini_1
+GEMINI_KEY_2=ta_cle_gemini_2
+GEMINI_KEY_3=ta_cle_gemini_3
+MISTRAL_KEY=ta_cle_mistral
+CEREBRAS_KEY=ta_cle_cerebras
 ```
 
-4.	Start the app
+Seule une clé est nécessaire pour démarrer ; les autres providers restent simplement indisponibles tant qu'ils ne sont pas configurés.
+
+### Lancer l'app
+
 ```bash
 npm start
 ```
 
-How It Works
+### Tests
 
-ETHER routes your input based on task type, API capability, and your preferences. Just ask, and ETHER picks the right tool.
+```bash
+npm run lint   # vérifie la syntaxe de main.js, preload.js et renderer/*.js
+npm test       # smoke tests (structure, sécurité, CSP, contextBridge...)
+```
 
-Known Limitations
+### Build (macOS)
 
-•     Search relies on DuckDuckGo HTML parsing (fragile) → migration to stable API planned
+```bash
+npm run build
+```
 
-•     Stripe integration not yet implemented
+## Backend Cloudflare Workers (optionnel)
 
-•     Docs being polished
+Le dossier `worker/` contient une API serverless Cloudflare Workers pour l'orchestration multi-utilisateurs et un futur module Stripe. Voir [DEPLOY.md](DEPLOY.md) pour le guide de déploiement complet (releases GitHub, Workers, Stripe).
 
-Philosophy
+```bash
+cd worker/
+cp .dev.vars.example .dev.vars   # renseigne tes clés localement, jamais commité
+npx wrangler dev
+```
 
-ETHER rejects the idea that AI should be universally friendly. Intellectual growth requires honesty. Expect directness, expect to be challenged, expect better ideas.
+## Sécurité
 
-Contributing
+- Aucune clé API n'est codée en dur dans le code source : tout passe par des variables d'environnement (`.env`, `worker/.dev.vars`), toutes deux exclues du dépôt via `.gitignore`.
+- Le renderer tourne avec `contextIsolation` activé ; toute communication avec le process principal passe par `contextBridge` (`preload.js`).
+- Une politique CSP (Content-Security-Policy) est appliquée à la fenêtre principale.
 
-Personal project in active development. Feedback welcome.
+Si tu repères une faille de sécurité, ouvre une issue privée ou contacte directement le mainteneur plutôt que de la divulguer publiquement.
 
-License
+## Statut du projet
 
-[TBD]
+En développement actif (v1.2.0). Projet personnel — retours et contributions bienvenus via issues et pull requests.
 
-Built with ruthless honesty in mind.
+## Licence
+
+[MIT](LICENSE)
