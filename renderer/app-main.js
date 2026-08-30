@@ -1034,8 +1034,9 @@ G('SAVE-KEYS').onclick = function() {
         model: G('CUST-MODEL').value.trim()
     });
     // Mettre a jour les cles dans main.js
-    if (window.etherDesktop && window.etherDesktop.setGroqKey && keys.groq) {
-        window.etherDesktop.setGroqKey(keys.groq);
+    if (window.etherDesktop) {
+        if (window.etherDesktop.setGroqKey && keys.groq) window.etherDesktop.setGroqKey(keys.groq);
+        if (window.etherDesktop.setMistralKey && keys.mistral) window.etherDesktop.setMistralKey(keys.mistral);
     }
     if (window.etherDesktop && window.etherDesktop.setMistralKey && keys.mistral) {
         window.etherDesktop.setMistralKey(keys.mistral);

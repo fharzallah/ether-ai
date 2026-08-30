@@ -633,7 +633,7 @@ function cpTxt(btn){
         // Cloner le noeud pour ne pas modifier l'original
         var clone = textEl.cloneNode(true);
         // Supprimer les boutons et elements non-texte du clone
-        var toRemove = clone.querySelectorAll('button, .ma, .cb, .sr, .rt, .rc, .follow-suggestions, .moa-status');
+        var toRemove = clone.querySelectorAll('button, .ma, .cb, .sr, .rt, .rc, .follow-suggestions');
         for (var r = 0; r < toRemove.length; r++) toRemove[r].remove();
         txt = clone.innerText || clone.textContent || '';
     }

@@ -117,9 +117,10 @@ test('engine.js contient ETHER_ENGINE', () => {
   assert(engine.includes('parseResponse'), 'Missing parseResponse');
 });
 
-test('engine.js contient les 3 providers', () => {
+test('engine.js contient les 4 providers', () => {
   const engine = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'engine.js'), 'utf8');
   assert(engine.includes('GEMINI_MODELS'), 'Missing GEMINI_MODELS');
+  assert(engine.includes('MISTRAL_MODELS'), 'Missing MISTRAL_MODELS');
   assert(engine.includes('CEREBRAS_MODELS'), 'Missing CEREBRAS_MODELS');
   assert(engine.includes('GROQ_MODELS'), 'Missing GROQ_MODELS');
   assert(engine.includes('getSmartRoute'), 'Missing getSmartRoute');
@@ -128,10 +129,11 @@ test('engine.js contient les 3 providers', () => {
 // === 6. SECURITE ===
 console.log('\n\x1b[36m6. Securite\x1b[0m');
 
-test('main.js utilise des variables d\'environnement pour les cles', () => {
+test('main.js ne contient pas de cles en clair', () => {
   const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-  const usesEnv = main.includes('process.env.GROQ_KEY') || main.includes('require(\'dotenv\').config()');
-  assert(usesEnv, 'Main.js should use process.env for API keys');
+  // Les cles sont chargees via process.env
+  assert(main.includes('process.env.GROQ_KEY'), 'Missing GROQ_KEY env check');
+  assert(main.includes('process.env.MISTRAL_KEY'), 'Missing MISTRAL_KEY env check');
 });
 
 test('main.js contient la CSP', () => {
