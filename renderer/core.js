@@ -371,7 +371,7 @@ function applyLanguage() {
 // Cles API = UNIQUEMENT dans main.js (jamais exposees au renderer)
 
 // Defaults — seront remplacés par les valeurs de main.js via IPC au boot
-var GROQ_MODELS = { main: 'llama-3.3-70b-versatile', reasoning: 'qwen/qwen3-32b', fast: 'llama-3.1-8b-instant' };
+var GROQ_MODELS = { main: 'openai/gpt-oss-120b', reasoning: 'openai/gpt-oss-120b', fast: 'openai/gpt-oss-20b' };
 var GEMINI_MODELS = { main: 'gemini-2.5-flash', fast: 'gemini-2.5-flash-lite' };
 var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest' };
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };

@@ -44,9 +44,9 @@ var API_PORT = 3456;
 
 // === 3 PROVIDERS: Gemini + Groq + Cerebras ===
 var GROQ_MODELS = {
-    main: 'llama-3.3-70b-versatile',
-    reasoning: 'qwen/qwen3-32b',
-    fast: 'llama-3.1-8b-instant'
+    main: 'openai/gpt-oss-120b',
+    reasoning: 'openai/gpt-oss-120b',
+    fast: 'openai/gpt-oss-20b'
 };
 var GEMINI_MODELS = { main: 'gemini-2.5-flash', fast: 'gemini-2.5-flash-lite' };
 var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest' };
@@ -247,13 +247,37 @@ function duckDuckGoSearch(query) {
 }
 
 // === IPC: Appel Groq (vitesse, fallback fiable) ===
-ipcMain.handle('groq-chat', function(event, data) {
-    var postData = JSON.stringify({
-        model: data.model || GROQ_MODELS.main,
+// Les modeles gpt-oss (raisonnement natif) laissent "content" vide tant qu'on ne
+// leur donne pas reasoning_effort — sans ca ils epuisent max_tokens en reflexion interne.
+function buildGroqBody(model, data) {
+    var body = {
+        model: model,
         messages: data.messages,
         temperature: data.temperature || 0.6,
         max_tokens: data.max_tokens || 3000
-    });
+    };
+    if (model.indexOf('gpt-oss') !== -1) body.reasoning_effort = data.reasoningEffort || 'medium';
+    return body;
+}
+
+function logProviderError(tag, status, body) {
+    var isModelNotFound = body.indexOf('model_not_found') !== -1 || body.indexOf('does not exist') !== -1;
+    if (isModelNotFound) {
+        console.log('[' + tag + '] MODELE PERIME (' + status + ') — le modele n\'existe plus chez le provider, mettre a jour son ID:', body.substring(0, 200));
+    } else if (status === 401 || status === 403) {
+        console.log('[' + tag + '] CLE INVALIDE (' + status + '):', body.substring(0, 200));
+    } else if (status === 402) {
+        console.log('[' + tag + '] PAIEMENT REQUIS (' + status + ') — hors du tier gratuit:', body.substring(0, 200));
+    } else if (status === 429) {
+        console.log('[' + tag + '] QUOTA/RATE LIMIT (' + status + '):', body.substring(0, 200));
+    } else {
+        console.log('[' + tag + '] Erreur (' + status + '):', body.substring(0, 200));
+    }
+}
+
+ipcMain.handle('groq-chat', function(event, data) {
+    var model = data.model || GROQ_MODELS.main;
+    var postData = JSON.stringify(buildGroqBody(model, data));
     return httpsRequest({
         hostname: 'api.groq.com',
         path: '/openai/v1/chat/completions',
@@ -268,10 +292,10 @@ ipcMain.handle('groq-chat', function(event, data) {
             var d = JSON.parse(res.body);
             return { ok: true, text: d.choices[0].message.content, model: data.model };
         }
-        console.log('[CHAT] Error status:', res.status, res.body.substring(0, 200));
+        logProviderError('GROQ', res.status, res.body);
         return { ok: false, error: 'Status ' + res.status };
     }).catch(function(e) {
-        console.log('[CHAT] Exception:', e.message);
+        console.log('[GROQ] Exception:', e.message);
         return { ok: false, error: e.message };
     });
 });
@@ -292,13 +316,7 @@ ipcMain.handle('groq-stream', function(event, data) {
         return Promise.resolve({ ok: false, error: 'Rate limit exceeded. Please wait.' });
     }
     console.log('[STREAM] Starting stream, model:', data.model);
-    var postData = JSON.stringify({
-        model: data.model || GROQ_MODELS.main,
-        messages: data.messages,
-        temperature: data.temperature || 0.6,
-        max_tokens: data.max_tokens || 3000,
-        stream: true
-    });
+    var postData = JSON.stringify(Object.assign(buildGroqBody(data.model || GROQ_MODELS.main, data), { stream: true }));
 
     return new Promise(function(resolve) {
         var req = https.request({
@@ -629,7 +647,7 @@ ipcMain.handle('cerebras-chat', function(event, data) {
             var d = JSON.parse(res.body);
             return { ok: true, text: d.choices[0].message.content, model: data.model, provider: 'cerebras' };
         }
-        console.log('[CEREBRAS] Error:', res.status, res.body.substring(0, 200));
+        logProviderError('CEREBRAS', res.status, res.body);
         return { ok: false, error: 'Status ' + res.status, provider: 'cerebras' };
     })['catch'](function(e) {
         console.log('[CEREBRAS] Exception:', e.message);
@@ -729,7 +747,7 @@ ipcMain.handle('mistral-chat', function(event, data) {
             var d = JSON.parse(res.body);
             return { ok: true, text: d.choices[0].message.content, model: data.model, provider: 'mistral' };
         }
-        console.log('[MISTRAL] Error:', res.status, res.body.substring(0, 200));
+        logProviderError('MISTRAL', res.status, res.body);
         return { ok: false, error: 'Status ' + res.status, provider: 'mistral' };
     })['catch'](function(e) {
         console.log('[MISTRAL] Exception:', e.message);
