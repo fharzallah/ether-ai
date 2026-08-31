@@ -146,10 +146,13 @@ try { loadApiConfig(); } catch(e) { /* will retry after whenReady */ }
 function httpsRequest(options, postData) {
     return new Promise(function(resolve, reject) {
         var req = https.request(options, function(res) {
-            var body = '';
-            res.on('data', function(c) { body += c; });
+            // Accumuler les Buffer bruts et decoder une seule fois a la fin — decoder chaque
+            // chunk individuellement (body += c) coupe les caracteres UTF-8 multi-octets
+            // (accents, tirets typographiques, symboles) a cheval sur deux paquets TCP.
+            var chunks = [];
+            res.on('data', function(c) { chunks.push(c); });
             res.on('end', function() {
-                resolve({ status: res.statusCode, body: body, headers: res.headers });
+                resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString('utf8'), headers: res.headers });
             });
         });
         req.on('error', reject);
@@ -162,10 +165,11 @@ function httpsRequest(options, postData) {
 function httpRequest(options, postData, timeoutMs) {
     return new Promise(function(resolve, reject) {
         var req = http.request(options, function(res) {
-            var body = '';
-            res.on('data', function(c) { body += c; });
+            // Meme raison qu'au-dessus: accumuler en Buffer, decoder une seule fois.
+            var chunks = [];
+            res.on('data', function(c) { chunks.push(c); });
             res.on('end', function() {
-                resolve({ status: res.statusCode, body: body, headers: res.headers });
+                resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString('utf8'), headers: res.headers });
             });
         });
         req.on('error', reject);
@@ -179,10 +183,10 @@ function httpGet(url) {
     return new Promise(function(resolve, reject) {
         var mod = url.indexOf('https') === 0 ? https : http;
         mod.get(url, function(res) {
-            var body = '';
-            res.on('data', function(c) { body += c; });
+            var chunks = [];
+            res.on('data', function(c) { chunks.push(c); });
             res.on('end', function() {
-                try { resolve(JSON.parse(body)); } catch(e) { resolve(null); }
+                try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch(e) { resolve(null); }
             });
         }).on('error', function() { resolve(null); })
           .setTimeout(6000, function() { resolve(null); });
@@ -201,9 +205,9 @@ function httpGetRaw(url, headers) {
             headers: headers || { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
         };
         mod.get(url, { headers: opts.headers }, function(res) {
-            var body = '';
-            res.on('data', function(c) { body += c; });
-            res.on('end', function() { resolve(body); });
+            var chunks = [];
+            res.on('data', function(c) { chunks.push(c); });
+            res.on('end', function() { resolve(Buffer.concat(chunks).toString('utf8')); });
         }).on('error', function() { resolve(''); })
           .setTimeout(8000, function() { resolve(''); });
     });
@@ -958,9 +962,10 @@ ipcMain.handle('custom-chat', function(event, data) {
             hostname: parsed.hostname, port: parsed.port,
             path: parsed.basePath + '/chat/completions', method: 'POST', headers: headers
         }, function(res) {
-            var body = '';
-            res.on('data', function(c) { body += c; });
+            var chunks = [];
+            res.on('data', function(c) { chunks.push(c); });
             res.on('end', function() {
+                var body = Buffer.concat(chunks).toString('utf8');
                 if (res.statusCode === 200) {
                     try {
                         var d = JSON.parse(body);
