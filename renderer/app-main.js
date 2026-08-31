@@ -209,7 +209,7 @@ function updCont() {
     items.sort(function(a, b) { return b.ts - a.ts; });
 
     var cl = G('CL');
-    if (!items.length) { cl.innerHTML = '<div class="il-e">Aucun contenu</div>'; return; }
+    if (!items.length) { cl.innerHTML = '<div class="il-e" data-i18n="sb_no_content">' + t('sb_no_content') + '</div>'; return; }
     var h = '';
     for (var i = 0; i < Math.min(items.length, 30); i++) {
         var it = items[i];
