@@ -12,7 +12,14 @@ var shell = electron.shell;
 var path = require('path');
 var fs = require('fs');
 // Charger les variables d'environnement depuis .env (jamais commité)
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+// En build packagee, __dirname est dans app.asar (lecture seule, .env n'y est jamais inclus) —
+// on retombe sur Contents/Resources/.env si l'utilisateur l'y a depose.
+var envPath = path.join(__dirname, '.env');
+if (!fs.existsSync(envPath) && process.resourcesPath) {
+    var packagedEnvPath = path.join(process.resourcesPath, '.env');
+    if (fs.existsSync(packagedEnvPath)) envPath = packagedEnvPath;
+}
+require('dotenv').config({ path: envPath });
 var http = require('http');
 var https = require('https');
 var StringDecoder = require('string_decoder').StringDecoder;
