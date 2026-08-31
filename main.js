@@ -3,6 +3,21 @@ var app = electron.app;
 var BrowserWindow = electron.BrowserWindow;
 var ipcMain = electron.ipcMain;
 var dialog = electron.dialog;
+
+// === VERROU MONO-INSTANCE ===
+// Sans ca, un double-clic ou un clic sur le Dock pendant le demarrage lance
+// une deuxieme instance complete au lieu de refocaliser la fenetre existante.
+if (!app.requestSingleInstanceLock()) {
+    app.quit();
+} else {
+    app.on('second-instance', function() {
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
+    });
+}
+
 var autoUpdater = null;
 try { autoUpdater = require('electron-updater').autoUpdater; } catch(e) { /* not available in dev */ }
 var pdfParse = require('pdf-parse');
@@ -1641,9 +1656,15 @@ app.whenReady().then(function() {
         });
 
         // Verifier les mises a jour toutes les 4 heures
-        try { autoUpdater.checkForUpdatesAndNotify(); } catch(e) { console.log('[UPDATE] Check failed:', e.message); }
+        try {
+            var _updCheck = autoUpdater.checkForUpdatesAndNotify();
+            if (_updCheck && _updCheck['catch']) _updCheck['catch'](function(e) { console.log('[UPDATE] Check failed:', e.message); });
+        } catch(e) { console.log('[UPDATE] Check failed:', e.message); }
         setInterval(function() {
-            try { autoUpdater.checkForUpdatesAndNotify(); } catch(e) {}
+            try {
+                var _c = autoUpdater.checkForUpdatesAndNotify();
+                if (_c && _c['catch']) _c['catch'](function() {});
+            } catch(e) {}
         }, 4 * 60 * 60 * 1000);
     }
 });

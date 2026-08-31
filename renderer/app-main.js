@@ -1736,7 +1736,27 @@ G('MODEL-SEL-BTN').onclick = function(e) {
     drop.classList.toggle('hidden');
     // Charger les modeles utilisateur
     populateUserModels();
+    refreshModelPickerStatus();
 };
+
+// Marque en direct les modeles dont le provider est actuellement en panne/rate-limit
+// (le picker liste tout le monde en permanence — seul le statut change)
+function refreshModelPickerStatus() {
+    var opts = document.querySelectorAll('.model-opt[data-provider]');
+    for (var i = 0; i < opts.length; i++) {
+        var btn = opts[i];
+        var provider = btn.getAttribute('data-provider');
+        if (provider === 'auto' || provider === 'custom') continue;
+        var sub = btn.children[1];
+        if (!sub) continue;
+        if (!btn.hasAttribute('data-sub-orig')) btn.setAttribute('data-sub-orig', sub.textContent);
+        var healthy = providerStatus[provider] !== false;
+        btn.classList.toggle('model-opt-down', !healthy);
+        sub.textContent = healthy ? btn.getAttribute('data-sub-orig') : 'Indisponible maintenant';
+        sub.style.color = healthy ? '' : '#ef4444';
+        sub.style.fontWeight = healthy ? '' : '700';
+    }
+}
 
 // Fermer le dropdown quand on clique ailleurs
 document.addEventListener('click', function(e) {
