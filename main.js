@@ -54,7 +54,11 @@ var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };
 // Ollama — modele local, tourne sur la machine, jamais de quota/panne reseau
 var OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
-var OLLAMA_MODELS = { main: process.env.OLLAMA_MODEL || 'llama3.2:3b' };
+var OLLAMA_MODELS = {
+    main: process.env.OLLAMA_MODEL || 'llama3.2:3b',
+    fast: process.env.OLLAMA_MODEL_FAST || 'llama3.2:3b',
+    reasoning: process.env.OLLAMA_MODEL_REASONING || 'qwen2.5:3b-instruct'
+};
 
 var apiKeyStore = null;
 var networkMode = false;
@@ -155,7 +159,7 @@ function httpsRequest(options, postData) {
     });
 }
 
-function httpRequest(options, postData) {
+function httpRequest(options, postData, timeoutMs) {
     return new Promise(function(resolve, reject) {
         var req = http.request(options, function(res) {
             var body = '';
@@ -165,7 +169,7 @@ function httpRequest(options, postData) {
             });
         });
         req.on('error', reject);
-        req.setTimeout(25000, function() { req.destroy(); reject(new Error('Timeout')); });
+        req.setTimeout(timeoutMs || 25000, function() { req.destroy(); reject(new Error('Timeout')); });
         if (postData) req.write(postData);
         req.end();
     });
@@ -807,19 +811,23 @@ ipcMain.handle('mistral-stream', function(event, data) {
 var _ollamaUrlParsed = new (require('url').URL)(OLLAMA_URL);
 
 ipcMain.handle('ollama-chat', function(event, data) {
+    var maxTokens = data.max_tokens || 3000;
     var postData = JSON.stringify({
         model: data.model || OLLAMA_MODELS.main,
         messages: data.messages,
         temperature: data.temperature || 0.6,
-        max_tokens: data.max_tokens || 3000
+        max_tokens: maxTokens
     });
+    // Inference locale lente sur machine modeste — timeout proportionnel a la longueur demandee
+    // (~10 tok/s en pratique sur M1 8Go), avec un plancher et un plafond raisonnables.
+    var ollamaTimeoutMs = Math.min(360000, Math.max(60000, maxTokens * 200));
     return httpRequest({
         hostname: _ollamaUrlParsed.hostname,
         port: _ollamaUrlParsed.port || 11434,
         path: '/v1/chat/completions',
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
-    }, postData).then(function(res) {
+    }, postData, ollamaTimeoutMs).then(function(res) {
         if (res.status === 200) {
             var d = JSON.parse(res.body);
             return { ok: true, text: d.choices[0].message.content, model: data.model || OLLAMA_MODELS.main, provider: 'ollama' };
@@ -893,7 +901,8 @@ ipcMain.handle('ollama-stream', function(event, data) {
             console.log('[OLLAMA] Stream exception (Ollama non demarre?):', e.message);
             resolve({ ok: false, error: e.message, provider: 'ollama' });
         });
-        req.setTimeout(60000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'ollama' }); });
+        // Timeout d'inactivite (pas la duree totale) — se reinitialise a chaque chunk recu
+        req.setTimeout(120000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'ollama' }); });
         req.write(postData);
         req.end();
     });

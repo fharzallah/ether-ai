@@ -65,10 +65,11 @@ Seule une clé est nécessaire pour démarrer ; les autres providers restent sim
 ```bash
 brew install ollama
 brew services start ollama
-ollama pull llama3.2:3b
+ollama pull llama3.2:3b          # rapide, usage general
+ollama pull qwen2.5:3b-instruct  # raisonnement (analyse, critique, mode Teacher/Debat)
 ```
 
-Aucune configuration côté ETHER : si un serveur Ollama tourne sur `http://127.0.0.1:11434`, il est détecté et utilisé automatiquement comme dernier recours quand les providers cloud sont en échec. Pour changer d'URL ou de modèle : variables d'environnement `OLLAMA_URL` et `OLLAMA_MODEL` dans `.env`.
+Aucune configuration côté ETHER : si un serveur Ollama tourne sur `http://127.0.0.1:11434`, il est détecté et utilisé automatiquement comme dernier recours quand les providers cloud sont en échec — y compris dans le pipeline "Réflexion approfondie" (Décomposition/Analyse/Critique/Synthèse), qui bascule sur Ollama à chaque étape si besoin. Pour changer d'URL ou de modèles : variables d'environnement `OLLAMA_URL`, `OLLAMA_MODEL`, `OLLAMA_MODEL_FAST`, `OLLAMA_MODEL_REASONING` dans `.env`.
 
 ### Lancer l'app
 

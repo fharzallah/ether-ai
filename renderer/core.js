@@ -375,7 +375,7 @@ var GROQ_MODELS = { main: 'llama-3.3-70b-versatile', reasoning: 'qwen/qwen3-32b'
 var GEMINI_MODELS = { main: 'gemini-2.5-flash', fast: 'gemini-2.5-flash-lite' };
 var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest' };
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };
-var OLLAMA_MODELS = { main: 'llama3.2:3b' };
+var OLLAMA_MODELS = { main: 'llama3.2:3b', fast: 'llama3.2:3b', reasoning: 'qwen2.5:3b-instruct' };
 
 // Provider availability tracking
 var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true, ollama: true };

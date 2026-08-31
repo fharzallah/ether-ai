@@ -520,7 +520,7 @@ var ETHER_ENGINE = {
             { provider: 'groq',     model: GROQ_MODELS.main,     stream: window.etherDesktop.groqStream },
             { provider: 'cerebras', model: CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream },
             // Ollama en dernier: local, plus lent, mais ne depend d'aucun quota/cle/reseau
-            { provider: 'ollama',   model: OLLAMA_MODELS.main,   stream: window.etherDesktop.ollamaStream }
+            { provider: 'ollama',   model: (self.currentMode === 'teacher' || self.currentMode === 'debate') ? OLLAMA_MODELS.reasoning : OLLAMA_MODELS.main,   stream: window.etherDesktop.ollamaStream }
         ];
 
         // Fournisseur personnalise (n'importe quel endpoint compatible OpenAI) si configure
@@ -554,7 +554,7 @@ var ETHER_ENGINE = {
                     model: OLLAMA_MODELS.main,
                     messages: requestData.messages,
                     temperature: requestData.temperature,
-                    max_tokens: requestData.max_tokens
+                    max_tokens: Math.min(requestData.max_tokens || 3000, 2500)
                 }).then(function(r) {
                     if (r.ok && r.text) {
                         var ct = (r.text || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
@@ -1224,7 +1224,11 @@ var ETHER_ENGINE = {
             ];
             var analyseOpts = { messages: analyseMsgs, temperature: 0.5, max_tokens: 6000 };
 
-            // Essayer Gemini d'abord, puis Groq, puis Cerebras
+            // Essayer Gemini d'abord, puis Groq, puis Cerebras, puis Ollama en dernier recours (jamais de quota)
+            function tryOllamaAnalyse() {
+                // max_tokens reduit: inference locale lente (~10 tok/s), 6000 tokens prendrait ~10 minutes
+                return window.etherDesktop.ollamaChat(Object.assign({}, analyseOpts, { model: OLLAMA_MODELS.reasoning, max_tokens: 2000 }))['catch'](function() { return { ok: false }; });
+            }
             function tryAnalyse() {
                 if (providerStatus.gemini) {
                     analyseOpts.model = GEMINI_MODELS.main;
@@ -1232,19 +1236,35 @@ var ETHER_ENGINE = {
                         if (r.ok && r.text) return r;
                         // Gemini a echoue (429) — fallback Groq
                         analyseOpts.model = GROQ_MODELS.main;
-                        return window.etherDesktop.groqChat(analyseOpts);
+                        return window.etherDesktop.groqChat(analyseOpts).then(function(r2) {
+                            if (r2.ok && r2.text) return r2;
+                            return tryOllamaAnalyse();
+                        })['catch'](tryOllamaAnalyse);
                     })['catch'](function() {
                         analyseOpts.model = GROQ_MODELS.main;
-                        return window.etherDesktop.groqChat(analyseOpts);
+                        return window.etherDesktop.groqChat(analyseOpts).then(function(r2) {
+                            if (r2.ok && r2.text) return r2;
+                            return tryOllamaAnalyse();
+                        })['catch'](tryOllamaAnalyse);
                     });
                 }
                 analyseOpts.model = GROQ_MODELS.main;
-                return window.etherDesktop.groqChat(analyseOpts)['catch'](function() {
+                return window.etherDesktop.groqChat(analyseOpts).then(function(r) {
+                    if (r.ok && r.text) return r;
                     if (providerStatus.cerebras) {
                         analyseOpts.model = CEREBRAS_MODELS.main;
-                        return window.etherDesktop.cerebrasChat(analyseOpts);
+                        return window.etherDesktop.cerebrasChat(analyseOpts).then(function(r2) {
+                            if (r2.ok && r2.text) return r2;
+                            return tryOllamaAnalyse();
+                        })['catch'](tryOllamaAnalyse);
                     }
-                    return { ok: false };
+                    return tryOllamaAnalyse();
+                })['catch'](function() {
+                    if (providerStatus.cerebras) {
+                        analyseOpts.model = CEREBRAS_MODELS.main;
+                        return window.etherDesktop.cerebrasChat(analyseOpts)['catch'](tryOllamaAnalyse);
+                    }
+                    return tryOllamaAnalyse();
                 });
             }
             return tryAnalyse();
@@ -1253,20 +1273,27 @@ var ETHER_ENGINE = {
             mainAnalysis = (analyseRes.ok && analyseRes.text) ? analyseRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : '';
             setStep(3, 'done', mainAnalysis ? 'Analyse generee (' + mainAnalysis.length + ' car.)' : 'Analyse partielle');
 
-            // ETAPE 4: Critique (Groq Qwen3 32B, fallback Groq Llama 70B)
+            // ETAPE 4: Critique (Groq Qwen3 32B, fallback Ollama en local)
             setStep(4, 'active', 'Verification des biais et erreurs...');
             var critiqueContent = mainAnalysis || userMessage; // Si pas d'analyse, critiquer la question directement
+            var critiqueMsgs = [
+                { role: 'system', content: 'Tu es un critique rigoureux. On te donne une analyse. Trouve les failles, biais, manques, erreurs factuelles ou logiques. Sois precis et constructif. Si l\'analyse est bonne, dis-le mais suggere des ameliorations. 3-5 points maximum. ' + langName + '.' },
+                { role: 'user', content: 'Question: ' + userMessage + '\n\nAnalyse a critiquer:\n' + critiqueContent.substring(0, 3000) }
+            ];
+            function ollamaCritiqueFallback() {
+                return window.etherDesktop.ollamaChat({ model: OLLAMA_MODELS.reasoning, messages: critiqueMsgs, temperature: 0.4, max_tokens: 1000 })['catch'](function() {
+                    // Fallback: pas de critique, on passe direct a la synthese
+                    return { ok: false, text: '' };
+                });
+            }
             return window.etherDesktop.groqChat({
                 model: GROQ_MODELS.reasoning,
-                messages: [
-                    { role: 'system', content: 'Tu es un critique rigoureux. On te donne une analyse. Trouve les failles, biais, manques, erreurs factuelles ou logiques. Sois precis et constructif. Si l\'analyse est bonne, dis-le mais suggere des ameliorations. 3-5 points maximum. ' + langName + '.' },
-                    { role: 'user', content: 'Question: ' + userMessage + '\n\nAnalyse a critiquer:\n' + critiqueContent.substring(0, 3000) }
-                ],
+                messages: critiqueMsgs,
                 temperature: 0.4, max_tokens: 1000
-            })['catch'](function() {
-                // Fallback: pas de critique, on passe direct a la synthese
-                return { ok: false, text: '' };
-            });
+            }).then(function(r) {
+                if (r.ok && r.text) return r;
+                return ollamaCritiqueFallback();
+            })['catch'](ollamaCritiqueFallback);
 
         }).then(function(critiqueRes) {
             critique = (critiqueRes.ok && critiqueRes.text) ? critiqueRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : '';
@@ -1280,22 +1307,26 @@ var ETHER_ENGINE = {
             ];
             var synthOpts = { messages: synthMsgs, temperature: 0.5, max_tokens: 8000 };
 
+            function tryOllamaSynth() {
+                // max_tokens reduit: inference locale lente (~10 tok/s), 8000 tokens prendrait ~13 minutes
+                return window.etherDesktop.ollamaChat(Object.assign({}, synthOpts, { model: OLLAMA_MODELS.main, max_tokens: 2500 }))['catch'](function() { return { ok: false }; });
+            }
+            function tryGroqThenOllamaSynth() {
+                synthOpts.model = GROQ_MODELS.main;
+                return window.etherDesktop.groqChat(synthOpts).then(function(r) {
+                    if (r.ok && r.text) return r;
+                    return tryOllamaSynth();
+                })['catch'](tryOllamaSynth);
+            }
             function trySynth() {
                 if (providerStatus.gemini) {
                     synthOpts.model = GEMINI_MODELS.main;
                     return window.etherDesktop.geminiChat(synthOpts).then(function(r) {
                         if (r.ok && r.text) return r;
-                        synthOpts.model = GROQ_MODELS.main;
-                        return window.etherDesktop.groqChat(synthOpts);
-                    })['catch'](function() {
-                        synthOpts.model = GROQ_MODELS.main;
-                        return window.etherDesktop.groqChat(synthOpts);
-                    });
+                        return tryGroqThenOllamaSynth();
+                    })['catch'](tryGroqThenOllamaSynth);
                 }
-                synthOpts.model = GROQ_MODELS.main;
-                return window.etherDesktop.groqChat(synthOpts)['catch'](function() {
-                    return { ok: false };
-                });
+                return tryGroqThenOllamaSynth();
             }
             return trySynth();
 
