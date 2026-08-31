@@ -1,6 +1,6 @@
 # ETHER — Ton partenaire intellectuel sans complaisance
 
-ETHER est une application de chat IA de bureau (Electron) qui route intelligemment tes requêtes entre plusieurs fournisseurs d'API — **Groq, Gemini, Mistral AI et Cerebras** — plus un modèle local via **Ollama** en dernier recours, tout en gardant une personnalité distincte : honnête, directe, sans complaisance.
+ETHER est une application de chat IA de bureau (Electron) qui route intelligemment tes requêtes entre plusieurs fournisseurs d'API — **Groq, Gemini et Mistral AI** — plus un modèle local via **Ollama** en dernier recours, tout en gardant une personnalité distincte : honnête, directe, sans complaisance.
 
 La plupart des assistants IA sont conçus pour valider tes idées. ETHER fait l'inverse : il les challenge.
 
@@ -13,9 +13,10 @@ La plupart des assistants IA sont conçus pour valider tes idées. ETHER fait l'
 
 ## Fonctionnalités principales
 
-- **Routing multi-provider intelligent** — Bascule entre Groq (Llama 3.3 70B, Qwen3 32B), Gemini 2.5 Flash (rotation automatique sur jusqu'à 3 clés), Mistral Large/Small et Cerebras selon la tâche.
-- **Fallback local via Ollama** — Si tous les providers cloud sont indisponibles (quota épuisé, panne réseau), ETHER bascule automatiquement sur un modèle tournant en local. Aucune clé, aucun quota, ne dépend de rien d'externe.
-- **Providers personnalisés** — Possibilité de brancher un endpoint compatible OpenAI ou l'API Anthropic directement dans les réglages.
+- **Routing multi-provider intelligent** — Bascule entre Groq (GPT-OSS 120B/20B), Gemini 2.5 Flash (rotation automatique sur jusqu'à 3 clés) et Mistral Large/Small selon la tâche. Cerebras reste dans le code comme fallback possible, mais son tier gratuit actuel ne couvre plus aucun modèle utilisable (paiement requis ou quota systématiquement dépassé) — ETHER le détecte et l'ignore automatiquement.
+- **Fallback local via Ollama** — Si tous les providers cloud sont indisponibles (quota épuisé, panne réseau), ETHER bascule automatiquement sur un modèle tournant en local (Llama 3.2 3B + Qwen2.5 3B pour le raisonnement) — y compris dans le pipeline "Réflexion approfondie". Aucune clé, aucun quota, ne dépend de rien d'externe.
+- **Réflexion approfondie** — Pipeline en 5 étapes (Décomposition → Recherche web → Analyse → Critique → Synthèse) pour les questions qui demandent plus qu'une réponse directe.
+- **Providers personnalisés** — Possibilité de brancher un endpoint compatible OpenAI (LM Studio, vLLM, OpenRouter, Together AI...) ou l'API Anthropic directement dans les réglages.
 - **Modes de conversation** — Teacher (apprentissage guidé), Créatif, Débat (argumentation contradictoire), Écriture, et modes 100% personnalisés.
 - **Génération et lecture de documents** — Import/analyse de PDF, Word (`.docx`) et Excel (`.xlsx`) via `pdf-parse`, `mammoth` et `xlsx`.
 - **Recherche web** — Intégration DuckDuckGo pour enrichir les réponses avec des résultats récents.
@@ -26,7 +27,7 @@ La plupart des assistants IA sont conçus pour valider tes idées. ETHER fait l'
 ## Stack technique
 
 - **Application** — Electron (process principal `main.js`, UI en HTML/CSS/JS vanilla dans `index.html` + `renderer/`, `preload.js` en `contextBridge` avec `contextIsolation`)
-- **Providers IA** — Groq, Google Gemini, Mistral AI, Cerebras, Ollama (local, fallback)
+- **Providers IA** — Groq, Google Gemini, Mistral AI, Ollama (local, fallback). Cerebras present dans le code mais non recommande actuellement.
 - **Backend optionnel** — Cloudflare Workers (`worker/`)
 - **Environnement** — Node.js 18+, clés API chargées via `.env` (jamais committées)
 
@@ -35,7 +36,7 @@ La plupart des assistants IA sont conçus pour valider tes idées. ETHER fait l'
 ### Prérequis
 
 - Node.js 18+
-- Au moins une clé API parmi : Groq, Gemini, Mistral, Cerebras — ou [Ollama](https://ollama.com) installé en local (aucune clé requise)
+- Au moins une clé API parmi : Groq, Gemini, Mistral — ou [Ollama](https://ollama.com) installé en local (aucune clé requise)
 
 ### Installation
 
