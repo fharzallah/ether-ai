@@ -1074,6 +1074,15 @@ function updProviderStatuses() {
             opEl.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Non configure';
         }
     }
+    // Ollama (local — pas de cle, statut = sait juste si le serveur repond)
+    var ollamaStatusEl = G('PROV-OLLAMA-STATUS');
+    if (ollamaStatusEl) {
+        if (providerStatus.ollama) {
+            ollamaStatusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif';
+        } else {
+            ollamaStatusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre';
+        }
+    }
     // Custom
     var cust = sGet('custom_provider', {});
     var custStatus = G('PROV-CUSTOM-STATUS');
@@ -1120,6 +1129,12 @@ function testProvider(provider) {
             xhrM.onerror = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; };
             xhrM.send(JSON.stringify({ model: 'mistral-small-latest', messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }));
         }
+    } else if (provider === 'ollama') {
+        if (!window.etherDesktop || !window.etherDesktop.ollamaChat) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; return; }
+        window.etherDesktop.ollamaChat({ model: 'llama3.2:3b', messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }).then(function(r) {
+            if (r.ok) { statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif'; providerStatus.ollama = true; }
+            else { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; }
+        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; });
     } else if (provider === 'custom') {
         // Test fournisseur personnalise — via IPC (le renderer n'a pas le droit de sortir en reseau, CSP connect-src 'self')
         var custUrl = G('CUST-URL').value.trim();
@@ -1711,7 +1726,8 @@ var modelNames = {
     'gemini-2.5-flash-lite': 'Gemini Flash Lite',
     'mistral-large-latest': 'Mistral Large',
     'mistral-small-latest': 'Mistral Small',
-    'qwen-3-235b-a22b-instruct-2507': 'Qwen 235B (Cerebras)'
+    'qwen-3-235b-a22b-instruct-2507': 'Qwen 235B (Cerebras)',
+    'llama3.2:3b': 'Llama 3.2 3B (Ollama)'
 };
 
 G('MODEL-SEL-BTN').onclick = function(e) {

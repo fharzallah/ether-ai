@@ -34,7 +34,7 @@ function detectComplexity(msg) {
 }
 
 // === HEALTH CHECK DES PROVIDERS ===
-var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true };
+var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true, ollama: true };
 function checkProvidersHealth() {
     if (!window.etherDesktop || !window.etherDesktop.testAllProviders) return;
     window.etherDesktop.testAllProviders().then(function(results) {
@@ -199,10 +199,10 @@ var ETHER_ENGINE = {
                 });
             }
             return self.callGroq(userMessage, null, false)['catch'](function() {
-                // Fallback ultime: appel NON-streaming a Groq (ne fail jamais)
-                console.log('[ENGINE] Streaming failed — fallback non-streaming Groq');
-                return window.etherDesktop.groqChat({
-                    model: GROQ_MODELS.main,
+                // Fallback ultime: appel NON-streaming a Ollama en local (ne depend d'aucun quota, ne fail jamais)
+                console.log('[ENGINE] Streaming failed — fallback non-streaming Ollama (local)');
+                return window.etherDesktop.ollamaChat({
+                    model: OLLAMA_MODELS.main,
                     messages: [{ role: 'system', content: self.getSystemPrompt(false) }].concat(
                         self.conversationHistory.slice(-10).map(function(h) { return { role: h.role === 'user' ? 'user' : 'assistant', content: h.content }; })
                     ).concat([{ role: 'user', content: userMessage }]),
@@ -341,8 +341,15 @@ var ETHER_ENGINE = {
             temperature: 0.6, max_tokens: 3000
         })['catch'](function() { return { ok: false }; });
 
+        // 4. Ollama en local (voix independante, jamais indisponible)
+        var ollamaP = providerStatus.ollama ? window.etherDesktop.ollamaChat({
+            model: OLLAMA_MODELS.main,
+            messages: collabMsgs,
+            temperature: 0.6, max_tokens: 3000
+        })['catch'](function() { return { ok: false }; }) : Promise.resolve({ ok: false });
+
         var received = 0;
-        var totalExpected = 1 + (providerStatus.gemini ? 1 : 0) + (providerStatus.mistral ? 1 : 0);
+        var totalExpected = 1 + (providerStatus.gemini ? 1 : 0) + (providerStatus.mistral ? 1 : 0) + (providerStatus.ollama ? 1 : 0);
 
         function updateProgress(name) {
             received++;
@@ -359,10 +366,11 @@ var ETHER_ENGINE = {
         geminiP = geminiP.then(function(r) { if (r.ok) updateProgress('Gemini'); return r; });
         mistralP = mistralP.then(function(r) { if (r.ok) updateProgress('Mistral'); return r; });
         groqP = groqP.then(function(r) { if (r.ok) updateProgress('Groq'); return r; });
+        ollamaP = ollamaP.then(function(r) { if (r.ok) updateProgress('Ollama'); return r; });
 
-        return Promise.all([geminiP, mistralP, groqP]).then(function(results) {
+        return Promise.all([geminiP, mistralP, groqP, ollamaP]).then(function(results) {
             var responses = [];
-            var providerNames = ['Gemini 2.5 Flash', 'Mistral Large', 'Llama 3.3 70B (Groq)'];
+            var providerNames = ['Gemini 2.5 Flash', 'Mistral Large', 'Llama 3.3 70B (Groq)', 'Llama 3.2 (Ollama local)'];
             for (var r = 0; r < results.length; r++) {
                 if (results[r].ok && results[r].text) {
                     var cleanText = (results[r].text || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
@@ -510,7 +518,9 @@ var ETHER_ENGINE = {
             { provider: 'mistral',  model: MISTRAL_MODELS.main,  stream: window.etherDesktop.mistralStream },
             { provider: 'gemini',   model: GEMINI_MODELS.main,   stream: window.etherDesktop.geminiStream },
             { provider: 'groq',     model: GROQ_MODELS.main,     stream: window.etherDesktop.groqStream },
-            { provider: 'cerebras', model: CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream }
+            { provider: 'cerebras', model: CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream },
+            // Ollama en dernier: local, plus lent, mais ne depend d'aucun quota/cle/reseau
+            { provider: 'ollama',   model: OLLAMA_MODELS.main,   stream: window.etherDesktop.ollamaStream }
         ];
 
         // Fournisseur personnalise (n'importe quel endpoint compatible OpenAI) si configure
@@ -538,10 +548,10 @@ var ETHER_ENGINE = {
 
         function tryStream(idx) {
             if (idx >= cascade.length) {
-                // Fallback ultime: Groq non-streaming (ne fail jamais)
-                console.log('[ENGINE] All streams failed — fallback non-streaming Groq');
-                return window.etherDesktop.groqChat({
-                    model: GROQ_MODELS.main,
+                // Fallback ultime: Ollama en local non-streaming (ne depend d'aucun quota, ne fail jamais)
+                console.log('[ENGINE] All streams failed — fallback non-streaming Ollama (local)');
+                return window.etherDesktop.ollamaChat({
+                    model: OLLAMA_MODELS.main,
                     messages: requestData.messages,
                     temperature: requestData.temperature,
                     max_tokens: requestData.max_tokens
@@ -551,8 +561,8 @@ var ETHER_ENGINE = {
                         self.conversationHistory.push({ role: 'user', content: requestData.messages[requestData.messages.length - 1].content });
                         self.conversationHistory.push({ role: 'assistant', content: ct });
                         var result = self.parseResponse(ct);
-                        result._provider = 'Groq-Chat';
-                        result._model = GROQ_MODELS.main;
+                        result._provider = 'Ollama-Local';
+                        result._model = OLLAMA_MODELS.main;
                         return result;
                     }
                     return self.getSimulatedResponse(requestData.messages[requestData.messages.length - 1].content);

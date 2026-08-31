@@ -9,6 +9,7 @@ var _doneListeners = [];
 var ALLOWED_CHANNELS = [
     'groq-chat', 'groq-stream', 'groq-test', 'groq-stop',
     'gemini-chat', 'gemini-stream', 'mistral-chat', 'mistral-stream', 'cerebras-chat', 'cerebras-stream',
+    'ollama-chat', 'ollama-stream',
     'custom-chat', 'custom-stream',
     'test-all-providers', 'transcribe-audio', 'pollinations-chat', 'fetch-image', 'fetch-url-content', 'gemini-vision',
     'web-search', 'get-models', 'open-file', 'save-file', 'browse-folder',
@@ -38,6 +39,8 @@ contextBridge.exposeInMainWorld('etherDesktop', {
     mistralStream: function(data) { return safeInvoke('mistral-stream', data); },
     cerebrasChat: function(data) { return safeInvoke('cerebras-chat', data); },
     cerebrasStream: function(data) { return safeInvoke('cerebras-stream', data); },
+    ollamaChat: function(data) { return safeInvoke('ollama-chat', data); },
+    ollamaStream: function(data) { return safeInvoke('ollama-stream', data); },
     customChat: function(data) { return safeInvoke('custom-chat', data); },
     customStream: function(data) { return safeInvoke('custom-stream', data); },
     testAllProviders: function() { return safeInvoke('test-all-providers'); },

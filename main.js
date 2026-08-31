@@ -30,6 +30,9 @@ var GEMINI_MODELS = { main: 'gemini-2.5-flash', fast: 'gemini-2.5-flash-lite' };
 var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest' };
 // Legacy Cerebras — garde pour fallback
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };
+// Ollama — modele local, tourne sur la machine, jamais de quota/panne reseau
+var OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
+var OLLAMA_MODELS = { main: process.env.OLLAMA_MODEL || 'llama3.2:3b' };
 
 var apiKeyStore = null;
 var networkMode = false;
@@ -117,6 +120,22 @@ try { loadApiConfig(); } catch(e) { /* will retry after whenReady */ }
 function httpsRequest(options, postData) {
     return new Promise(function(resolve, reject) {
         var req = https.request(options, function(res) {
+            var body = '';
+            res.on('data', function(c) { body += c; });
+            res.on('end', function() {
+                resolve({ status: res.statusCode, body: body, headers: res.headers });
+            });
+        });
+        req.on('error', reject);
+        req.setTimeout(25000, function() { req.destroy(); reject(new Error('Timeout')); });
+        if (postData) req.write(postData);
+        req.end();
+    });
+}
+
+function httpRequest(options, postData) {
+    return new Promise(function(resolve, reject) {
+        var req = http.request(options, function(res) {
             var body = '';
             res.on('data', function(c) { body += c; });
             res.on('end', function() {
@@ -762,8 +781,104 @@ ipcMain.handle('mistral-stream', function(event, data) {
     });
 });
 
+// === IPC: OLLAMA (modele local — jamais de quota, jamais de cle, jamais de panne reseau) ===
+var _ollamaUrlParsed = new (require('url').URL)(OLLAMA_URL);
+
+ipcMain.handle('ollama-chat', function(event, data) {
+    var postData = JSON.stringify({
+        model: data.model || OLLAMA_MODELS.main,
+        messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000
+    });
+    return httpRequest({
+        hostname: _ollamaUrlParsed.hostname,
+        port: _ollamaUrlParsed.port || 11434,
+        path: '/v1/chat/completions',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
+    }, postData).then(function(res) {
+        if (res.status === 200) {
+            var d = JSON.parse(res.body);
+            return { ok: true, text: d.choices[0].message.content, model: data.model || OLLAMA_MODELS.main, provider: 'ollama' };
+        }
+        console.log('[OLLAMA] Error:', res.status, res.body.substring(0, 200));
+        return { ok: false, error: 'Status ' + res.status, provider: 'ollama' };
+    })['catch'](function(e) {
+        console.log('[OLLAMA] Exception (Ollama non demarre?):', e.message);
+        return { ok: false, error: e.message, provider: 'ollama' };
+    });
+});
+
+// === IPC: OLLAMA STREAMING ===
+ipcMain.handle('ollama-stream', function(event, data) {
+    var postData = JSON.stringify({
+        model: data.model || OLLAMA_MODELS.main,
+        messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000,
+        stream: true
+    });
+
+    return new Promise(function(resolve) {
+        var req = http.request({
+            hostname: _ollamaUrlParsed.hostname,
+            port: _ollamaUrlParsed.port || 11434,
+            path: '/v1/chat/completions',
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
+        }, function(res) {
+            if (res.statusCode !== 200) {
+                var errBody = '';
+                res.on('data', function(c) { errBody += c; });
+                res.on('end', function() {
+                    resolve({ ok: false, error: 'Status ' + res.statusCode, provider: 'ollama' });
+                });
+                return;
+            }
+            var fullText = '';
+            var buffer = '';
+            var _decoder = new StringDecoder('utf8');
+            res.on('data', function(chunk) {
+                buffer += _decoder.write(chunk);
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line || !line.startsWith('data: ')) continue;
+                    var jsonStr = line.substring(6);
+                    if (jsonStr === '[DONE]') continue;
+                    try {
+                        var parsed = JSON.parse(jsonStr);
+                        var delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+                        if (delta && delta.content) {
+                            fullText += delta.content;
+                            if (mainWindow && !mainWindow.isDestroyed()) {
+                                mainWindow.webContents.send('groq-chunk', delta.content);
+                            }
+                        }
+                    } catch(e) { /* skip */ }
+                }
+            });
+            res.on('end', function() {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('groq-done', fullText);
+                }
+                setTimeout(function() { resolve({ ok: true, text: fullText, model: data.model || OLLAMA_MODELS.main, provider: 'ollama' }); }, 100);
+            });
+        });
+        req.on('error', function(e) {
+            console.log('[OLLAMA] Stream exception (Ollama non demarre?):', e.message);
+            resolve({ ok: false, error: e.message, provider: 'ollama' });
+        });
+        req.setTimeout(60000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'ollama' }); });
+        req.write(postData);
+        req.end();
+    });
+});
+
 // === IPC: FOURNISSEUR PERSONNALISE (n'importe quel endpoint compatible OpenAI) ===
-// Couvre Ollama, LM Studio, vLLM, OpenRouter, Together, DeepSeek, xAI, Azure OpenAI, etc.
+// Couvre LM Studio, vLLM, OpenRouter, Together, DeepSeek, xAI, Azure OpenAI, etc.
 function parseCustomBaseUrl(baseUrl) {
     var u = new (require('url').URL)(baseUrl);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Protocole non supporte');
@@ -896,6 +1011,8 @@ ipcMain.handle('test-all-providers', function() {
     // Mistral
     var mistralData = JSON.stringify({ model: MISTRAL_MODELS.fast, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 });
     tests.push(httpsRequest({ hostname: 'api.mistral.ai', path: '/v1/chat/completions', method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + MISTRAL_KEY, 'Content-Length': Buffer.byteLength(mistralData) } }, mistralData).then(function(r) { return { provider: 'mistral', ok: r.status === 200 }; })['catch'](function() { return { provider: 'mistral', ok: false }; }));
+    // Ollama (local — pas de cle, juste verifier que le serveur repond)
+    tests.push(httpGet(OLLAMA_URL + '/api/tags').then(function(r) { return { provider: 'ollama', ok: !!r }; })['catch'](function() { return { provider: 'ollama', ok: false }; }));
     return Promise.all(tests);
 });
 
@@ -1121,7 +1238,7 @@ ipcMain.handle('web-search', function(event, query) {
 
 // === IPC: Obtenir les noms de modeles (sans exposer les cles) ===
 ipcMain.handle('get-models', function() {
-    return { groq: GROQ_MODELS, gemini: GEMINI_MODELS, mistral: MISTRAL_MODELS, cerebras: CEREBRAS_MODELS };
+    return { groq: GROQ_MODELS, gemini: GEMINI_MODELS, mistral: MISTRAL_MODELS, cerebras: CEREBRAS_MODELS, ollama: OLLAMA_MODELS };
 });
 
 ipcMain.handle('set-api-key', function(event, key) {
