@@ -202,8 +202,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .model-opt.on{background:var(--b4);color:var(--t1);border-left:3px solid var(--ac)}
 .model-opt .model-check{display:none;color:var(--ac);font-weight:700;font-size:.8rem}
 .model-opt.on .model-check{display:inline}
-.model-opt-down{opacity:.5}
-.model-opt-down:hover{opacity:.75}
 /* CONVERSATION TABS */
 .conv-tabs{display:flex;align-items:center;gap:2px;padding:4px 8px;background:var(--b2);border-bottom:1px solid var(--bd);flex-shrink:0;overflow-x:auto;min-height:38px}
 .conv-tabs::-webkit-scrollbar{height:0}

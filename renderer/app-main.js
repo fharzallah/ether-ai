@@ -1734,29 +1734,7 @@ G('MODEL-SEL-BTN').onclick = function(e) {
     e.stopPropagation();
     var drop = G('MODEL-DROP');
     drop.classList.toggle('hidden');
-    // Charger les modeles utilisateur
-    populateUserModels();
-    refreshModelPickerStatus();
 };
-
-// Marque en direct les modeles dont le provider est actuellement en panne/rate-limit
-// (le picker liste tout le monde en permanence — seul le statut change)
-function refreshModelPickerStatus() {
-    var opts = document.querySelectorAll('.model-opt[data-provider]');
-    for (var i = 0; i < opts.length; i++) {
-        var btn = opts[i];
-        var provider = btn.getAttribute('data-provider');
-        if (provider === 'auto' || provider === 'custom') continue;
-        var sub = btn.children[1];
-        if (!sub) continue;
-        if (!btn.hasAttribute('data-sub-orig')) btn.setAttribute('data-sub-orig', sub.textContent);
-        var healthy = providerStatus[provider] !== false;
-        btn.classList.toggle('model-opt-down', !healthy);
-        sub.textContent = healthy ? btn.getAttribute('data-sub-orig') : 'Indisponible maintenant';
-        sub.style.color = healthy ? '' : '#ef4444';
-        sub.style.fontWeight = healthy ? '' : '700';
-    }
-}
 
 // Fermer le dropdown quand on clique ailleurs
 document.addEventListener('click', function(e) {
@@ -1783,45 +1761,6 @@ function selectModel(btn) {
     }
     G('MODEL-DROP').classList.add('hidden');
 }
-
-function populateUserModels() {
-    var container = G('MODEL-DROP-USER');
-    var keys = sGet('provider_keys', {});
-    var hasUserModels = false;
-    // Reset
-    container.innerHTML = '<div style="padding:6px 10px 4px;font-size:.64rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Vos modeles</div>';
-
-    // OpenAI
-    if (keys.openai) {
-        hasUserModels = true;
-        var oaModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1-mini'];
-        for (var i = 0; i < oaModels.length; i++) {
-            var m = oaModels[i];
-            var isOn = selectedModelOverride && selectedModelOverride.provider === 'openai' && selectedModelOverride.model === m;
-            container.innerHTML += '<button class="model-opt' + (isOn ? ' on' : '') + '" data-provider="openai" data-model="' + m + '" onclick="selectModel(this)"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#000;flex-shrink:0"></span><span style="font-weight:600;font-size:.84rem">' + m + '</span></div><span style="font-size:.7rem;color:var(--t3)">OpenAI</span></button>';
-        }
-    }
-    // Anthropic
-    if (keys.anthropic) {
-        hasUserModels = true;
-        var anModels = ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'];
-        var anNames = ['Claude Sonnet 4.6', 'Claude Haiku 4.5'];
-        for (var j = 0; j < anModels.length; j++) {
-            var am = anModels[j];
-            var isOnA = selectedModelOverride && selectedModelOverride.provider === 'anthropic' && selectedModelOverride.model === am;
-            container.innerHTML += '<button class="model-opt' + (isOnA ? ' on' : '') + '" data-provider="anthropic" data-model="' + am + '" onclick="selectModel(this)"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#d4a373;flex-shrink:0"></span><span style="font-weight:600;font-size:.84rem">' + anNames[j] + '</span></div><span style="font-size:.7rem;color:var(--t3)">Anthropic</span></button>';
-        }
-    }
-    // Custom
-    var cust = sGet('custom_provider', {});
-    if (cust.url && cust.model) {
-        hasUserModels = true;
-        var isOnC = selectedModelOverride && selectedModelOverride.provider === 'custom' && selectedModelOverride.model === cust.model;
-        container.innerHTML += '<button class="model-opt' + (isOnC ? ' on' : '') + '" data-provider="custom" data-model="' + esc(cust.model) + '" onclick="selectModel(this)"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--t3);flex-shrink:0"></span><span style="font-weight:600;font-size:.84rem">' + esc(cust.name || cust.model) + '</span></div><span style="font-size:.7rem;color:var(--t3)">Personnalise</span></button>';
-    }
-    container.style.display = hasUserModels ? 'block' : 'none';
-}
-
 
 // === MULTI-TAB CONVERSATIONS ===
 var openTabs = []; // [ { id: convId|null, scrollPos: 0 } ]
