@@ -18,6 +18,7 @@ var ALLOWED_CHANNELS = [
     'quota-check', 'quota-use', 'quota-ad-bonus', 'quota-verify-pro',
     'persist-read', 'persist-write', 'persist-get', 'persist-set',
     'modes-list', 'mode-save', 'mode-delete',
+    'mode-resource-add', 'mode-resource-list', 'mode-resource-delete',
     'get-user-data-path', 'get-system-theme', 'open-external',
     'send-email', 'set-api-key', 'get-api-port', 'get-local-ip', 'set-network-mode',
     'custom-providers-list', 'custom-providers-save', 'custom-providers-delete', 'custom-providers-test',
@@ -129,6 +130,9 @@ contextBridge.exposeInMainWorld('etherDesktop', {
     modesList: function() { return safeInvoke('modes-list'); },
     modeSave: function(mode) { return safeInvoke('mode-save', mode); },
     modeDelete: function(id) { return safeInvoke('mode-delete', id); },
+    modeResourceAdd: function(id, filePath) { return safeInvoke('mode-resource-add', id, filePath); },
+    modeResourceList: function(id, withText) { return safeInvoke('mode-resource-list', id, withText); },
+    modeResourceDelete: function(id, resId) { return safeInvoke('mode-resource-delete', id, resId); },
 
     // === Theme systeme ===
     getSystemTheme: function() { return safeInvoke('get-system-theme'); },

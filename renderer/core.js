@@ -319,6 +319,14 @@ greeting_morning:'Здравствуйте',greeting_evening:'Добрый ве�
 }
 };
 
+// La langue courante est declaree ici et non dans app-main.js, qui se charge en
+// dernier : t(), getLangCode() et applyLanguage() vivent dans ce fichier et
+// peuvent etre appelees depuis un callback asynchrone avant que app-main.js ne
+// s'execute. Un identifiant non declare leve une ReferenceError, que le
+// "curLang || 'fr'" plus bas ne rattrape pas. app-main.js la reassigne ensuite
+// avec la valeur stockee.
+var curLang = 'fr';
+
 // Language codes for speech recognition/synthesis
 var LANG_CODES = {fr:'fr-FR',en:'en-US',es:'es-ES',ar:'ar-SA',de:'de-DE',it:'it-IT',pt:'pt-BR',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',tr:'tr-TR',ru:'ru-RU',nl:'nl-NL',pl:'pl-PL',sv:'sv-SE',hi:'hi-IN',vi:'vi-VN',th:'th-TH',id:'id-ID',ro:'ro-RO',el:'el-GR',cs:'cs-CZ',uk:'uk-UA',he:'he-IL',da:'da-DK',fi:'fi-FI',no:'nb-NO',hu:'hu-HU',ms:'ms-MY',bn:'bn-BD',sw:'sw-KE'};
 

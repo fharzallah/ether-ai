@@ -185,7 +185,7 @@ var SKILL_CREATOR = {
     startAIWizard: function() {
         this.isWizardActive = true;
         this.wizardStep = 1;
-        this.wizardData = { name: '', goal: '', traits: '', length: '' };
+        this.wizardData = { name: '', goal: '', when: '', traits: '', length: '', avoid: '' };
         G('SKILL-LIST-VIEW').classList.add('hidden');
         G('SKILL-AI-FLOW').classList.remove('hidden');
         G('SKILL-AI-MESSAGES').innerHTML = '';
@@ -224,21 +224,34 @@ var SKILL_CREATOR = {
         } else if (this.wizardStep === 2) {
             this.wizardData.goal = text;
             this.wizardStep = 3;
-            this.addWizardMsg('ia', "Très bien. Quels sont les **traits de caractère** ou le **style** que tu souhaites lui donner ? (ex: direct et motivant, calme et pédagogique, cynique et drôle...)");
+            // Cette reponse alimente la description, qui declenche le mode automatiquement.
+            // C'est la question la plus importante du guide.
+            this.addWizardMsg('ia', "Maintenant le plus important : **dans quelles situations** ce mode doit-il s'activer ?\n\nDonne-moi deux ou trois exemples de demandes typiques. C'est ce qui permettra à ETHER de le déclencher tout seul au bon moment.\n\n*(ex: « quand je colle un bout de SQL à optimiser », « quand je demande une explication de concept mathématique »)*");
         } else if (this.wizardStep === 3) {
-            this.wizardData.traits = text;
+            this.wizardData.when = text;
             this.wizardStep = 4;
-            this.addWizardMsg('ia', "Dernière question : quelle doit être la **longueur habituelle** des réponses ? (ex: très courtes et percutantes, détaillées avec des exemples, ou adaptatives...)");
+            this.addWizardMsg('ia', "Quels sont les **traits de caractère** ou le **style** que tu souhaites lui donner ? (ex: direct et motivant, calme et pédagogique, cynique et drôle...)");
         } else if (this.wizardStep === 4) {
-            this.wizardData.length = text;
+            this.wizardData.traits = text;
             this.wizardStep = 5;
-            this.synthesizeSkill();
+            this.addWizardMsg('ia', "Quelle doit être la **longueur habituelle** des réponses ? (ex: très courtes et percutantes, détaillées avec des exemples, ou adaptatives...)");
         } else if (this.wizardStep === 5) {
+            this.wizardData.length = text;
+            this.wizardStep = 6;
+            // Dire ce qu'il ne faut PAS faire cadre un mode bien mieux qu'une
+            // accumulation de consignes positives.
+            this.addWizardMsg('ia', "Dernière question, et elle vaut le détour : qu'est-ce que ce mode ne doit **jamais** faire ?\n\n*(ex: « ne jamais donner la réponse directement, seulement des indices », « ne jamais utiliser de jargon »)*\n\nRéponds **« rien »** si tu n'as pas d'interdit particulier.");
+        } else if (this.wizardStep === 6) {
+            this.wizardData.avoid = /^rien$/i.test(text) ? '' : text;
+            this.wizardStep = 7;
+            this.synthesizeSkill();
+        } else if (this.wizardStep === 7) {
             if (text.toUpperCase() === 'OUI') {
                 this.saveAISkill();
+            } else if (/^test/i.test(text)) {
+                this.testSkill();
             } else {
-                this.addWizardMsg('ia', "C'est entendu. Dis-moi ce que tu souhaites changer dans ce profil.");
-                // Optionnel: logic to refine based on feedback
+                this.refineSkill(text);
             }
         }
     },
@@ -247,21 +260,93 @@ var SKILL_CREATOR = {
         var self = this;
         this.addWizardMsg('ia', "*Synthèse en cours... je prépare ton mode personnalisé.*");
 
-        var prompt = `Agis comme un architecte de prompts expert. À partir des informations suivantes, rédige un SYSTEM PROMPT complet et efficace pour une IA.
-Nom : ${this.wizardData.name}
-Objectif : ${this.wizardData.goal}
-Traits/Style : ${this.wizardData.traits}
-Longueur : ${this.wizardData.length}
-
-Le prompt doit être rédigé à la deuxième personne (ex: "Tu es..."). Il doit être structuré et inclure des règles claires.
-Réponds UNIQUEMENT avec le contenu du system prompt, sans texte autour.`;
+        // On demande DEUX choses : les instructions, et la description de
+        // declenchement. Cette derniere pilote l'activation automatique, donc
+        // elle doit enoncer des situations, pas resumer le mode.
+        var prompt = 'Agis comme un architecte de prompts expert. Tu construis un mode personnalise pour une IA.\n\n'
+            + 'Nom : ' + this.wizardData.name + '\n'
+            + 'Objectif : ' + this.wizardData.goal + '\n'
+            + 'Situations de declenchement decrites par l\'utilisateur : ' + this.wizardData.when + '\n'
+            + 'Traits et style : ' + this.wizardData.traits + '\n'
+            + 'Longueur attendue : ' + this.wizardData.length + '\n'
+            + (this.wizardData.avoid ? 'A ne jamais faire : ' + this.wizardData.avoid + '\n' : '')
+            + '\nRends EXACTEMENT ce format, sans rien autour :\n'
+            + 'DESCRIPTION: <une phrase disant QUAND ce mode s\'applique, commencant par "Quand". '
+            + 'Elle sert a declencher le mode automatiquement : elle doit enoncer des situations concretes et reconnaissables, '
+            + 'pas resumer ce que le mode fait. Maximum 200 caracteres.>\n'
+            + 'PROMPT:\n<le system prompt complet, redige a la deuxieme personne ("Tu es..."), structure, avec des regles claires'
+            + (this.wizardData.avoid ? ' et une section des interdits' : '') + '.>';
 
         if (typeof ETHER_ENGINE !== 'undefined') {
             ETHER_ENGINE.generateResponse(prompt).then(function(res) {
-                var sysPrompt = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
-                self.proposedPrompt = sysPrompt;
-                self.addWizardMsg('ia', "Voici le profil que j'ai généré pour **" + self.wizardData.name + "** :\n\n" +
-                    "```\n" + sysPrompt + "\n```\n\nEst-ce que cela te convient ? Réponds **'OUI'** pour enregistrer, ou décris les modifications souhaitées.");
+                var raw = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
+                var parsed = self.parseSynthesis(raw);
+                self.proposedPrompt = parsed.prompt;
+                self.proposedDescription = parsed.description;
+                self.addWizardMsg('ia',
+                    "Voici **" + self.wizardData.name + "** :\n\n"
+                    + "**Se déclenche quand :** " + self.proposedDescription + "\n\n"
+                    + "```\n" + self.proposedPrompt + "\n```\n\n"
+                    + "Réponds **OUI** pour enregistrer, **TEST** pour l'essayer sur une question avant, "
+                    + "ou décris ce que tu veux changer.");
+            });
+        }
+    },
+
+    // La reponse du modele peut deriver ; on retombe proprement sur des valeurs
+    // utilisables plutot que d'enregistrer un mode a moitie vide.
+    parseSynthesis: function(raw) {
+        var desc = '';
+        var prompt = raw;
+        var dm = raw.match(/DESCRIPTION\s*:\s*(.+?)(?:\n|$)/i);
+        if (dm) desc = dm[1].trim().replace(/^["'`]|["'`]$/g, '');
+        var pi = raw.search(/PROMPT\s*:/i);
+        if (pi !== -1) prompt = raw.slice(raw.indexOf('\n', pi) + 1).trim();
+        prompt = prompt.replace(/^```[a-z]*\n?|```$/g, '').trim();
+        if (!desc) {
+            desc = 'Quand la demande concerne : ' + (this.wizardData.when || this.wizardData.goal || this.wizardData.name);
+        }
+        return { description: desc.substring(0, 200), prompt: prompt };
+    },
+
+    // Essayer le mode avant de l'enregistrer : un prompt se juge sur une reponse,
+    // pas sur sa lecture.
+    testSkill: function() {
+        var self = this;
+        this.addWizardMsg('ia', "*Essai en cours sur une question typique...*");
+        var q = 'Pose-toi la question la plus representative de ce mode, puis reponds-y, '
+            + 'en respectant strictement ces instructions :\n\n' + this.proposedPrompt
+            + '\n\nCommence par "Question testée :" puis ta reponse.';
+        if (typeof ETHER_ENGINE !== 'undefined') {
+            ETHER_ENGINE.generateResponse(q).then(function(res) {
+                var out = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
+                self.addWizardMsg('ia', "Voici ce que donnerait ce mode :\n\n---\n\n" + out
+                    + "\n\n---\n\nRéponds **OUI** pour enregistrer, ou dis-moi ce qu'il faut ajuster.");
+            });
+        }
+    },
+
+    // Affiner a partir du retour de l'utilisateur, sans repartir de zero.
+    refineSkill: function(feedback) {
+        var self = this;
+        this.addWizardMsg('ia', "*J'ajuste le profil...*");
+        var prompt = 'Voici un system prompt et sa description de declenchement.\n\n'
+            + 'DESCRIPTION ACTUELLE: ' + this.proposedDescription + '\n\n'
+            + 'PROMPT ACTUEL:\n' + this.proposedPrompt + '\n\n'
+            + 'Demande de modification de l\'utilisateur : ' + feedback + '\n\n'
+            + 'Reprends le meme format exactement, sans rien autour :\n'
+            + 'DESCRIPTION: <phrase de declenchement commencant par "Quand", max 200 caracteres>\n'
+            + 'PROMPT:\n<le system prompt revise>';
+        if (typeof ETHER_ENGINE !== 'undefined') {
+            ETHER_ENGINE.generateResponse(prompt).then(function(res) {
+                var raw = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
+                var parsed = self.parseSynthesis(raw);
+                self.proposedPrompt = parsed.prompt;
+                self.proposedDescription = parsed.description;
+                self.addWizardMsg('ia',
+                    "Version révisée :\n\n**Se déclenche quand :** " + self.proposedDescription + "\n\n"
+                    + "```\n" + self.proposedPrompt + "\n```\n\n"
+                    + "**OUI** pour enregistrer, **TEST** pour l'essayer, ou dis-moi quoi changer encore.");
             });
         }
     },
@@ -271,7 +356,7 @@ Réponds UNIQUEMENT avec le contenu du system prompt, sans texte autour.`;
         var mode = {
             id: 'mode_' + Date.now(),
             name: this.wizardData.name,
-            description: this.wizardData.goal.substring(0, 100),
+            description: this.proposedDescription || this.wizardData.when || this.wizardData.goal.substring(0, 200),
             systemPrompt: this.proposedPrompt,
             emoji: '🤖',
             createdDate: new Date().toISOString(),
