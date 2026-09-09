@@ -204,6 +204,18 @@ function doGenerate(prompt) {
     })['catch'](function(err) {
         console.log('[UI] Streaming failed, trying emergency fallback cascade:', err && err.message);
 
+        // Selection manuelle : pas de cascade de secours. Rediriger vers Groq enverrait
+        // la conversation chez un fournisseur que l'utilisateur n'a pas choisi.
+        if (typeof selectedModelOverride !== 'undefined' && selectedModelOverride) {
+            hideThink();
+            addAIMsg({ reasoning: null,
+                answer: '<p><strong>Le fournisseur selectionne n\'a pas repondu.</strong> '
+                    + 'Verifie sa configuration dans les reglages, ou repasse en mode Auto. '
+                    + 'Rien n\'a ete envoye a un autre fournisseur.</p>',
+                confidence: 'unverified', sources: [], _showBadge: false, _noSuggestions: true });
+            return;
+        }
+
         // === EMERGENCY FALLBACK CASCADE (non-streaming, incassable) ===
         var fallbacks = [
             { fn: window.etherDesktop.groqChat, model: GROQ_MODELS.main, name: 'Groq-Llama70B' },
@@ -1041,7 +1053,7 @@ function generateFollowUpSuggestions(answer, streamEl, userQuestion) {
         contextPrompt = plainAnswer;
     }
 
-    window.etherDesktop.groqChat({
+    callAI({
         model: GROQ_MODELS.fast,
         messages: [
             { role: 'system', content: 'Genere entre 2 et 4 questions de suivi naturelles et pertinentes que l\'utilisateur pourrait poser apres cette conversation. Les questions doivent aller plus loin dans le sujet, explorer un angle different ou demander une precision. Separe-les par |. UNIQUEMENT les questions, rien d\'autre. Langue: ' + langName + '. Maximum 12 mots par question. Pas de numerotation.' },
@@ -1104,7 +1116,7 @@ G('SUMMARY-BTN').onclick = function() {
         else if (m.d) allText += 'ETHER: ' + (m.d.answer || '').replace(/<[^>]+>/g, '').substring(0, 300) + '\n';
     }
     showThink();
-    window.etherDesktop.groqChat({
+    callAI({
         model: GROQ_MODELS.fast,
         messages: [
             { role: 'system', content: 'Resume cette conversation en ' + ((G('SLG') && G('SLG').options[G('SLG').selectedIndex]) ? G('SLG').options[G('SLG').selectedIndex].text : 'Francais') + '. Fais un resume structure avec les points principaux abordes, les conclusions et les informations importantes. Utilise des bullet points. Resume UNIQUEMENT.' },

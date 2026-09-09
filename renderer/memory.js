@@ -154,7 +154,7 @@ var MEMORY = {
         var cleanAnswer = (aiAnswer || '').replace(/<[^>]+>/g, '').substring(0, 400);
         var self = this;
 
-        window.etherDesktop.groqChat({
+        callAI({
             model: GROQ_MODELS.fast,
             messages: [
                 { role: 'system', content: 'Extrais les informations de PROFIL de l\'utilisateur. Reponds UNIQUEMENT en JSON.\n\n'
@@ -514,7 +514,7 @@ var TEACHER_MEMORY = {
     analyzeCalibration: function(userMessage, aiQuestion) {
         if (!window.etherDesktop) return;
         var self = this;
-        window.etherDesktop.groqChat({
+        callAI({
             model: GROQ_MODELS.fast,
             messages: [
                 { role: 'system', content: 'Analyse la reponse d\'un eleve a une question pedagogique et determine son niveau. Reponds UNIQUEMENT en JSON:\n{"level":"debutant|intermediaire|avance|expert","subject":"le sujet detecte","reasoning":"pourquoi ce niveau en 1 phrase"}' },
@@ -564,7 +564,7 @@ function verifyResponse(answer, msgEl) {
     else mbd.appendChild(verifyEl);
 
     // ETAPE 1: Extraire les affirmations factuelles (Groq Llama 8B, ultra-rapide)
-    window.etherDesktop.groqChat({
+    callAI({
         model: GROQ_MODELS.fast,
         messages: [
             { role: 'system', content: 'Extrais les 3-4 affirmations factuelles VERIFIABLES de ce texte. Uniquement des FAITS concrets: chiffres, dates, noms propres, evenements, statistiques. PAS d\'opinions ni de generalites.\nFormat: chaque affirmation sur une ligne, separees par |. Chaque affirmation doit etre une phrase complete et autonome.\nExemple: Microsoft a investi 13 milliards dans OpenAI|Emmanuel Macron est president depuis 2017|La population de la France est de 67 millions\nSi aucun fait verifiable: AUCUN' },
@@ -598,7 +598,7 @@ function verifyResponse(answer, msgEl) {
             }
 
             // ETAPE 3: Comparer les affirmations avec les sources web (Groq rapide)
-            window.etherDesktop.groqChat({
+            callAI({
                 model: GROQ_MODELS.fast,
                 messages: [
                     { role: 'system', content: 'Tu es un verificateur de faits. Compare chaque affirmation avec les sources web.\n\nREGLES STRICTES:\n- VRAI = les sources confirment OU ne contredisent pas cette information. En cas de doute, mets VRAI.\n- FAUX = les sources contredisent EXPLICITEMENT avec un chiffre/fait/date different et prouve. UNIQUEMENT si la contradiction est flagrante et indiscutable.\n- INCERTAIN = les sources ne parlent absolument pas de ce sujet.\n\nIMPORTANT: Tu dois etre GENEREUX. La plupart des affirmations doivent etre VRAI sauf contradiction EVIDENTE. Ne mets JAMAIS FAUX pour des approximations ou des formulations differentes.\n\nFormat: texte|VRAI ou FAUX ou INCERTAIN. Une par ligne.' },

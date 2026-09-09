@@ -8,7 +8,7 @@ G('logo-wv').parentNode.parentNode.style.cursor='pointer';
 G('logo-wv').parentNode.parentNode.onclick=function(){newChat();};
 function newChat(pid){
     curConv=null;curProj=pid||null;isEphemeral=false;ETHER_ENGINE.resetHistory();
-    G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');
+    G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');G('TASK-BAR').classList.add('hidden');
     G('ECB').style.background='var(--b2)';G('ECB').style.color='var(--t3)';G('ECB').style.borderColor='var(--bd)';
     var mg=G('MG');mg.innerHTML='';
     var w=document.createElement('div');w.className='welc';w.id='WS';
@@ -102,7 +102,7 @@ document.addEventListener('click',function(e){if(!e.target.closest('.dots-menu')
 function renConv(id){if(!convs[id])return;var name=prompt('Nouveau nom:',convs[id].title);if(name&&name.trim()){convs[id].title=name.trim();sSet('convs',convs);updHist();}}
 function addToProj(cid,pid){if(!convs[cid])return;convs[cid].projectId=pid;sSet('convs',convs);updHist();var d=document.querySelectorAll('.dots-drop');for(var i=0;i<d.length;i++)d[i].classList.remove('vis');}
 function trashConv(id){if(!convs[id])return;trash[id]={title:convs[id].title,data:convs[id],deletedAt:Date.now()};sSet('trash',trash);delete convs[id];sSet('convs',convs);if(curConv===id)newChat();else updHist();updTrash();}
-function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_ENGINE.resetHistory();G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');G('MG').innerHTML='';
+function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_ENGINE.resetHistory();G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');G('TASK-BAR').classList.add('hidden');G('MG').innerHTML='';
     // Logo en haut de la conversation
     var hdr=document.createElement('div');
     hdr.style.cssText='text-align:center;padding:20px 0 10px';
@@ -113,7 +113,7 @@ function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_EN
 
 // TRASH
 function cleanTrash(){var now=Date.now();for(var id in trash){if(now-trash[id].deletedAt>30*24*60*60*1000){delete trash[id];}}sSet('trash',trash);}
-cleanTrash();
+// NB: pas d'appel ici — 'trash' n'est assigne qu'en fin de fichier. updTrash() purge au demarrage.
 function updTrash(){cleanTrash();var ids=Object.keys(trash).sort(function(a,b){return trash[b].deletedAt-trash[a].deletedAt;});var tl=G('TL');var etb=G('ETB');if(!ids.length){tl.innerHTML='<div class="il-e" data-i18n="sb_trash_empty">'+t('sb_trash_empty')+'</div>';etb.style.display='none';return;}etb.style.display='block';var h='';for(var i=0;i<ids.length;i++){var id=ids[i];var ti=trash[id];var dl=30-Math.floor((Date.now()-ti.deletedAt)/(24*60*60*1000));h+='<div class="trash-item"><div class="tr-info"><div class="tr-title">'+esc(ti.title)+'</div><div class="tr-date">'+dl+' d</div></div><div class="trash-actions"><button class="tr-restore" onclick="restoreConv(\''+id+'\')">'+t('btn_save')+'</button><button class="tr-del" onclick="permDelConv(\''+id+'\')">'+t('btn_delete')+'</button></div></div>';}tl.innerHTML=h;}
 function restoreConv(id){if(!trash[id])return;convs[id]=trash[id].data;sSet('convs',convs);delete trash[id];sSet('trash',trash);updHist();updTrash();}
 function permDelConv(id){delete trash[id];sSet('trash',trash);updTrash();}
@@ -998,22 +998,208 @@ function toggleApiKeyVis() {
     else { input.type = 'password'; btn.textContent = 'Voir'; }
 }
 
+// Previent une fois que les taches internes (memoire, suggestions, resume) sont
+// desactivees parce que le fournisseur choisi ne les traite pas. On ne les redirige
+// pas vers un autre fournisseur : ce serait envoyer la conversation ailleurs que la
+// ou l'utilisateur l'a demande.
+function showTaskNotice(provider) {
+    var bar = G('TASK-BAR'), txt = G('TASK-BAR-TXT');
+    if (!bar || !txt) return;
+    var label = provider;
+    if (provider === 'custom' && typeof customProviders !== 'undefined') {
+        var sel = (typeof selectedModelOverride !== 'undefined' && selectedModelOverride) ? selectedModelOverride.customId : null;
+        for (var i = 0; i < customProviders.length; i++) {
+            if (customProviders[i].id === sel) { label = customProviders[i].name; break; }
+        }
+    }
+    txt.textContent = 'Memoire, suggestions et resume sont desactives : ' + label
+        + ' n\'a pas traite ces taches. Rien n\'a ete envoye a un autre fournisseur.';
+    bar.classList.remove('hidden');
+}
+
+// === FOURNISSEURS PERSONNALISES ===
+// Le renderer ne detient jamais les cles : il ne manipule que des identifiants et
+// des metadonnees renvoyees par le process principal.
+var customProviders = [];
+
+function loadCustomProviders() {
+    if (!window.etherDesktop || !window.etherDesktop.customProvidersList) return;
+    window.etherDesktop.secureStorageAvailable().then(function(available) {
+        var warn = G('CUST-WARN');
+        if (warn) {
+            if (available) { warn.classList.add('hidden'); }
+            else {
+                warn.textContent = "Le chiffrement systeme n'est pas disponible sur cette machine. "
+                    + "Les cles API ne peuvent pas etre enregistrees tant qu'il ne l'est pas.";
+                warn.classList.remove('hidden');
+            }
+        }
+    })['catch'](function() {});
+    return window.etherDesktop.customProvidersList().then(function(list) {
+        customProviders = list || [];
+        renderCustomProviders();
+        renderModelOptions();
+    })['catch'](function(e) { console.warn('[CUSTOM-PROV] Chargement echoue:', e); });
+}
+
+function renderCustomProviders() {
+    var box = G('CUST-LIST');
+    if (!box) return;
+    if (!customProviders.length) {
+        box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Aucun fournisseur personnalise.</div>';
+        return;
+    }
+    var h = '';
+    for (var i = 0; i < customProviders.length; i++) {
+        var p = customProviders[i];
+        h += '<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;background:var(--b3)">'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-size:.8rem;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</div>'
+          + '<div style="font-size:.68rem;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.model) + ' — ' + esc(p.baseUrl) + '</div>'
+          + '<div style="font-size:.66rem;color:var(--t3)">' + (p.hasKey ? 'Cle enregistree (chiffree)' : 'Sans cle') + '</div>'
+          + '<div class="cust-test-status" data-id="' + escAttr(p.id) + '" style="font-size:.68rem;margin-top:2px"></div>'
+          + '</div>'
+          + '<button type="button" class="btn-s" onclick="testCustomProvider(\'' + escAttr(p.id) + '\')">Tester</button>'
+          + '<button type="button" class="btn-s" onclick="editCustomProvider(\'' + escAttr(p.id) + '\')">Modifier</button>'
+          + '<button type="button" class="btn-s" onclick="deleteCustomProvider(\'' + escAttr(p.id) + '\')">Supprimer</button>'
+          + '</div>';
+    }
+    box.innerHTML = h;
+}
+
+function customStatusEl(id) {
+    var all = document.querySelectorAll('.cust-test-status');
+    for (var i = 0; i < all.length; i++) if (all[i].getAttribute('data-id') === id) return all[i];
+    return null;
+}
+
+function testCustomProvider(id) {
+    var el = customStatusEl(id);
+    if (el) { el.style.color = 'var(--t3)'; el.textContent = 'Test en cours...'; }
+    window.etherDesktop.customProvidersTest(id).then(function(r) {
+        if (!el) return;
+        if (r && r.ok) { el.style.color = 'var(--color-success)'; el.textContent = 'Connexion reussie'; }
+        else { el.style.color = 'var(--color-danger)'; el.textContent = 'Echec : ' + esc((r && r.error) || 'inconnu'); }
+    })['catch'](function() {
+        if (el) { el.style.color = 'var(--color-danger)'; el.textContent = 'Echec du test'; }
+    });
+}
+
+function openCustomForm(p) {
+    G('CUST-ID').value = p ? p.id : '';
+    G('CUST-NAME').value = p ? p.name : '';
+    G('CUST-URL').value = p ? p.baseUrl : '';
+    G('CUST-MODEL').value = p ? p.model : '';
+    G('KEY-CUSTOM').value = '';
+    G('KEY-CUSTOM').type = 'password';
+    var hint = G('CUST-KEY-HINT');
+    if (hint) {
+        if (p && p.hasKey) {
+            hint.textContent = 'Une cle est deja enregistree. Laisse vide pour la conserver.';
+            hint.classList.remove('hidden');
+        } else { hint.classList.add('hidden'); }
+    }
+    G('CUST-FORM-ERR').classList.add('hidden');
+    G('CUST-FORM').classList.remove('hidden');
+    G('CUST-NAME').focus();
+}
+
+function editCustomProvider(id) {
+    for (var i = 0; i < customProviders.length; i++) {
+        if (customProviders[i].id === id) return openCustomForm(customProviders[i]);
+    }
+}
+
+function deleteCustomProvider(id) {
+    if (!confirm('Supprimer ce fournisseur et sa cle ?')) return;
+    window.etherDesktop.customProvidersDelete(id).then(function(r) {
+        if (r && r.ok) {
+            customProviders = r.providers || [];
+            // Si le fournisseur supprime etait selectionne, revenir en Auto.
+            if (selectedModelOverride && selectedModelOverride.customId === id) {
+                selectedModelOverride = null;
+                G('MODEL-SEL-LABEL').textContent = 'Auto';
+            }
+            renderCustomProviders();
+            renderModelOptions();
+            updProviderStatuses();
+        }
+    });
+}
+
+G('CUST-ADD').onclick = function() { openCustomForm(null); };
+G('CUST-CANCEL').onclick = function() { G('CUST-FORM').classList.add('hidden'); };
+G('CUST-SAVE').onclick = function() {
+    var err = G('CUST-FORM-ERR');
+    var payload = {
+        id: G('CUST-ID').value || undefined,
+        name: G('CUST-NAME').value.trim(),
+        baseUrl: G('CUST-URL').value.trim(),
+        model: G('CUST-MODEL').value.trim()
+    };
+    // Champ vide en modification = conserver la cle existante, d'ou l'omission.
+    var typed = G('KEY-CUSTOM').value;
+    var editing = !!payload.id;
+    if (!editing || typed !== '') payload.apiKey = typed;
+
+    window.etherDesktop.customProvidersSave(payload).then(function(r) {
+        if (!r || !r.ok) {
+            err.textContent = (r && r.error) || 'Enregistrement impossible';
+            err.classList.remove('hidden');
+            return;
+        }
+        G('KEY-CUSTOM').value = '';
+        customProviders = r.providers || [];
+        G('CUST-FORM').classList.add('hidden');
+        renderCustomProviders();
+        renderModelOptions();
+        updProviderStatuses();
+    });
+};
+
 // Charger les cles sauvegardees
+var BUILTIN_PROVIDERS = ['groq', 'gemini', 'mistral', 'cerebras', 'openai', 'anthropic'];
+var providerKeyStatus = {}; // { groq: true, ... } — presence seulement, jamais la valeur
+
 function loadProviderKeys() {
-    var keys = sGet('provider_keys', {});
-    if (keys.groq) G('KEY-GROQ').value = keys.groq;
-    if (keys.gemini) G('KEY-GEMINI').value = keys.gemini;
-    if (keys.mistral) G('KEY-MISTRAL').value = keys.mistral;
-    if (keys.cerebras) G('KEY-CEREBRAS').value = keys.cerebras;
-    if (keys.openai) G('KEY-OPENAI').value = keys.openai;
-    if (keys.anthropic) G('KEY-ANTHROPIC').value = keys.anthropic;
-    // Custom
-    var cust = sGet('custom_provider', {});
-    if (cust.name) G('CUST-NAME').value = cust.name;
-    if (cust.url) G('CUST-URL').value = cust.url;
-    if (cust.key) G('KEY-CUSTOM').value = cust.key;
-    if (cust.model) G('CUST-MODEL').value = cust.model;
-    updProviderStatuses();
+    // Les champs restent vides : la valeur d'une cle enregistree n'est jamais
+    // renvoyee au renderer. Le placeholder indique seulement qu'elle existe.
+    migrateLegacyProviderKeys().then(function() {
+        return window.etherDesktop.providerKeysStatus();
+    }).then(function(status) {
+        providerKeyStatus = status || {};
+        for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
+            var p = BUILTIN_PROVIDERS[i];
+            var el = G('KEY-' + p.toUpperCase());
+            if (!el) continue;
+            el.value = '';
+            el.placeholder = providerKeyStatus[p] ? 'Cle enregistree (chiffree) — laisser vide pour conserver' : 'Non configuree';
+        }
+        loadCustomProviders();
+        updProviderStatuses();
+    })['catch'](function(e) { console.warn('[KEYS] Chargement echoue:', e); });
+}
+
+// Migration unique des cles laissees en clair dans localStorage par les versions
+// precedentes : on les pousse dans le coffre chiffre puis on efface l'entree locale.
+function migrateLegacyProviderKeys() {
+    var legacy = sGet('provider_keys', null);
+    if (!legacy || typeof legacy !== 'object') return Promise.resolve();
+    var chain = Promise.resolve();
+    var migrated = [];
+    BUILTIN_PROVIDERS.forEach(function(p) {
+        var v = legacy[p];
+        if (!v || typeof v !== 'string') return;
+        chain = chain.then(function() {
+            return window.etherDesktop.providerKeysSet(p, v).then(function(r) {
+                if (r && r.ok) migrated.push(p);
+            });
+        });
+    });
+    return chain.then(function() {
+        try { localStorage.removeItem('ether_provider_keys'); } catch(e) {}
+        if (migrated.length) console.log('[MIGRATION] Cles chiffrees puis retirees du stockage local :', migrated.join(', '));
+    })['catch'](function(e) { console.warn('[MIGRATION] Echec:', e); });
 }
 
 // Sauvegarder les cles
@@ -1026,26 +1212,43 @@ G('SAVE-KEYS').onclick = function() {
         openai: G('KEY-OPENAI').value.trim(),
         anthropic: G('KEY-ANTHROPIC').value.trim()
     };
-    sSet('provider_keys', keys);
-    sSet('custom_provider', {
-        name: G('CUST-NAME').value.trim(),
-        url: G('CUST-URL').value.trim(),
-        key: G('KEY-CUSTOM').value.trim(),
-        model: G('CUST-MODEL').value.trim()
-    });
-    // Mettre a jour les cles dans main.js
-    if (window.etherDesktop) {
-        if (window.etherDesktop.setGroqKey && keys.groq) window.etherDesktop.setGroqKey(keys.groq);
-        if (window.etherDesktop.setMistralKey && keys.mistral) window.etherDesktop.setMistralKey(keys.mistral);
-    }
-    if (window.etherDesktop && window.etherDesktop.setMistralKey && keys.mistral) {
-        window.etherDesktop.setMistralKey(keys.mistral);
-    }
-    updProviderStatuses();
+    // Chaque cle part chiffree dans le coffre. Un champ laisse vide conserve la cle
+    // existante : rien n'est jamais ecrit en clair cote renderer.
     var btn = G('SAVE-KEYS');
-    btn.textContent = 'Sauvegarde !';
-    btn.style.background = '#22c55e';
-    setTimeout(function() { btn.textContent = 'Sauvegarder les cles'; btn.style.background = ''; }, 1500);
+    var chain = Promise.resolve();
+    var failed = [];
+    BUILTIN_PROVIDERS.forEach(function(p) {
+        var typed = keys[p];
+        if (!typed) return;
+        chain = chain.then(function() {
+            return window.etherDesktop.providerKeysSet(p, typed).then(function(r) {
+                if (!r || !r.ok) failed.push(p + ' : ' + ((r && r.error) || 'erreur'));
+            });
+        });
+    });
+    chain.then(function() {
+        for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
+            var el = G('KEY-' + BUILTIN_PROVIDERS[i].toUpperCase());
+            if (el) el.value = '';
+        }
+        return window.etherDesktop.providerKeysStatus();
+    }).then(function(status) {
+        providerKeyStatus = status || {};
+        for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
+            var p = BUILTIN_PROVIDERS[i];
+            var el = G('KEY-' + p.toUpperCase());
+            if (el) el.placeholder = providerKeyStatus[p] ? 'Cle enregistree (chiffree) — laisser vide pour conserver' : 'Non configuree';
+        }
+        updProviderStatuses();
+        if (failed.length) {
+            btn.textContent = 'Echec : ' + failed[0];
+            btn.style.background = '#ef4444';
+        } else {
+            btn.textContent = 'Sauvegarde !';
+            btn.style.background = '#22c55e';
+        }
+        setTimeout(function() { btn.textContent = 'Sauvegarder les cles'; btn.style.background = ''; }, 2500);
+    });
 };
 
 function updProviderStatuses() {
@@ -1061,8 +1264,8 @@ function updProviderStatuses() {
             statusEl.innerHTML = '<span class="prov-dot prov-dot-orange"></span>Rate limit';
         }
     }
-    // Providers optionnels
-    var keys = sGet('provider_keys', {});
+    // Providers optionnels — presence lue dans le coffre, jamais la valeur
+    var keys = providerKeyStatus;
     var optProviders = ['openai', 'anthropic'];
     for (var j = 0; j < optProviders.length; j++) {
         var op = optProviders[j];
@@ -1083,15 +1286,13 @@ function updProviderStatuses() {
             ollamaStatusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre';
         }
     }
-    // Custom
-    var cust = sGet('custom_provider', {});
+    // Fournisseurs personnalises : compte issu du coffre, pas du localStorage.
     var custStatus = G('PROV-CUSTOM-STATUS');
     if (custStatus) {
-        if (cust.url && cust.model) {
-            custStatus.innerHTML = '<span class="prov-dot prov-dot-orange"></span>' + esc(cust.name || 'Configure');
-        } else {
-            custStatus.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Non configure';
-        }
+        var n = customProviders.length;
+        custStatus.innerHTML = n
+            ? '<span class="prov-dot prov-dot-orange"></span>' + n + ' configure' + (n > 1 ? 's' : '')
+            : '<span class="prov-dot prov-dot-gray"></span>Non configure';
     }
 }
 
@@ -1136,51 +1337,23 @@ function testProvider(provider) {
             else { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; }
         })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; });
     } else if (provider === 'custom') {
-        // Test fournisseur personnalise — via IPC (le renderer n'a pas le droit de sortir en reseau, CSP connect-src 'self')
-        var custUrl = G('CUST-URL').value.trim();
-        var custKey = G('KEY-CUSTOM').value.trim();
-        var custModel = G('CUST-MODEL').value.trim();
-        if (!custUrl || !custModel) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>URL et modele requis'; return; }
-        if (!window.etherDesktop || !window.etherDesktop.customChat) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; return; }
-        window.etherDesktop.customChat({ baseUrl: custUrl, apiKey: custKey, model: custModel, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }).then(function(r) {
-            if (r.ok) statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif — ' + esc(custModel);
-            else statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>' + esc(r.error || 'Erreur');
-        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; });
+        // Les fournisseurs personnalises se testent un par un depuis leur ligne dans la liste.
+        var n = customProviders.length;
+        statusEl.innerHTML = n
+            ? '<span class="prov-dot prov-dot-green"></span>' + n + ' configure' + (n > 1 ? 's' : '')
+            : '<span class="prov-dot prov-dot-gray"></span>Non configure';
     } else {
-        var keyInput = G('KEY-' + provider.toUpperCase());
-        var key = keyInput ? keyInput.value.trim() : '';
-        if (!key) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Cle manquante'; return; }
-
-        var testConfigs = {
-            openai: { url: 'https://api.openai.com/v1/models', auth: 'Bearer ' + key },
-            anthropic: { url: 'https://api.anthropic.com/v1/messages', auth: key, custom: true },
-            google: { url: 'https://generativelanguage.googleapis.com/v1beta/models?key=' + key, auth: '' }
-        };
-        var cfg = testConfigs[provider];
-        if (!cfg) return;
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', cfg.url, true);
-        if (cfg.auth && !cfg.custom) xhr.setRequestHeader('Authorization', cfg.auth);
-        if (cfg.custom) {
-            xhr.setRequestHeader('x-api-key', key);
-            xhr.setRequestHeader('anthropic-version', '2023-06-01');
+        // Test delegue au process principal : la cle reste dans le coffre chiffre,
+        // le renderer ne la voit jamais et ne sort pas en reseau lui-meme.
+        if (!window.etherDesktop || !window.etherDesktop.providerKeysTest) {
+            statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible';
+            return;
         }
-        xhr.timeout = 8000;
-        xhr.onload = function() {
-            if (xhr.status === 200 || xhr.status === 401) {
-                if (xhr.status === 200) {
-                    statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif';
-                } else {
-                    statusEl.innerHTML = '<span class="prov-dot prov-dot-orange"></span>Cle reconnue';
-                }
-            } else {
-                statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur ' + xhr.status;
-            }
-        };
-        xhr.onerror = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur reseau'; };
-        xhr.ontimeout = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Timeout'; };
-        xhr.send();
+        statusEl.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Test...';
+        window.etherDesktop.providerKeysTest(provider).then(function(r) {
+            if (r && r.ok) statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif';
+            else statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>' + esc((r && r.error) || 'Erreur');
+        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; });
     }
 }
 
@@ -1747,6 +1920,10 @@ document.addEventListener('click', function(e) {
 function selectModel(btn) {
     var provider = btn.getAttribute('data-provider');
     var model = btn.getAttribute('data-model');
+    // Nouveau fournisseur : on redonne sa chance aux taches internes et on retire
+    // l'avertissement de la selection precedente.
+    if (typeof _taskNoticeShown !== 'undefined') _taskNoticeShown = {};
+    var tb = G('TASK-BAR'); if (tb) tb.classList.add('hidden');
     // Retirer .on de tous
     var opts = document.querySelectorAll('.model-opt');
     for (var i = 0; i < opts.length; i++) opts[i].classList.remove('on');
@@ -1755,11 +1932,47 @@ function selectModel(btn) {
     if (provider === 'auto') {
         selectedModelOverride = null;
         G('MODEL-SEL-LABEL').textContent = 'Auto';
+    } else if (provider === 'custom') {
+        // L'identifiant permet au process principal de retrouver l'URL et la cle chiffree.
+        var cid = btn.getAttribute('data-custom-id');
+        selectedModelOverride = { provider: 'custom', model: model, customId: cid };
+        G('MODEL-SEL-LABEL').textContent = btn.getAttribute('data-label') || model;
     } else {
         selectedModelOverride = { provider: provider, model: model };
         G('MODEL-SEL-LABEL').textContent = modelNames[model] || model;
     }
     G('MODEL-DROP').classList.add('hidden');
+}
+
+// Reconstruit le menu de selection: Auto, puis un choix manuel par fournisseur personnalise.
+function renderModelOptions() {
+    var drop = G('MODEL-DROP');
+    if (!drop) return;
+    var existing = drop.querySelectorAll('.model-opt-custom');
+    for (var i = 0; i < existing.length; i++) existing[i].remove();
+    var sep = drop.querySelector('.model-sep-custom');
+    if (sep) sep.remove();
+    if (!customProviders.length) return;
+
+    var sepEl = document.createElement('div');
+    sepEl.className = 'model-sep-custom';
+    sepEl.setAttribute('style', 'padding:8px 10px 4px;font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--bd);margin-top:6px');
+    sepEl.textContent = 'Fournisseurs personnalises';
+    drop.appendChild(sepEl);
+
+    for (var j = 0; j < customProviders.length; j++) {
+        var p = customProviders[j];
+        var b = document.createElement('button');
+        b.className = 'model-opt model-opt-custom';
+        b.setAttribute('data-provider', 'custom');
+        b.setAttribute('data-model', p.model);
+        b.setAttribute('data-custom-id', p.id);
+        b.setAttribute('data-label', p.name);
+        b.onclick = function() { selectModel(this); };
+        b.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-purple);flex-shrink:0"></span><span style="font-weight:600;font-size:.84rem">' + esc(p.name) + '</span></div>'
+            + '<span style="font-size:.7rem;color:var(--t3)">' + esc(p.model) + '</span>';
+        drop.appendChild(b);
+    }
 }
 
 // === MULTI-TAB CONVERSATIONS ===
@@ -2441,7 +2654,7 @@ function showApp(){
 
 // SIDEBAR
 G('TSB').onclick=function(){G('SB').classList.add('collapsed');G('OSB').classList.remove('hidden');};
-G('OSB').onclick=function(){G('SB').classList.remove('collapsed');G('OSB').classList.add('hidden');G('SB').classList.add('open');G('SOV').classList.add('vis');};
+G('OSB').onclick=function(){G('SB').classList.remove('collapsed');G('OSB').classList.add('hidden');if(window.innerWidth<=768){G('SB').classList.add('open');G('SOV').classList.add('vis');}};
 G('SOV').onclick=function(){G('SB').classList.remove('open');G('SOV').classList.remove('vis');};
 
 // TABS
@@ -2817,7 +3030,7 @@ function autoDetectMemory(userMessage, aiAnswer) {
     var existingContext = existingMem.length > 0 ? '\nFaits deja connus: ' + existingMem.join('; ') : '';
 
     // Utiliser Groq Llama 8B (ultra rapide) pour l'extraction
-    window.etherDesktop.groqChat({
+    callAI({
         model: GROQ_MODELS.fast,
         messages: [
             { role: 'system', content: 'Tu construis le PROFIL de l\'utilisateur a partir de ses messages. Reponds UNIQUEMENT en JSON.\n\nREGLES STRICTES:\n- Extrais UNIQUEMENT ce que l\'utilisateur dit SUR LUI-MEME (pas les questions qu\'il pose, pas les sujets de discussion)\n- Exemples valides: "Developpeur Python", "Travaille chez Altopi", "Habite a Paris", "Aime le football", "A 25 ans", "Etudie l\'informatique"\n- Exemples INVALIDES: "S\'interesse a l\'IA" (trop vague), "A pose une question sur la gravite" (c\'est un sujet, pas un profil), "Cherche des conseils" (pas un trait personnel)\n- Chaque fait = une info de profil courte (3-10 mots)\n- Maximum 2 faits\n- Si aucune info de profil: {"facts":[]}\n\nFormat: {"facts":["fait 1","fait 2"]}' },
@@ -2920,7 +3133,7 @@ function trackTeacherSessionV2(question, answer) {
         var batchText = _teacherMsgBuffer.map(function(m, i) { return (i + 1) + '. Q: ' + m.question + '\n   R: ' + m.answer; }).join('\n');
         _teacherMsgBuffer = [];
 
-        window.etherDesktop.groqChat({
+        callAI({
             model: 'llama3.1-8b',
             messages: [
                 { role: 'system', content: 'Analyze these Q&A exchanges from a learning session. Return JSON: {"topics": [{"name": "short topic", "difficulty": "beginner|intermediate|advanced", "depth": 1-5}]}. Maximum 3 topics. Respond ONLY with JSON.' },

@@ -16,11 +16,13 @@ La plupart des assistants IA sont conçus pour valider tes idées. ETHER fait l'
 - **Routing multi-provider intelligent** — Bascule entre Groq (GPT-OSS 120B/20B), Gemini 2.5 Flash (rotation automatique sur jusqu'à 3 clés) et Mistral Large/Small selon la tâche. Cerebras reste dans le code comme fallback possible, mais son tier gratuit actuel ne couvre plus aucun modèle utilisable (paiement requis ou quota systématiquement dépassé) — ETHER le détecte et l'ignore automatiquement.
 - **Fallback local via Ollama** — Si tous les providers cloud sont indisponibles (quota épuisé, panne réseau), ETHER bascule automatiquement sur un modèle tournant en local (Llama 3.2 3B + Qwen2.5 3B pour le raisonnement) — y compris dans le pipeline "Réflexion approfondie". Aucune clé, aucun quota, ne dépend de rien d'externe.
 - **Réflexion approfondie** — Pipeline en 5 étapes (Décomposition → Recherche web → Analyse → Critique → Synthèse) pour les questions qui demandent plus qu'une réponse directe.
-- **Providers personnalisés** — Possibilité de brancher un endpoint compatible OpenAI (LM Studio, vLLM, OpenRouter, Together AI...) ou l'API Anthropic directement dans les réglages.
-- **Modes de conversation** — Teacher (apprentissage guidé), Créatif, Débat (argumentation contradictoire), Écriture, et modes 100% personnalisés.
+- **Providers personnalisés** — Possibilité de brancher un endpoint compatible OpenAI (LM Studio, vLLM, OpenRouter, Together AI...) en renseignant URL, clé et modèle dans les réglages.
+  Les réglages exposent aussi des champs de clé OpenAI et Anthropic : la clé est enregistrée et testable, mais ces deux providers ne participent pas encore au routage des réponses.
+- **Modes de conversation** — Teacher (apprentissage guidé), Créatif, Débat (argumentation contradictoire), Écriture, Image, et modes 100% personnalisés.
+- **Génération d'images** — Mode Image via Pollinations, limité à 5 images par jour en gratuit (compteur affiché dans la barre de modes), illimité en Pro.
 - **Génération et lecture de documents** — Import/analyse de PDF, Word (`.docx`) et Excel (`.xlsx`) via `pdf-parse`, `mammoth` et `xlsx`.
 - **Recherche web** — Intégration DuckDuckGo pour enrichir les réponses avec des résultats récents.
-- **Thèmes** — Dark, Light et Midnight.
+- **Thèmes** — 8 thèmes complets (Sombre, Clair, Minuit, Ocean, Forêt, Sunset, Rose, Arctique) plus un mode Auto qui suit le thème du système.
 - **Auto-update** — Mise à jour automatique via GitHub Releases (`electron-updater`).
 - **Backend Cloudflare Workers** (optionnel) — API serverless pour l'orchestration multi-utilisateurs, l'authentification et un futur module de paiement Stripe (`worker/`).
 

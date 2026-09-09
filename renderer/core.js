@@ -56,6 +56,9 @@ var G = function(id) { return document.getElementById(id); };
 var isPro = false; // sera écrasé par sGet('pro', false) dans app-main.js au boot
 function sSet(k,v) {
     try {
+        // JSON.stringify(undefined) renvoie undefined et setItem stocke la chaine "undefined",
+        // ce qui corrompt la cle et fait echouer sGet au demarrage suivant.
+        if (v === undefined) { console.warn('[STORAGE] Ecriture undefined ignoree pour', k); return; }
         localStorage.setItem('ether_'+k, JSON.stringify(v));
     } catch(e) {
         // localStorage plein ou indisponible — tenter de liberer de l'espace
@@ -92,6 +95,20 @@ function sGet(k,d) {
         return d;
     }
 }
+
+// Purge unique de l'ancien fournisseur personnalise stocke en clair : sa cle API vivait
+// dans localStorage avant le passage a safeStorage. On l'efface pour ne pas laisser
+// trainer un secret lisible sur le disque.
+(function purgeLegacyCustomProvider() {
+    try {
+        if (localStorage.getItem('ether_custom_provider') !== null) {
+            localStorage.removeItem('ether_custom_provider');
+            console.log('[MIGRATION] Ancien custom_provider en clair supprime du stockage local.');
+        }
+        // ether_provider_keys est migre vers le coffre par loadProviderKeys() puis
+        // efface la. Ici on ne fait rien pour ne pas perdre des cles non encore migrees.
+    } catch(e) { /* stockage indisponible */ }
+})();
 
 // Au demarrage, restaurer les donnees du fichier persistant si localStorage est vide
 function restoreFromPersist() {
