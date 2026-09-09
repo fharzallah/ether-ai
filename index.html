@@ -619,6 +619,16 @@
 <label style="font-size:.82rem;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Instructions detaillees</label>
 <textarea id="CM-INSTR" class="sta" rows="4" placeholder="Décris comment tu veux que l'IA se comporte. Plus c'est précis, meilleur sera le résultat. Exemple : Tu es un coach de boxe professionnel. Tu parles de façon directe et motivante. Tu donnes toujours des exercices concrets à la fin de chaque réponse. Tu ne tolères pas les excuses."></textarea>
 </div>
+<div style="margin-bottom:14px">
+<label style="font-size:.82rem;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Quand ce mode doit-il s'activer ?</label>
+<textarea id="CM-WHEN" class="sta" rows="2" placeholder="Ex: Quand je colle du SQL a optimiser, ou quand je demande d'analyser une requete lente. Cette phrase permet a ETHER de declencher le mode tout seul au bon moment."></textarea>
+</div>
+<div style="margin-bottom:14px" id="CM-RES-BLOCK">
+<label style="font-size:.82rem;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Documents de reference <span style="font-weight:400;opacity:.6">(charges uniquement quand ce mode est actif)</span></label>
+<div id="CM-RES-LIST" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+<button type="button" class="btn-s" id="CM-RES-ADD">+ Joindre un document</button>
+<div id="CM-RES-ERR" class="hidden" style="font-size:.72rem;color:var(--color-danger);margin-top:6px"></div>
+</div>
 <div style="display:flex;gap:8px">
 <button type="button" class="btn-p" id="CM-SAVE" style="flex:1">Creer le mode</button>
 <button type="button" class="btn-do" id="CM-DELETE" style="flex:0;display:none;padding:10px 16px">Supprimer</button>

@@ -731,6 +731,16 @@ var ETHER_ENGINE = {
                 var cleanText = (fullText || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
                 if (!cleanText) cleanText = fullText || '';
 
+                // Un mode personnalise s'est-il active de lui-meme ? Le marqueur est
+                // retire du texte et affiche comme badge : une reponse dont le ton
+                // change sans explication est deroutante.
+                var autoMode = null;
+                var mMatch = cleanText.match(/^\s*\[MODE:\s*([^\]\n]{1,60})\]\s*\n?/);
+                if (mMatch) {
+                    autoMode = mMatch[1].trim();
+                    cleanText = cleanText.slice(mMatch[0].length).trim();
+                }
+
                 self.conversationHistory.push({ role: 'user', content: requestData.messages[requestData.messages.length - 1].content });
                 self.conversationHistory.push({ role: 'assistant', content: cleanText });
 
@@ -745,90 +755,14 @@ var ETHER_ENGINE = {
                 result._provider = providerName || 'groq';
                 result._streamed = true;
                 result._showBadge = false;
+                if (autoMode) result._autoMode = autoMode;
 
-                // === MoA ADAPTATIF (Mixture-of-Agents) ===
-                var userMsg = requestData.messages[requestData.messages.length - 1].content;
-                var plainAnswer = cleanText.replace(/<[^>]+>/g, '');
-                var isSubstantial = userMsg.length > 20
-                    && !/^(salut|bonjour|bonsoir|hello|hi|hey|merci|ok|oui|non|ca va|super|cool)/i.test(userMsg.trim());
-                var isComplex = userMsg.length > 100
-                    || /\b(compare|analyse|explique|avantages|inconvenients|difference|impact|consequence|enjeux|pourquoi|comment)\b/i.test(userMsg.toLowerCase())
-                    || userMsg.split('?').length > 2;
-
-                if (!isSubstantial || !window.etherDesktop) {
-                    // Pas de collaboration pour les messages courts/salutations
-                    self._finalizeStreamElement(streamEl, result);
-                } else if (isComplex) {
-                    // === MoA COMPLET: Critique + Reecriture (questions complexes) ===
-                    // Couche 2: Critique — Qwen3 32B cherche les failles et manques
-                    console.log('[MoA] Complex question detected — launching critique + rewrite');
-                    callAI({
-                        _tier: 'reasoning',
-                        messages: [
-                            { role: 'system', content: 'Tu es un CRITIQUE. Analyse cette reponse et liste:\n1. Les erreurs ou approximations a corriger\n2. Les infos manquantes (chiffres, exemples, perspectives)\n3. Les ameliorations de style possibles\nSois CONCIS. Max 5 points.' },
-                            { role: 'user', content: 'Question: ' + userMsg + '\n\nReponse:\n' + plainAnswer.substring(0, 2500) }
-                        ],
-                        temperature: 0.3, max_tokens: 600
-                    }).then(function(critiqueRes) {
-                        var critique = (critiqueRes.ok && critiqueRes.text) ? critiqueRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : 'Ameliorer le style et ajouter des exemples concrets.';
-
-                        // Couche 3: TOUJOURS reecrire — Gemini reecrit avec un style journalistique
-                        console.log('[MoA] Critique done (' + critique.length + ' chars) — launching rewrite');
-                        // callAI choisit le fournisseur : selection manuelle respectee,
-                        // cascade integree en mode Auto.
-                        var synthFn = callAI;
-                        synthFn({
-                            _tier: 'main',
-                            messages: [
-                                { role: 'system', content: 'Tu es un REECRIVAIN expert. On te donne un brouillon et des corrections a integrer.\n\nTon travail: REECRIS le contenu de ZERO avec un style JOURNALISTIQUE et ENGAGEANT.\n\nREGLES DE STYLE OBLIGATOIRES:\n- Commence par un fait marquant ou un chiffre percutant (pas par "Introduction" ou "L\'IA est en train de...")\n- INTERDICTION de faire des listes a puces de plus de 4 elements — utilise des paragraphes narratifs\n- INTERDICTION de repeter "l\'IA peut aider a" ou "selon [source]" plus de 2 fois\n- Utilise des exemples CONCRETS (pays, ecoles, chiffres reels)\n- Alterne entre paragraphes courts (2-3 lignes) et sous-titres en ## (pas de "Enjeux de...")\n- Ton direct, comme un article de journal, pas un devoir scolaire\n- Integre les corrections de la critique SANS mentionner la critique\n- Garde TOUTES les informations factuelles du brouillon' },
-                                { role: 'user', content: 'BROUILLON A RECRIRE:\n' + plainAnswer.substring(0, 2500) + '\n\nCORRECTIONS A INTEGRER:\n' + critique.substring(0, 1000) + '\n\nReecris maintenant:' }
-                            ],
-                            temperature: 0.5, max_tokens: 4000
-                        }).then(function(synthRes) {
-                            if (synthRes.ok && synthRes.text && synthRes.text.length > 100) {
-                                var improved = synthRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
-                                result = self.parseResponse(improved);
-                                result._provider = 'moa';
-                                result._model = model;
-                                result._streamed = true;
-                                result._showBadge = false;
-                                self.conversationHistory[self.conversationHistory.length - 1].content = improved;
-                            }
-                            self._finalizeStreamElement(streamEl, result);
-                        })['catch'](function() {
-                            self._finalizeStreamElement(streamEl, result);
-                        });
-                    })['catch'](function() {
-                        self._finalizeStreamElement(streamEl, result);
-                    });
-                } else {
-                    // === ENRICHISSEMENT SIMPLE (questions normales) ===
-                    // Un seul appel rapide pour ajouter ce qui manque
-                    callAI({
-                        _tier: 'fast',
-                        messages: [
-                            { role: 'system', content: 'On te donne une reponse. Ajoute UNIQUEMENT les infos manquantes (chiffres, dates, noms, exemples). NE REPETE RIEN. Si complet, reponds: COMPLET. Max 3 points.' },
-                            { role: 'user', content: 'Q: ' + userMsg + '\nR: ' + plainAnswer.substring(0, 1500) + '\nManque:' }
-                        ],
-                        temperature: 0.2, max_tokens: 400
-                    }).then(function(enrichRes) {
-                        if (enrichRes.ok && enrichRes.text && enrichRes.text.length > 30 && !/^COMPLET/i.test(enrichRes.text)) {
-                            var extra = enrichRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
-                            if (extra.length > 30 && extra.length < plainAnswer.length) {
-                                var combined = cleanText + '\n\n' + extra;
-                                result = self.parseResponse(combined);
-                                result._provider = 'moa-light';
-                                result._model = model;
-                                result._streamed = true;
-                                result._showBadge = false;
-                                self.conversationHistory[self.conversationHistory.length - 1].content = combined;
-                            }
-                        }
-                        self._finalizeStreamElement(streamEl, result);
-                    })['catch'](function() {
-                        self._finalizeStreamElement(streamEl, result);
-                    });
-                }
+                // La reponse affichee est la reponse definitive. Aucune passe de
+                // critique ou de reecriture derriere : elles remplaçaient le texte
+                // sous les yeux de l'utilisateur, changeaient son style en cours de
+                // route, et coutaient deux appels de plus. La qualite se joue dans
+                // le prompt systeme, pas dans un rattrapage apres coup.
+                self._finalizeStreamElement(streamEl, result);
 
                 // Notification si fenetre pas au focus
                 var notifText = (result.answer || '').replace(/<[^>]+>/g, '').substring(0, 100);
@@ -922,7 +856,11 @@ var ETHER_ENGINE = {
         if (result.reasoning) { var keys = ['analyste','critique','synthese']; var ah = ''; for (var i = 0; i < keys.length; i++) { var k = keys[i]; ah += '<div class="ra"><div class="an">' + ETHER_ENGINE.agents[k].name + '</div><div>' + (result.reasoning[k] || '') + '</div></div>'; } rh = '<button class="rt" onclick="togR(this)"><span class="ar">&#9654;</span> '+t('reasoning')+'</button><div class="rc">' + ah + '</div>'; }
         var pt = (result.answer || '').replace(/<[^>]+>/g, '');
         var mbd = msgDiv.querySelector('.mbd');
-        mbd.innerHTML = rh + '<div class="mt">' + (result.answer || '') + '</div><div class="ma"><button class="regen-btn" onclick="regenResponse(this)" title="Regenerer"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg>'+t('btn_regen')+'</button><button class="mab" onclick="vote(this)" title="Bien"><svg viewBox="0 0 24 24"><path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66a4.8 4.8 0 00-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84A2.33 2.33 0 009.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" fill="currentColor"/></svg></button><button class="mab" onclick="vote(this)" title="Pas bien"><svg viewBox="0 0 24 24"><path d="M22 4h-2c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1h2V4zM2.17 11.12c-.11.25-.17.52-.17.8V13c0 1.1.9 2 2 2h5.5l-.92 4.65c-.05.22-.02.46.08.66.23.45.52.86.88 1.22L10 22l6.41-6.41c.38-.38.59-.89.59-1.42V6.34A2.33 2.33 0 0014.66 4H6.56c-.71 0-1.37.37-1.73.97L2.17 11.12z" fill="currentColor"/></svg></button><button class="mab" data-t="' + esc(pt) + '" onclick="cpTxt(this)" title="Copier"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg></button></div>';
+        // Badge de mode auto-active : sans lui, le ton change sans explication.
+        var modeBadge = result._autoMode
+            ? '<div class="auto-mode-badge">Mode ' + esc(result._autoMode) + '</div>'
+            : '';
+        mbd.innerHTML = rh + modeBadge + '<div class="mt">' + (result.answer || '') + '</div><div class="ma"><button class="regen-btn" onclick="regenResponse(this)" title="Regenerer"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg>'+t('btn_regen')+'</button><button class="mab" onclick="vote(this)" title="Bien"><svg viewBox="0 0 24 24"><path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66a4.8 4.8 0 00-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84A2.33 2.33 0 009.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" fill="currentColor"/></svg></button><button class="mab" onclick="vote(this)" title="Pas bien"><svg viewBox="0 0 24 24"><path d="M22 4h-2c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1h2V4zM2.17 11.12c-.11.25-.17.52-.17.8V13c0 1.1.9 2 2 2h5.5l-.92 4.65c-.05.22-.02.46.08.66.23.45.52.86.88 1.22L10 22l6.41-6.41c.38-.38.59-.89.59-1.42V6.34A2.33 2.33 0 0014.66 4H6.56c-.71 0-1.37.37-1.73.97L2.17 11.12z" fill="currentColor"/></svg></button><button class="mab" data-t="' + esc(pt) + '" onclick="cpTxt(this)" title="Copier"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg></button></div>';
         msgDiv._etherData = result;
         processCodeBlocks(msgDiv);
     },
@@ -985,6 +923,10 @@ var ETHER_ENGINE = {
 + 'Tu utilises la voix active. Tu n\'utilises JAMAIS d\'emojis.\n'
  + 'Tu vas droit au but. Donne des exemples concrets. Si la demande est floue, pose une question precise.\n'
 + 'Tu adaptes la longueur automatiquement : synthetique pour un resume, detaille avec des exemples concrets pour un travail important.\n'
++ 'Tu ecris en paragraphes. Une liste a puces seulement quand le contenu est vraiment une liste, et jamais plus de quatre points : au-dela, redige.\n'
++ 'Tu ancres tes reponses dans du concret : chiffres, dates, noms, cas reels plutot que des generalites.\n'
++ 'Tu entres dans le sujet des la premiere phrase. Pas de preambule, pas de reformulation de la question, pas de "Introduction".\n'
++ 'Tu donnes ta meilleure reponse du premier coup : complete, verifiee, bien ecrite. Personne ne repassera derriere toi.\n'
 + 'Tu es un mentor impitoyable : tu passes tout au crible. Si une idee ne vaut rien, dis-le et explique pourquoi pour la rendre a toute epreuve.\n'
 + 'Tu assumes tes positions. Tu ne dis pas "cela depend" quand tu as un avis — tu donnes ton avis et tu l\'argumentes.\n'
 + 'Quand tu n\'es pas sur, tu le dis franchement au lieu de broder.\n\n'
@@ -1119,6 +1061,61 @@ var ETHER_ENGINE = {
 + '- Si l\'utilisateur demande une reecriture ou correction, montre clairement les changements\n'
 + '- Pour les contenus longs, utilise des sous-titres et une structure visible',
         };
+        // Ressources chargees a l'avance par le renderer (voir loadModeResources).
+        // getSystemPrompt est synchrone, on ne peut pas aller les chercher ici.
+        function modeResourceText(modeId) {
+            var cache = (typeof modeResources !== 'undefined') ? modeResources[modeId] : null;
+            if (!cache || !cache.length) return '';
+            var out = '=== DOCUMENTS DE REFERENCE DE CE MODE ===\n'
+                + 'Appuie-toi sur ces documents. Ils font autorite sur tes connaissances generales.\n\n';
+            for (var i = 0; i < cache.length; i++) {
+                out += '--- ' + cache[i].name + ' ---\n' + cache[i].text + '\n'
+                     + (cache[i].truncated ? '[document tronque]\n' : '') + '\n';
+            }
+            return out;
+        }
+
+        // === MODES A ACTIVATION AUTOMATIQUE ===
+        // Inspire des skills Claude : la description d'un mode dit QUAND l'utiliser,
+        // pas seulement ce qu'il fait. On presente le catalogue au modele, qui
+        // reconnait lui-meme le mode pertinent. Aucun appel supplementaire : le
+        // choix se fait pendant la generation, pas avant.
+        function autoModeCatalog() {
+            var list = (typeof customModes !== 'undefined' && customModes.length)
+                ? customModes
+                : (function() { try { return JSON.parse(localStorage.getItem('ether_custom_modes') || '[]'); } catch(e) { return []; } })();
+            var usable = [];
+            for (var i = 0; i < list.length; i++) {
+                var m = list[i];
+                var when = (m.description || '').trim();
+                var instr = (m.systemPrompt || m.instructions || '').trim();
+                if (!when || !instr) continue;   // sans description, pas de declenchement possible
+                if (m.autoActivate === false) continue;
+                usable.push(m);
+            }
+            if (!usable.length) return '';
+
+            // Garde-fou : le catalogue vit dans chaque requete, on plafonne sa taille
+            // plutot que de laisser le prompt enfler avec le nombre de modes.
+            var BUDGET = 6000;
+            var out = '=== TES MODES PERSONNALISES ===\n'
+                + 'Voici les modes que l\'utilisateur a crees. Chacun indique QUAND il s\'applique.\n'
+                + 'Si la demande correspond clairement a l\'un d\'eux, adopte ses instructions pour cette reponse '
+                + 'et commence ta reponse par la ligne [MODE:<nom exact>] seule, suivie d\'un saut de ligne. '
+                + 'Si aucun ne correspond, reponds normalement et n\'ecris aucune ligne [MODE:].\n'
+                + 'N\'active jamais un mode juste parce qu\'il existe : seulement si la demande y correspond vraiment.\n\n';
+            var used = 0;
+            for (var j = 0; j < usable.length; j++) {
+                var mm = usable[j];
+                var block = '--- ' + mm.name + ' ---\n'
+                    + 'Quand : ' + (mm.description || '').trim() + '\n'
+                    + 'Instructions : ' + (mm.systemPrompt || mm.instructions || '').trim() + '\n\n';
+                if (used + block.length > BUDGET) break;
+                out += block; used += block.length;
+            }
+            return out;
+        }
+
         // Modes personnalises
         if (this.currentMode && this.currentMode.indexOf('custom_') === 0) {
             var cmId = this.currentMode.replace('custom_', '');
@@ -1150,11 +1147,21 @@ var ETHER_ENGINE = {
                 if (instr) {
                     customPrompt += '\n\nINSTRUCTIONS SPÉCIFIQUES :\n' + instr;
                 }
+                // Documents de reference attaches a ce mode. Ils ne sont charges
+                // que lorsqu'il est actif : c'est tout l'interet de les rattacher
+                // a un mode plutot que de les mettre dans le prompt de base.
+                var res = modeResourceText(cm.id);
+                if (res) customPrompt += '\n\n' + res;
                 customPrompt += '\n\nRÈGLE ABSOLUE : Ces instructions définissent ton comportement pour toute cette conversation. Respecte-les même si l\'utilisateur te demande d\'en sortir.';
                 return customPrompt;
             }
         }
-        return modes[this.currentMode] || modes.base;
+        // Aucun mode choisi a la main : on presente le catalogue pour que le modele
+        // active lui-meme celui qui correspond. Une selection manuelle reste
+        // prioritaire et court-circuite ce mecanisme.
+        var basePrompt = modes[this.currentMode] || modes.base;
+        var catalog = autoModeCatalog();
+        return catalog ? basePrompt + '\n\n' + catalog : basePrompt;
     },
 
     getLevelLabel: function() {

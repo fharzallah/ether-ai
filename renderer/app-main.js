@@ -2720,7 +2720,7 @@ function showApp(){
     G('LS').classList.add('hidden'); G('APP').classList.remove('hidden');
     G('UNM').textContent=user.name; G('UAV').textContent=user.name.charAt(0).toUpperCase();
     var wg=G('welc-greet'); if(wg) wg.textContent=getGreeting()+', '+user.name;
-    initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI(); renderModelOptions();
+    initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI(); renderModelOptions(); loadAllModeResources();
     G('uinp').focus();
     showTutorial();
     startApiMonitor();
@@ -2813,6 +2813,84 @@ for(var mi=0;mi<modes.length;mi++){
 
 
 // === MODES PERSONNALISES ===
+// Texte des ressources attachees aux modes, charge une fois et garde en memoire :
+// getSystemPrompt est synchrone et ne peut pas attendre une lecture disque.
+var modeResources = {};
+
+// Documents joints au mode en cours d'edition. Un mode pas encore enregistre n'a
+// pas d'identifiant, donc rien a joindre : on le signale plutot que d'echouer.
+function renderModeResources(modeId) {
+    var box = G('CM-RES-LIST'), btn = G('CM-RES-ADD'), err = G('CM-RES-ERR');
+    if (!box) return;
+    err.classList.add('hidden');
+    if (!modeId) {
+        box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Enregistre le mode une premiere fois pour pouvoir y joindre des documents.</div>';
+        btn.disabled = true;
+        return;
+    }
+    btn.disabled = false;
+    window.etherDesktop.modeResourceList(modeId, false).then(function(list) {
+        if (!list || !list.length) {
+            box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Aucun document joint.</div>';
+            return;
+        }
+        var h = '';
+        for (var i = 0; i < list.length; i++) {
+            var r = list[i];
+            h += '<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;background:var(--b3)">'
+              + '<div style="flex:1;min-width:0"><div style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.name) + '</div>'
+              + '<div style="font-size:.66rem;color:var(--t3)">' + r.chars + ' caracteres' + (r.truncated ? ', tronque' : '') + '</div></div>'
+              + '<button type="button" class="btn-s" onclick="removeModeResource(\'' + escAttr(modeId) + '\',\'' + escAttr(r.id) + '\')">Retirer</button></div>';
+        }
+        box.innerHTML = h;
+    })['catch'](function() { box.innerHTML = ''; });
+}
+
+function removeModeResource(modeId, resId) {
+    window.etherDesktop.modeResourceDelete(modeId, resId).then(function() {
+        renderModeResources(modeId);
+        loadModeResources(modeId);
+    });
+}
+
+if (G('CM-RES-ADD')) {
+    G('CM-RES-ADD').onclick = function() {
+        if (!editingModeId) return;
+        var err = G('CM-RES-ERR');
+        window.etherDesktop.openFile().then(function(sel) {
+            var files = sel && sel.files ? sel.files : (Array.isArray(sel) ? sel : []);
+            if (!files.length) return;
+            return window.etherDesktop.modeResourceAdd(editingModeId, files[0].path || files[0]);
+        }).then(function(r) {
+            if (!r) return;
+            if (!r.ok) {
+                err.textContent = r.error || 'Document illisible';
+                err.classList.remove('hidden');
+                return;
+            }
+            renderModeResources(editingModeId);
+            loadModeResources(editingModeId);
+        })['catch'](function(e) {
+            err.textContent = 'Echec : ' + (e && e.message ? e.message : 'inconnu');
+            err.classList.remove('hidden');
+        });
+    };
+}
+
+
+function loadModeResources(modeId) {
+    if (!window.etherDesktop || !window.etherDesktop.modeResourceList) return Promise.resolve([]);
+    return window.etherDesktop.modeResourceList(modeId, true).then(function(list) {
+        modeResources[modeId] = list || [];
+        return modeResources[modeId];
+    })['catch'](function() { modeResources[modeId] = []; return []; });
+}
+
+function loadAllModeResources() {
+    var ids = (customModes || []).map(function(m) { return m.id; });
+    return Promise.all(ids.map(loadModeResources));
+}
+
 var customModes = sGet('custom_modes', []);
 var editingModeId = null;
 var defaultCategories = [
@@ -2904,6 +2982,8 @@ function openCreateCustomMode() {
     G('CM-SPEC').value = '';
     G('CM-STYLE').value = '';
     G('CM-INSTR').value = '';
+    G('CM-WHEN').value = '';
+    renderModeResources(null);
     G('CM-EMOJI').value = 'autre';
     G('CM-SAVE').textContent = 'Creer le mode';
     G('CM-DELETE').style.display = 'none';
@@ -2920,6 +3000,8 @@ function openEditCustomMode(id) {
     G('CM-SPEC').value = m.specialty || '';
     G('CM-STYLE').value = m.style || '';
     G('CM-INSTR').value = m.instructions || '';
+    G('CM-WHEN').value = m.description || '';
+    renderModeResources(id);
     G('CM-EMOJI').value = m.emoji || '';
     G('CM-SAVE').textContent = 'Enregistrer';
     G('CM-DELETE').style.display = 'block';
@@ -2959,6 +3041,7 @@ function saveCustomMode() {
     var specialty = G('CM-SPEC').value.trim();
     var style = G('CM-STYLE').value.trim();
     var instructions = G('CM-INSTR').value.trim();
+    var description = G('CM-WHEN').value.trim();
 
     if (editingModeId) {
         // Modifier
@@ -2969,6 +3052,7 @@ function saveCustomMode() {
                 customModes[i].specialty = specialty;
                 customModes[i].style = style;
                 customModes[i].instructions = instructions;
+                customModes[i].description = description;
                 break;
             }
         }
@@ -2980,7 +3064,8 @@ function saveCustomMode() {
             emoji: emoji,
             specialty: specialty,
             style: style,
-            instructions: instructions
+            instructions: instructions,
+            description: description
         });
     }
     sSet('custom_modes', customModes);

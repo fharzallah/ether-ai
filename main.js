@@ -2272,8 +2272,93 @@ ipcMain.handle('mode-save', async function(event, mode) {
     } catch(e) { return { ok: false, error: e.message }; }
 });
 
+// === RESSOURCES ATTACHEES A UN MODE ===
+// Un mode peut embarquer des documents de reference (guide de style, glossaire,
+// modele type). On stocke le TEXTE extrait, pas le fichier d'origine : c'est lui
+// qui sera injecte dans le prompt quand le mode s'active, et ca evite de trainer
+// des binaires dans le dossier des modes.
+var MODE_RESOURCE_MAX = 40000; // caracteres conserves par ressource
+
+function modeResourceDir(id) {
+    var safe = String(id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    return path.join(modesDir, safe + '_res');
+}
+
+async function extractDocumentText(filePath) {
+    var ext = path.extname(filePath).toLowerCase();
+    if (ext === '.pdf') {
+        var buf = await fs.promises.readFile(filePath);
+        var d = await pdfParse(buf);
+        return d.text;
+    }
+    if (ext === '.docx') {
+        var r = await mammoth.extractRawText({ path: filePath });
+        return r.value;
+    }
+    if (ext === '.xlsx' || ext === '.xls') {
+        var xb = await fs.promises.readFile(filePath);
+        var wb = XLSX.read(xb);
+        var text = '';
+        for (var i = 0; i < wb.SheetNames.length && i < 20; i++) {
+            text += '--- Feuille: ' + wb.SheetNames[i] + ' ---\n'
+                 + XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[i]]) + '\n\n';
+        }
+        return text;
+    }
+    return await fs.promises.readFile(filePath, 'utf8');
+}
+
+ipcMain.handle('mode-resource-add', async function(event, id, filePath) {
+    try {
+        if (!isPathAllowed(filePath)) return { ok: false, error: 'Chemin non autorise' };
+        var dir = modeResourceDir(id);
+        await fs.promises.mkdir(dir, { recursive: true });
+        var text = await extractDocumentText(filePath);
+        if (!text || !text.trim()) return { ok: false, error: 'Aucun texte extrait de ce fichier' };
+        var truncated = text.length > MODE_RESOURCE_MAX;
+        var name = path.basename(filePath);
+        var resId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+        await fs.promises.writeFile(path.join(dir, resId + '.json'), JSON.stringify({
+            id: resId, name: name, chars: text.length, truncated: truncated,
+            text: text.slice(0, MODE_RESOURCE_MAX), addedAt: new Date().toISOString()
+        }, null, 2), 'utf8');
+        return { ok: true, id: resId, name: name, chars: text.length, truncated: truncated };
+    } catch(e) { return { ok: false, error: e.message }; }
+});
+
+// withText=false par defaut : la liste sert a l'affichage, inutile de faire
+// transiter des dizaines de milliers de caracteres vers le renderer.
+ipcMain.handle('mode-resource-list', async function(event, id, withText) {
+    try {
+        var dir = modeResourceDir(id);
+        if (!fs.existsSync(dir)) return [];
+        var files = await fs.promises.readdir(dir);
+        var out = [];
+        for (var i = 0; i < files.length; i++) {
+            if (!files[i].endsWith('.json')) continue;
+            try {
+                var r = JSON.parse(await fs.promises.readFile(path.join(dir, files[i]), 'utf8'));
+                out.push(withText ? r : { id: r.id, name: r.name, chars: r.chars, truncated: r.truncated });
+            } catch(e) { /* ressource illisible, ignoree */ }
+        }
+        return out;
+    } catch(e) { return []; }
+});
+
+ipcMain.handle('mode-resource-delete', async function(event, id, resId) {
+    try {
+        var safe = String(resId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        var fp = path.join(modeResourceDir(id), safe + '.json');
+        if (fs.existsSync(fp)) await fs.promises.unlink(fp);
+        return { ok: true };
+    } catch(e) { return { ok: false, error: e.message }; }
+});
+
 ipcMain.handle('mode-delete', async function(event, id) {
     try {
+        // Les ressources suivent le mode : les laisser derriere accumulerait des
+        // documents orphelins dans le dossier.
+        try { await fs.promises.rm(modeResourceDir(id), { recursive: true, force: true }); } catch(e) {}
         // Sanitize ID
         let safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
         const filePath = path.join(modesDir, safeId + '.json');
