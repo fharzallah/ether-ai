@@ -18,14 +18,20 @@ var ALLOWED_CHANNELS = [
     'persist-read', 'persist-write', 'persist-get', 'persist-set',
     'modes-list', 'mode-save', 'mode-delete',
     'get-user-data-path', 'get-system-theme', 'open-external',
-    'send-email', 'set-api-key', 'get-api-port', 'get-local-ip', 'set-network-mode'
+    'send-email', 'set-api-key', 'get-api-port', 'get-local-ip', 'set-network-mode',
+    'custom-providers-list', 'custom-providers-save', 'custom-providers-delete', 'custom-providers-test',
+    'provider-keys-status', 'provider-keys-set', 'provider-keys-clear', 'provider-keys-test',
+    'secure-storage-available'
 ];
 
-function safeInvoke(channel, data) {
+function safeInvoke(channel) {
     if (ALLOWED_CHANNELS.indexOf(channel) === -1) {
         return Promise.reject(new Error('IPC channel not allowed: ' + channel));
     }
-    return ipcRenderer.invoke(channel, data);
+    // Transmettre TOUS les arguments : certains handlers en prennent deux
+    // (provider-keys-set recoit le fournisseur puis la cle).
+    var args = Array.prototype.slice.call(arguments, 1);
+    return ipcRenderer.invoke.apply(ipcRenderer, [channel].concat(args));
 }
 
 contextBridge.exposeInMainWorld('etherDesktop', {
@@ -43,6 +49,15 @@ contextBridge.exposeInMainWorld('etherDesktop', {
     ollamaChat: function(data) { return safeInvoke('ollama-chat', data); },
     ollamaStream: function(data) { return safeInvoke('ollama-stream', data); },
     customChat: function(data) { return safeInvoke('custom-chat', data); },
+    providerKeysStatus: function() { return safeInvoke('provider-keys-status'); },
+    providerKeysSet: function(provider, key) { return safeInvoke('provider-keys-set', provider, key); },
+    providerKeysClear: function(provider) { return safeInvoke('provider-keys-clear', provider); },
+    providerKeysTest: function(provider) { return safeInvoke('provider-keys-test', provider); },
+    customProvidersList: function() { return safeInvoke('custom-providers-list'); },
+    customProvidersSave: function(data) { return safeInvoke('custom-providers-save', data); },
+    customProvidersDelete: function(id) { return safeInvoke('custom-providers-delete', id); },
+    customProvidersTest: function(id) { return safeInvoke('custom-providers-test', id); },
+    secureStorageAvailable: function() { return safeInvoke('secure-storage-available'); },
     customStream: function(data) { return safeInvoke('custom-stream', data); },
     testAllProviders: function() { return safeInvoke('test-all-providers'); },
     transcribeAudio: function(buffer) { return safeInvoke('transcribe-audio', buffer); },

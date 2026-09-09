@@ -457,6 +457,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .deep-step-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;border:2px solid var(--bd);color:var(--t3);transition:all .3s}
 .deep-step.active .deep-step-icon{border-color:#f59e0b;color:#f59e0b;animation:pulse-deep 1.5s infinite}
 .deep-step.done .deep-step-icon{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.1)}
+.deep-step.skipped{opacity:.7}
+.deep-step.skipped .deep-step-icon{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.1)}
+.deep-step.skipped .deep-step-title{color:#f59e0b}
+.deep-step.skipped .deep-step-detail{color:#f59e0b}
 .deep-step-content{flex:1;min-width:0}
 .deep-step-title{font-size:.82rem;font-weight:600;color:var(--t2);margin-bottom:2px}
 .deep-step.active .deep-step-title{color:#f59e0b}

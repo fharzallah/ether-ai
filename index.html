@@ -226,6 +226,11 @@
 <span>Mode ephemere desactive - discussion sauvegardee</span>
 <button onclick="G('SAVE-BAR').classList.add('hidden')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;line-height:1;padding:0 2px;opacity:.6">&times;</button>
 </div>
+<!-- BANDEAU TACHES INTERNES DESACTIVEES -->
+<div id="TASK-BAR" class="hidden" style="max-width:680px;margin:0 auto 8px;padding:8px 14px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:20px;font-size:.8rem;color:#f59e0b;display:flex;align-items:center;justify-content:space-between;animation:fi .3s ease">
+<span id="TASK-BAR-TXT"></span>
+<button onclick="G('TASK-BAR').classList.add('hidden')" style="background:none;border:none;color:#f59e0b;cursor:pointer;font-size:1.1rem;line-height:1;padding:0 2px;opacity:.6">&times;</button>
+</div>
 <!-- PANNEAU REFERENCE CHATS -->
 <div id="REF-P" class="hidden" style="max-width:750px;margin:0 auto;padding:6px 0">
 <div style="background:var(--b2);border:1px solid var(--bd);border-radius:10px;padding:10px;max-height:200px;overflow-y:auto">
@@ -422,6 +427,10 @@
 </div>
 <div class="prov-status" id="PROV-CUSTOM-STATUS"><span class="prov-dot prov-dot-gray"></span>Non configure</div>
 <div class="prov-body">
+<div id="CUST-WARN" class="hidden" style="font-size:.72rem;color:var(--color-warning);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:8px 10px;margin-bottom:10px"></div>
+<div id="CUST-LIST" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+<div id="CUST-FORM" class="hidden" style="border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--b3)">
+<input type="hidden" id="CUST-ID" value="">
 <div style="margin-bottom:10px">
 <label style="font-size:.74rem;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">Nom</label>
 <input type="text" id="CUST-NAME" class="prov-key-input" placeholder="Ex: Mon serveur Ollama, OpenRouter..." value="" style="font-family:inherit">
@@ -431,19 +440,26 @@
 <input type="text" id="CUST-URL" class="prov-key-input" placeholder="https://openrouter.ai/api/v1" value="">
 </div>
 <div style="margin-bottom:10px">
-<label style="font-size:.74rem;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">Cle API <span style="opacity:.5">(optionnelle pour Ollama)</span></label>
+<label style="font-size:.74rem;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">Cle API <span style="opacity:.5">(optionnelle pour un serveur local)</span></label>
 <div class="prov-key-row">
 <input type="password" id="KEY-CUSTOM" class="prov-key-input" placeholder="sk-..." value="">
 <button type="button" class="prov-key-toggle" onclick="toggleKeyVis(this)">Voir</button>
 </div>
+<div id="CUST-KEY-HINT" class="hidden" style="font-size:.68rem;color:var(--t3);margin-top:4px"></div>
 </div>
 <div style="margin-bottom:10px">
 <label style="font-size:.74rem;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">Modele</label>
-<input type="text" id="CUST-MODEL" class="prov-key-input" placeholder="Ex: llama3, gpt-4o, claude-sonnet..." value="" style="font-family:inherit">
+<input type="text" id="CUST-MODEL" class="prov-key-input" placeholder="Ex: llama3, gpt-4o, deepseek-chat..." value="" style="font-family:inherit">
+</div>
+<div id="CUST-FORM-ERR" class="hidden" style="font-size:.72rem;color:var(--color-danger);margin-bottom:8px"></div>
+<div style="display:flex;gap:8px;justify-content:flex-end">
+<button type="button" class="btn-s" id="CUST-CANCEL">Annuler</button>
+<button type="button" class="btn-p" id="CUST-SAVE" style="width:auto;padding:6px 14px;font-size:.78rem">Enregistrer</button>
+</div>
 </div>
 <div class="prov-footer">
-<span style="font-size:.7rem;color:var(--t3)">Format OpenAI (/chat/completions)</span>
-<button type="button" class="btn-s" onclick="testProvider('custom')">Tester</button>
+<span style="font-size:.7rem;color:var(--t3)">Format OpenAI (/chat/completions) — cles chiffrees par le systeme</span>
+<button type="button" class="btn-s" id="CUST-ADD">+ Ajouter</button>
 </div>
 </div>
 </div>

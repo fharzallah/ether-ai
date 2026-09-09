@@ -3,6 +3,7 @@ var app = electron.app;
 var BrowserWindow = electron.BrowserWindow;
 var ipcMain = electron.ipcMain;
 var dialog = electron.dialog;
+var safeStorage = electron.safeStorage;
 
 // === VERROU MONO-INSTANCE ===
 // Sans ca, un double-clic ou un clic sur le Dock pendant le demarrage lance
@@ -74,13 +75,16 @@ var CEREBRAS_KEY = process.env.CEREBRAS_KEY || '';
 var DEFAULT_GROQ_KEY = GROQ_KEY;
 
 // Gemini — rotation automatique entre les clés disponibles dans .env
-var GEMINI_KEYS = [
+var OPENAI_KEY = process.env.OPENAI_KEY || '';
+var ANTHROPIC_KEY = process.env.ANTHROPIC_KEY || '';
+var ENV_GEMINI_KEYS = [
     process.env.GEMINI_KEY_1,
     process.env.GEMINI_KEY_2,
     process.env.GEMINI_KEY_3
 ].filter(Boolean);
+var GEMINI_KEYS = ENV_GEMINI_KEYS.slice();
 var _geminiKeyIndex = 0;
-var _geminiKeyBlocked = [false, false, false];
+var _geminiKeyBlocked = GEMINI_KEYS.map(function() { return false; });
 
 function getGeminiKey() {
     // Si la cle actuelle est bloquee, essayer l'autre
@@ -112,10 +116,8 @@ function loadApiConfig() {
         var configPath = path.join(app.getPath('userData'), 'api-config.json');
         if (fs.existsSync(configPath)) {
             var config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            if (config.groqKey) GROQ_KEY = config.groqKey;
-            if (config.geminiKey) GEMINI_KEY = config.geminiKey;
-            if (config.mistralKey) MISTRAL_KEY = config.mistralKey;
-            if (config.cerebrasKey) CEREBRAS_KEY = config.cerebrasKey;
+            // Les cles ne sont plus lues ici : elles vivent chiffrees dans le coffre
+            // (voir applyBuiltinKeys). migrateLegacyApiConfig() vide les anciens champs.
             if (config.models) {
                 for (var k in config.models) { if (config.models[k]) GROQ_MODELS[k] = config.models[k]; }
             }
@@ -127,13 +129,10 @@ function loadApiConfig() {
 function saveApiConfig() {
     try {
         var configPath = path.join(app.getPath('userData'), 'api-config.json');
+        // Aucun secret ici : les cles sont chiffrees dans provider-keys.json.
         fs.writeFileSync(configPath, JSON.stringify({
-            groqKey: GROQ_KEY,
-            geminiKey: GEMINI_KEY,
-            mistralKey: MISTRAL_KEY,
-            cerebrasKey: CEREBRAS_KEY,
             models: GROQ_MODELS
-        }, null, 2), 'utf8');
+        }, null, 2), { encoding: 'utf8', mode: 0o600 });
         return true;
     } catch(e) { console.error('[CONFIG] Failed to save:', e.message); return false; }
 }
@@ -141,6 +140,15 @@ function saveApiConfig() {
 // Charger la config au demarrage (apres app.whenReady)
 // On le met dans un try/catch car getPath n'est pas dispo avant whenReady
 try { loadApiConfig(); } catch(e) { /* will retry after whenReady */ }
+
+// Coffre des cles : migrer l'ancien fichier en clair puis charger les cles chiffrees.
+// Doit tourner apres whenReady car safeStorage n'est pas pret avant.
+app.whenReady().then(function() {
+    try {
+        migrateLegacyApiConfig();
+        applyBuiltinKeys();
+    } catch(e) { console.warn('[KEYS] Initialisation du coffre echouee:', e.message); }
+});
 
 // === HELPER: HTTPS request ===
 function httpsRequest(options, postData) {
@@ -943,19 +951,314 @@ function parseCustomBaseUrl(baseUrl) {
     };
 }
 
-ipcMain.handle('custom-chat', function(event, data) {
-    var parsed;
-    try { parsed = parseCustomBaseUrl(data.baseUrl); } catch(e) {
-        return Promise.resolve({ ok: false, error: 'URL de base invalide', provider: 'custom' });
+// === COFFRE DES CLES DES FOURNISSEURS INTEGRES ===
+// Meme mecanisme que les fournisseurs personnalises : une seule facon de stocker un
+// secret dans l'app. Rien en clair, ni dans localStorage, ni dans api-config.json.
+var builtinKeysPath = path.join(app.getPath('userData'), 'provider-keys.json');
+var BUILTIN_PROVIDERS = ['groq', 'gemini', 'mistral', 'cerebras', 'openai', 'anthropic'];
+
+function readBuiltinKeys() {
+    try {
+        if (fs.existsSync(builtinKeysPath)) {
+            var d = JSON.parse(fs.readFileSync(builtinKeysPath, 'utf8'));
+            if (d && d.keys && typeof d.keys === 'object') return d.keys;
+        }
+    } catch(e) { console.error('[KEYS] Read error:', e.message); }
+    return {};
+}
+
+function writeBuiltinKeys(keys) {
+    try {
+        fs.writeFileSync(builtinKeysPath, JSON.stringify({ version: 1, keys: keys }, null, 2), { encoding: 'utf8', mode: 0o600 });
+        return true;
+    } catch(e) { console.error('[KEYS] Write error:', e.message); return false; }
+}
+
+function getBuiltinKey(provider) {
+    var keys = readBuiltinKeys();
+    if (!keys[provider]) return '';
+    try {
+        return safeStorage.decryptString(Buffer.from(keys[provider], 'base64'));
+    } catch(e) {
+        console.error('[KEYS] Decrypt failed for', provider, ':', e.message);
+        return '';
     }
+}
+
+// Renvoie { ok } ou { ok:false, error } — n'ecrit jamais un secret en clair.
+function setBuiltinKey(provider, plain) {
+    if (BUILTIN_PROVIDERS.indexOf(provider) === -1) return { ok: false, error: 'Fournisseur inconnu' };
+    var keys = readBuiltinKeys();
+    if (!plain) {
+        delete keys[provider];
+    } else {
+        if (!encryptionAvailable()) {
+            return { ok: false, error: 'Chiffrement indisponible sur ce systeme : la cle ne peut pas etre enregistree en clair.' };
+        }
+        try { keys[provider] = safeStorage.encryptString(plain).toString('base64'); }
+        catch(e) { return { ok: false, error: 'Chiffrement echoue : ' + e.message }; }
+    }
+    if (!writeBuiltinKeys(keys)) return { ok: false, error: 'Ecriture impossible' };
+    applyBuiltinKeys();
+    return { ok: true };
+}
+
+// Recharge les variables en memoire utilisees par les appels reseau.
+// Les cles du coffre priment sur celles du .env.
+function applyBuiltinKeys() {
+    var g = getBuiltinKey('groq');       if (g) GROQ_KEY = g;
+    var m = getBuiltinKey('mistral');    if (m) MISTRAL_KEY = m;
+    var c = getBuiltinKey('cerebras');   if (c) CEREBRAS_KEY = c;
+    OPENAI_KEY = getBuiltinKey('openai') || OPENAI_KEY;
+    ANTHROPIC_KEY = getBuiltinKey('anthropic') || ANTHROPIC_KEY;
+
+    // Gemini tourne sur un tableau : la cle du coffre passe en tete, les cles .env
+    // restent disponibles pour la rotation. Sans ca une cle saisie dans les reglages
+    // etait enregistree mais jamais utilisee par les appels.
+    var gem = getBuiltinKey('gemini');
+    var list = ENV_GEMINI_KEYS.slice();
+    if (gem) list = [gem].concat(list.filter(function(k) { return k !== gem; }));
+    if (list.length) {
+        GEMINI_KEYS = list;
+        GEMINI_KEY = GEMINI_KEYS[0];
+        _geminiKeyBlocked = GEMINI_KEYS.map(function() { return false; });
+        if (_geminiKeyIndex >= GEMINI_KEYS.length) _geminiKeyIndex = 0;
+    }
+}
+
+// Migration unique : api-config.json gardait les cles en clair sur disque.
+// On les chiffre dans le coffre puis on les retire du fichier.
+function migrateLegacyApiConfig() {
+    try {
+        var configPath = path.join(app.getPath('userData'), 'api-config.json');
+        if (!fs.existsSync(configPath)) return;
+        var config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        var map = { groqKey: 'groq', geminiKey: 'gemini', mistralKey: 'mistral', cerebrasKey: 'cerebras' };
+        var moved = [];
+        for (var field in map) {
+            if (!config[field]) continue;
+            if (!encryptionAvailable()) {
+                console.warn('[KEYS] Chiffrement indisponible — migration de api-config.json reportee.');
+                return;
+            }
+            var r = setBuiltinKey(map[field], String(config[field]));
+            if (r.ok) { delete config[field]; moved.push(map[field]); }
+        }
+        if (moved.length) {
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { encoding: 'utf8', mode: 0o600 });
+            console.log('[KEYS] Migre vers le coffre chiffre puis efface de api-config.json :', moved.join(', '));
+        }
+    } catch(e) { console.warn('[KEYS] Migration echouee:', e.message); }
+}
+
+ipcMain.handle('provider-keys-status', function() {
+    var keys = readBuiltinKeys();
+    var out = {};
+    for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
+        out[BUILTIN_PROVIDERS[i]] = !!keys[BUILTIN_PROVIDERS[i]];
+    }
+    return out;
+});
+
+ipcMain.handle('provider-keys-set', function(event, provider, key) {
+    return setBuiltinKey(String(provider || ''), typeof key === 'string' ? key.trim() : '');
+});
+
+// Teste une cle integree sans jamais la renvoyer au renderer.
+ipcMain.handle('provider-keys-test', function(event, provider) {
+    var key = getBuiltinKey(provider);
+    if (!key) return Promise.resolve({ ok: false, error: 'Aucune cle enregistree' });
+    var cfgs = {
+        openai:    { host: 'api.openai.com',            path: '/v1/models',            headers: { 'Authorization': 'Bearer ' + key } },
+        anthropic: { host: 'api.anthropic.com',         path: '/v1/models',            headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' } },
+        gemini:    { host: 'generativelanguage.googleapis.com', path: '/v1beta/models?key=' + encodeURIComponent(key), headers: {} },
+        groq:      { host: 'api.groq.com',              path: '/openai/v1/models',     headers: { 'Authorization': 'Bearer ' + key } },
+        mistral:   { host: 'api.mistral.ai',            path: '/v1/models',            headers: { 'Authorization': 'Bearer ' + key } },
+        cerebras:  { host: 'api.cerebras.ai',           path: '/v1/models',            headers: { 'Authorization': 'Bearer ' + key } }
+    };
+    var cfg = cfgs[provider];
+    if (!cfg) return Promise.resolve({ ok: false, error: 'Fournisseur inconnu' });
+    return new Promise(function(resolve) {
+        var req = https.request({ hostname: cfg.host, path: cfg.path, method: 'GET', headers: cfg.headers }, function(res) {
+            res.resume();
+            if (res.statusCode === 200) resolve({ ok: true });
+            else resolve({ ok: false, error: 'Status ' + res.statusCode, status: res.statusCode });
+        });
+        req.on('error', function(e) { resolve({ ok: false, error: e.message }); });
+        req.setTimeout(10000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout' }); });
+        req.end();
+    });
+});
+
+ipcMain.handle('provider-keys-clear', function(event, provider) {
+    return setBuiltinKey(String(provider || ''), '');
+});
+
+// === COFFRE DES FOURNISSEURS PERSONNALISES ===
+// Les cles API ne quittent JAMAIS le process principal en clair : elles sont chiffrees
+// par safeStorage (Keychain sur macOS) et le renderer ne recoit que des metadonnees.
+// Les appels reseau se font par identifiant de fournisseur, jamais en passant la cle.
+var customProvidersPath = path.join(app.getPath('userData'), 'custom-providers.json');
+
+function readCustomProviders() {
+    try {
+        if (fs.existsSync(customProvidersPath)) {
+            var d = JSON.parse(fs.readFileSync(customProvidersPath, 'utf8'));
+            if (d && Array.isArray(d.providers)) return d.providers;
+        }
+    } catch(e) { console.error('[CUSTOM-PROV] Read error:', e.message); }
+    return [];
+}
+
+function writeCustomProviders(list) {
+    try {
+        fs.writeFileSync(customProvidersPath, JSON.stringify({ version: 1, providers: list }, null, 2), { encoding: 'utf8', mode: 0o600 });
+        return true;
+    } catch(e) { console.error('[CUSTOM-PROV] Write error:', e.message); return false; }
+}
+
+function encryptionAvailable() {
+    try { return !!(safeStorage && safeStorage.isEncryptionAvailable()); } catch(e) { return false; }
+}
+
+// Dechiffrement strictement interne — jamais expose au renderer.
+function getProviderSecret(id) {
+    var list = readCustomProviders();
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].id !== id) continue;
+        if (!list[i].keyEnc) return '';
+        try {
+            return safeStorage.decryptString(Buffer.from(list[i].keyEnc, 'base64'));
+        } catch(e) {
+            console.error('[CUSTOM-PROV] Decrypt failed for', id, ':', e.message);
+            return null;
+        }
+    }
+    return null;
+}
+
+function findProvider(id) {
+    var list = readCustomProviders();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+}
+
+// Vue expurgee envoyee au renderer : aucune trace de la cle.
+function publicProvider(p) {
+    return { id: p.id, name: p.name, baseUrl: p.baseUrl, model: p.model, hasKey: !!p.keyEnc };
+}
+
+ipcMain.handle('custom-providers-list', function() {
+    return readCustomProviders().map(publicProvider);
+});
+
+ipcMain.handle('custom-providers-save', function(event, data) {
+    if (!data || typeof data !== 'object') return { ok: false, error: 'Donnees invalides' };
+    var name = String(data.name || '').trim();
+    var baseUrl = String(data.baseUrl || '').trim();
+    var model = String(data.model || '').trim();
+    if (!name) return { ok: false, error: 'Le nom est requis' };
+    if (!model) return { ok: false, error: 'Le modele est requis' };
+    try { parseCustomBaseUrl(baseUrl); } catch(e) { return { ok: false, error: 'URL de base invalide (http ou https attendu)' }; }
+
+    var list = readCustomProviders();
+    var existing = null;
+    if (data.id) { for (var i = 0; i < list.length; i++) if (list[i].id === data.id) existing = list[i]; }
+
+    var entry = existing || { id: 'cp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8), keyEnc: '' };
+    entry.name = name;
+    entry.baseUrl = baseUrl;
+    entry.model = model;
+
+    // Cle absente = on conserve celle deja enregistree. Chaine vide = suppression explicite.
+    if (typeof data.apiKey === 'string') {
+        if (data.apiKey === '') {
+            entry.keyEnc = '';
+        } else {
+            if (!encryptionAvailable()) {
+                return { ok: false, error: 'Chiffrement indisponible sur ce systeme : la cle ne peut pas etre enregistree en clair.' };
+            }
+            try {
+                entry.keyEnc = safeStorage.encryptString(data.apiKey).toString('base64');
+            } catch(e) {
+                return { ok: false, error: 'Chiffrement echoue : ' + e.message };
+            }
+        }
+    }
+
+    if (!existing) list.push(entry);
+    if (!writeCustomProviders(list)) return { ok: false, error: 'Ecriture impossible' };
+    return { ok: true, provider: publicProvider(entry), providers: list.map(publicProvider) };
+});
+
+ipcMain.handle('custom-providers-delete', function(event, id) {
+    var list = readCustomProviders().filter(function(p) { return p.id !== id; });
+    if (!writeCustomProviders(list)) return { ok: false, error: 'Ecriture impossible' };
+    return { ok: true, providers: list.map(publicProvider) };
+});
+
+// Teste un fournisseur enregistre avec une requete minimale, sans exposer la cle.
+ipcMain.handle('custom-providers-test', function(event, id) {
+    var resolved = resolveCustomProvider(id);
+    if (resolved.error) return Promise.resolve({ ok: false, error: resolved.error });
+    var parsed = resolved.parsed;
     var postData = JSON.stringify({
-        model: data.model,
+        model: resolved.provider.model,
+        messages: [{ role: 'user', content: 'ok' }],
+        max_tokens: 5
+    });
+    var headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) };
+    if (resolved.secret) headers['Authorization'] = 'Bearer ' + resolved.secret;
+    return new Promise(function(resolve) {
+        var req = parsed.mod.request({
+            hostname: parsed.hostname, port: parsed.port,
+            path: parsed.basePath + '/chat/completions', method: 'POST', headers: headers
+        }, function(res) {
+            var chunks = [];
+            res.on('data', function(c) { chunks.push(c); });
+            res.on('end', function() {
+                if (res.statusCode === 200) return resolve({ ok: true });
+                var body = Buffer.concat(chunks).toString('utf8').substring(0, 200);
+                console.log('[CUSTOM-PROV] Test error:', res.statusCode, body);
+                resolve({ ok: false, error: 'Status ' + res.statusCode, status: res.statusCode });
+            });
+        });
+        req.on('error', function(e) { resolve({ ok: false, error: e.message }); });
+        req.setTimeout(15000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout' }); });
+        req.write(postData);
+        req.end();
+    });
+});
+
+ipcMain.handle('secure-storage-available', function() {
+    return encryptionAvailable();
+});
+
+// Resout un fournisseur + sa cle pour les appels reseau internes.
+// Renvoie une erreur exploitable plutot que de lancer une requete sans authentification.
+function resolveCustomProvider(providerId) {
+    var p = findProvider(providerId);
+    if (!p) return { error: 'Fournisseur personnalise introuvable' };
+    var secret = getProviderSecret(providerId);
+    if (secret === null) return { error: 'Cle illisible : reenregistre-la dans les reglages' };
+    var parsed;
+    try { parsed = parseCustomBaseUrl(p.baseUrl); } catch(e) { return { error: 'URL de base invalide' }; }
+    return { provider: p, secret: secret, parsed: parsed };
+}
+
+ipcMain.handle('custom-chat', function(event, data) {
+    var resolved = resolveCustomProvider(data && data.providerId);
+    if (resolved.error) return Promise.resolve({ ok: false, error: resolved.error, provider: 'custom' });
+    var parsed = resolved.parsed;
+    var model = data.model || resolved.provider.model;
+    var postData = JSON.stringify({
+        model: model,
         messages: data.messages,
         temperature: data.temperature || 0.6,
         max_tokens: data.max_tokens || 3000
     });
     var headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) };
-    if (data.apiKey) headers['Authorization'] = 'Bearer ' + data.apiKey;
+    if (resolved.secret) headers['Authorization'] = 'Bearer ' + resolved.secret;
 
     return new Promise(function(resolve) {
         var req = parsed.mod.request({
@@ -969,7 +1272,7 @@ ipcMain.handle('custom-chat', function(event, data) {
                 if (res.statusCode === 200) {
                     try {
                         var d = JSON.parse(body);
-                        resolve({ ok: true, text: d.choices[0].message.content, model: data.model, provider: 'custom' });
+                        resolve({ ok: true, text: d.choices[0].message.content, model: model, provider: 'custom' });
                     } catch(e) { resolve({ ok: false, error: 'Reponse invalide', provider: 'custom' }); }
                 } else {
                     console.log('[CUSTOM] Error:', res.statusCode, body.substring(0, 200));
@@ -989,19 +1292,19 @@ ipcMain.handle('custom-stream', function(event, data) {
     if (!checkRateLimit('custom-stream')) {
         return Promise.resolve({ ok: false, error: 'Rate limit exceeded.', provider: 'custom' });
     }
-    var parsed;
-    try { parsed = parseCustomBaseUrl(data.baseUrl); } catch(e) {
-        return Promise.resolve({ ok: false, error: 'URL de base invalide', provider: 'custom' });
-    }
+    var resolved = resolveCustomProvider(data && data.providerId);
+    if (resolved.error) return Promise.resolve({ ok: false, error: resolved.error, provider: 'custom' });
+    var parsed = resolved.parsed;
+    var model = data.model || resolved.provider.model;
     var postData = JSON.stringify({
-        model: data.model,
+        model: model,
         messages: data.messages,
         temperature: data.temperature || 0.6,
         max_tokens: data.max_tokens || 3000,
         stream: true
     });
     var headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) };
-    if (data.apiKey) headers['Authorization'] = 'Bearer ' + data.apiKey;
+    if (resolved.secret) headers['Authorization'] = 'Bearer ' + resolved.secret;
 
     return new Promise(function(resolve) {
         var req = parsed.mod.request({
@@ -1044,7 +1347,7 @@ ipcMain.handle('custom-stream', function(event, data) {
                 if (mainWindow && !mainWindow.isDestroyed()) {
                     mainWindow.webContents.send('groq-done', fullText);
                 }
-                setTimeout(function() { resolve({ ok: true, text: fullText, model: data.model, provider: 'custom' }); }, 100);
+                setTimeout(function() { resolve({ ok: true, text: fullText, model: model, provider: 'custom' }); }, 100);
             });
         });
         req.on('error', function(e) { resolve({ ok: false, error: e.message, provider: 'custom' }); });
@@ -1302,21 +1605,13 @@ ipcMain.handle('set-api-key', function(event, key) {
 
 // Mettre a jour la cle Groq et sauvegarder dans le config
 ipcMain.handle('set-groq-key', function(event, key) {
-    if (key && key.trim()) {
-        GROQ_KEY = key.trim();
-        saveApiConfig();
-        return { ok: true };
-    }
+    if (key && key.trim()) return setBuiltinKey('groq', key.trim());
     return { ok: false, error: 'Cle vide' };
 });
 
 // Mettre a jour la cle Mistral
 ipcMain.handle('set-mistral-key', function(event, key) {
-    if (key && key.trim()) {
-        MISTRAL_KEY = key.trim();
-        saveApiConfig();
-        return { ok: true };
-    }
+    if (key && key.trim()) return setBuiltinKey('mistral', key.trim());
     return { ok: false, error: 'Cle vide' };
 });
 
