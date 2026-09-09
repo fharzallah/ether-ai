@@ -399,7 +399,22 @@ var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true, 
 
 // getSmartRoute et getSmartModel sont definis dans engine.js (routing intelligent)
 
-if (window.etherDesktop) { window.etherDesktop.getModels().then(function(m) { if (m && m.groq) { GROQ_MODELS = m.groq; GEMINI_MODELS = m.gemini; MISTRAL_MODELS = m.mistral; CEREBRAS_MODELS = m.cerebras; if (m.ollama) OLLAMA_MODELS = m.ollama; } else if (m) { GROQ_MODELS = m; } }); }
+// N'ecraser les constantes que si la reponse a la forme attendue. L'ancien repli
+// assignait n'importe quelle valeur non nulle a GROQ_MODELS, ce qui suffisait a
+// rendre GROQ_MODELS.main indefini et a envoyer un nom de modele vide a l'API.
+function validModelSet(o) { return !!(o && typeof o === 'object' && !Array.isArray(o) && o.main); }
+if (window.etherDesktop) {
+    window.etherDesktop.getModels().then(function(m) {
+        if (!m || typeof m !== 'object') return;
+        if (validModelSet(m.groq)) GROQ_MODELS = m.groq;
+        if (validModelSet(m.gemini)) GEMINI_MODELS = m.gemini;
+        if (validModelSet(m.mistral)) MISTRAL_MODELS = m.mistral;
+        if (validModelSet(m.cerebras)) CEREBRAS_MODELS = m.cerebras;
+        if (validModelSet(m.ollama)) OLLAMA_MODELS = m.ollama;
+        if (!m.groq && validModelSet(m)) GROQ_MODELS = m; // ancienne forme plate
+        if (typeof renderModelOptions === 'function') renderModelOptions();
+    })['catch'](function() {});
+}
 var activeModel = null;
 var apiAvailable = false;
 

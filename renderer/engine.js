@@ -146,7 +146,9 @@ function testApiKey() {
 // pour les taches plus exigeantes. Chaque fournisseur y repond avec ce qu'il a.
 var CALLAI_MODELS = {
     groq: GROQ_MODELS, mistral: MISTRAL_MODELS, gemini: GEMINI_MODELS,
-    cerebras: CEREBRAS_MODELS, ollama: OLLAMA_MODELS
+    cerebras: CEREBRAS_MODELS, ollama: OLLAMA_MODELS,
+    openai: { main: 'gpt-4o', fast: 'gpt-4o-mini' },
+    anthropic: { main: 'claude-opus-5', fast: 'claude-haiku-4-5' }
 };
 function callAIModel(provider, tier) {
     var m = CALLAI_MODELS[provider];
@@ -618,14 +620,23 @@ var ETHER_ENGINE = {
         // que sur l'endpoint choisi par l'utilisateur.
         var noFallback = false;
         var cascade;
-        if (route.provider === 'custom' && route.customId) {
+        // Un fournisseur hors cascade automatique (personnalise, OpenAI, Anthropic)
+        // ne peut venir que d'une selection manuelle. Sans ce cas dedie, la
+        // recherche plus bas ne le trouverait pas et repartirait sur le premier
+        // de la liste, c'est-a-dire ailleurs que la ou l'utilisateur a demande.
+        var offCascade = ['custom', 'openai', 'anthropic'];
+        if (offCascade.indexOf(route.provider) !== -1) {
             noFallback = true;
             var _customId = route.customId;
+            var _prov = route.provider;
             cascade = [{
-                provider: 'custom',
+                provider: _prov,
                 model: route.model,
                 stream: function(data) {
-                    return window.etherDesktop.customStream(Object.assign({}, data, { providerId: _customId }));
+                    if (_prov === 'custom') {
+                        return window.etherDesktop.customStream(Object.assign({}, data, { providerId: _customId }));
+                    }
+                    return window.etherDesktop[_prov + 'Stream'](data);
                 }
             }];
         } else {
@@ -643,7 +654,7 @@ var ETHER_ENGINE = {
             if (idx >= cascade.length && noFallback) {
                 // Selection manuelle : on remonte l'echec au lieu de rerouter ailleurs.
                 console.log('[ENGINE] Custom provider failed — aucun repli (selection manuelle)');
-                var res = self.parseResponse('Le fournisseur personnalise selectionne n\'a pas repondu. '
+                var res = self.parseResponse('Le fournisseur selectionne n\'a pas repondu. '
                     + 'Verifie son URL, sa cle et son modele dans les reglages, ou repasse en mode Auto.');
                 res._provider = 'custom';
                 res._model = route.model;
@@ -677,7 +688,7 @@ var ETHER_ENGINE = {
             var step = cascade[idx];
 
             // Skip si provider connu down (le custom n'est jamais dans le suivi de sante)
-            if (step.provider !== 'custom' && !providerHealth[step.provider]) {
+            if (offCascade.indexOf(step.provider) === -1 && !providerHealth[step.provider]) {
                 console.log('[ENGINE] Skipping unhealthy provider:', step.provider);
                 return tryStream(idx + 1);
             }
@@ -687,7 +698,7 @@ var ETHER_ENGINE = {
 
             return self._streamWithProvider(step.stream, reqData, forcedSources, step.model, useJson, step.provider)['catch'](function(err) {
                 console.log('[ENGINE] ' + step.provider + ' failed:', err && err.message);
-                if (step.provider === 'custom') return tryStream(idx + 1);
+                if (offCascade.indexOf(step.provider) !== -1) return tryStream(idx + 1);
                 providerHealth[step.provider] = false;
                 if (typeof providerStatus !== 'undefined') providerStatus[step.provider] = false;
                 setTimeout(function() {

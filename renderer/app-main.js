@@ -1939,39 +1939,111 @@ function selectModel(btn) {
         G('MODEL-SEL-LABEL').textContent = btn.getAttribute('data-label') || model;
     } else {
         selectedModelOverride = { provider: provider, model: model };
-        G('MODEL-SEL-LABEL').textContent = modelNames[model] || model;
+        G('MODEL-SEL-LABEL').textContent = btn.getAttribute('data-label') || modelNames[model] || model;
     }
     G('MODEL-DROP').classList.add('hidden');
 }
 
-// Reconstruit le menu de selection: Auto, puis un choix manuel par fournisseur personnalise.
+// Fournisseurs integres selectionnables a la main. Le modele est celui que le
+// routage automatique utiliserait pour ce fournisseur.
+function builtinPickerEntries() {
+    return [
+        { provider: 'groq',     label: 'Groq',     model: GROQ_MODELS.main,     note: 'Rapide, usage general' },
+        { provider: 'gemini',   label: 'Gemini',   model: GEMINI_MODELS.main,   note: 'Long contexte, creatif' },
+        { provider: 'mistral',  label: 'Mistral',  model: MISTRAL_MODELS.main,  note: 'Raisonnement' },
+        { provider: 'cerebras', label: 'Cerebras', model: CEREBRAS_MODELS.main, note: 'Tres gros modele' },
+        { provider: 'ollama',   label: 'Ollama',   model: OLLAMA_MODELS.main,   note: 'Local, sans quota' }
+    ];
+}
+
+// Fournisseurs payants dont la cle vient de l'utilisateur. Ils n'entrent jamais
+// dans le routage automatique : depenser son credit sans qu'il l'ait demande
+// serait une mauvaise surprise. Ils n'apparaissent que si une cle est enregistree.
+var OPTIONAL_MODELS = {
+    openai:    { main: 'gpt-4o',        label: 'OpenAI',    note: 'GPT-4o, cle requise' },
+    anthropic: { main: 'claude-opus-5', label: 'Anthropic', note: 'Claude Opus 5, cle requise' }
+};
+
+function optionalPickerEntries() {
+    var out = [];
+    for (var k in OPTIONAL_MODELS) {
+        if (!providerKeyStatus[k]) continue;
+        out.push({ provider: k, label: OPTIONAL_MODELS[k].label,
+                   model: OPTIONAL_MODELS[k].main, note: OPTIONAL_MODELS[k].note });
+    }
+    return out;
+}
+
+function pickerDot(color) {
+    return '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0"></span>';
+}
+
+function pickerButton(cfg) {
+    var b = document.createElement('button');
+    b.className = 'model-opt ' + cfg.cls;
+    b.setAttribute('data-provider', cfg.provider);
+    b.setAttribute('data-model', cfg.model);
+    b.setAttribute('data-label', cfg.label);
+    if (cfg.customId) b.setAttribute('data-custom-id', cfg.customId);
+    b.onclick = function() { selectModel(this); };
+    b.innerHTML = '<div style="display:flex;align-items:center;gap:8px">' + pickerDot(cfg.color)
+        + '<span style="font-weight:600;font-size:.84rem">' + esc(cfg.label) + '</span></div>'
+        + '<span style="font-size:.7rem;color:var(--t3)">' + esc(cfg.note) + '</span>';
+    return b;
+}
+
+function pickerSection(cls, title) {
+    var el = document.createElement('div');
+    el.className = cls;
+    el.setAttribute('style', 'padding:8px 10px 4px;font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--bd);margin-top:6px');
+    el.textContent = title;
+    return el;
+}
+
+// Reconstruit le menu: Auto, les fournisseurs integres, puis les personnalises.
+// Le bouton Auto est statique dans index.html, tout le reste est regenere.
 function renderModelOptions() {
     var drop = G('MODEL-DROP');
     if (!drop) return;
-    var existing = drop.querySelectorAll('.model-opt-custom');
-    for (var i = 0; i < existing.length; i++) existing[i].remove();
-    var sep = drop.querySelector('.model-sep-custom');
-    if (sep) sep.remove();
+    var stale = drop.querySelectorAll('.model-opt-custom, .model-opt-builtin, .model-opt-optional, .model-sep-custom, .model-sep-builtin, .model-sep-optional');
+    for (var i = 0; i < stale.length; i++) stale[i].remove();
+
+    // --- Fournisseurs integres ---
+    drop.appendChild(pickerSection('model-sep-builtin', 'Fournisseurs integres'));
+    var builtins = builtinPickerEntries();
+    for (var k = 0; k < builtins.length; k++) {
+        var e = builtins[k];
+        // Vert quand le fournisseur repond, gris sinon. On laisse le choix possible :
+        // en cas d'echec la selection manuelle affiche une erreur claire.
+        var up = (typeof providerStatus !== 'undefined') ? providerStatus[e.provider] !== false : true;
+        drop.appendChild(pickerButton({
+            cls: 'model-opt-builtin', provider: e.provider, model: e.model, label: e.label,
+            note: e.note, color: up ? 'var(--color-success)' : 'var(--t3)'
+        }));
+    }
+
+    // --- Fournisseurs optionnels (cle utilisateur, hors routage automatique) ---
+    var optionals = optionalPickerEntries();
+    if (optionals.length) {
+        drop.appendChild(pickerSection('model-sep-optional', 'Fournisseurs optionnels'));
+        for (var o = 0; o < optionals.length; o++) {
+            drop.appendChild(pickerButton({
+                cls: 'model-opt-optional', provider: optionals[o].provider,
+                model: optionals[o].model, label: optionals[o].label,
+                note: optionals[o].note, color: 'var(--color-info)'
+            }));
+        }
+    }
+
+    // --- Fournisseurs personnalises ---
     if (!customProviders.length) return;
-
-    var sepEl = document.createElement('div');
-    sepEl.className = 'model-sep-custom';
-    sepEl.setAttribute('style', 'padding:8px 10px 4px;font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--bd);margin-top:6px');
-    sepEl.textContent = 'Fournisseurs personnalises';
-    drop.appendChild(sepEl);
-
+    drop.appendChild(pickerSection('model-sep-custom', 'Fournisseurs personnalises'));
     for (var j = 0; j < customProviders.length; j++) {
         var p = customProviders[j];
-        var b = document.createElement('button');
-        b.className = 'model-opt model-opt-custom';
-        b.setAttribute('data-provider', 'custom');
-        b.setAttribute('data-model', p.model);
-        b.setAttribute('data-custom-id', p.id);
-        b.setAttribute('data-label', p.name);
-        b.onclick = function() { selectModel(this); };
-        b.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-purple);flex-shrink:0"></span><span style="font-weight:600;font-size:.84rem">' + esc(p.name) + '</span></div>'
-            + '<span style="font-size:.7rem;color:var(--t3)">' + esc(p.model) + '</span>';
-        drop.appendChild(b);
+        drop.appendChild(pickerButton({
+            cls: 'model-opt-custom', provider: 'custom', model: p.model, label: p.name,
+            note: p.model, color: 'var(--color-purple)', customId: p.id
+        }));
     }
 }
 
@@ -2305,6 +2377,8 @@ function checkApiStatus() {
             if (r.ok) ok.push(r.provider.charAt(0).toUpperCase() + r.provider.slice(1));
             else fail.push(r.provider);
         }
+        // Les pastilles du menu de selection refletent ce nouvel etat.
+        if (typeof renderModelOptions === 'function') renderModelOptions();
         if (ok.length > 0) {
             setApiStatus('connected', ok.join(' + '));
         } else {
@@ -2646,7 +2720,7 @@ function showApp(){
     G('LS').classList.add('hidden'); G('APP').classList.remove('hidden');
     G('UNM').textContent=user.name; G('UAV').textContent=user.name.charAt(0).toUpperCase();
     var wg=G('welc-greet'); if(wg) wg.textContent=getGreeting()+', '+user.name;
-    initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI();
+    initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI(); renderModelOptions();
     G('uinp').focus();
     showTutorial();
     startApiMonitor();

@@ -111,6 +111,11 @@ function rotateGeminiKey() {
 
 var GEMINI_KEY = GEMINI_KEYS[0];
 
+// Fournisseurs optionnels : cles fournies par l'utilisateur, jamais dans le
+// routage automatique. Ils ne servent que sur selection manuelle explicite.
+var OPENAI_MODELS = { main: 'gpt-4o', fast: 'gpt-4o-mini' };
+var ANTHROPIC_MODELS = { main: 'claude-opus-5', fast: 'claude-haiku-4-5' };
+
 function loadApiConfig() {
     try {
         var configPath = path.join(app.getPath('userData'), 'api-config.json');
@@ -935,6 +940,200 @@ ipcMain.handle('ollama-stream', function(event, data) {
         req.setTimeout(120000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'ollama' }); });
         req.write(postData);
         req.end();
+    });
+});
+
+// Streaming SSE partage par les fournisseurs optionnels. extractDelta() recoit
+// chaque evenement JSON deja parse et renvoie le fragment de texte a emettre,
+// ce qui absorbe la difference de format entre OpenAI et Anthropic.
+function sseStream(opts, postData, provider, model, extractDelta) {
+    return new Promise(function(resolve) {
+        var req = https.request({
+            hostname: opts.hostname, path: opts.path, method: 'POST', headers: opts.headers
+        }, function(res) {
+            if (res.statusCode !== 200) {
+                var errBody = '';
+                res.on('data', function(c) { errBody += c; });
+                res.on('end', function() {
+                    logProviderError(provider.toUpperCase(), res.statusCode, errBody);
+                    resolve({ ok: false, error: 'Status ' + res.statusCode, provider: provider });
+                });
+                return;
+            }
+            var fullText = '';
+            var buffer = '';
+            var _decoder = new StringDecoder('utf8');
+            res.on('data', function(chunk) {
+                buffer += _decoder.write(chunk);
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line || line.indexOf('data: ') !== 0) continue;
+                    var jsonStr = line.substring(6);
+                    if (jsonStr === '[DONE]') continue;
+                    try {
+                        var piece = extractDelta(JSON.parse(jsonStr)) || '';
+                        if (!piece) continue;
+                        fullText += piece;
+                        if (mainWindow && !mainWindow.isDestroyed()) {
+                            mainWindow.webContents.send('groq-chunk', piece);
+                        }
+                    } catch(e) { /* evenement non pertinent */ }
+                }
+            });
+            res.on('end', function() {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('groq-done', fullText);
+                }
+                setTimeout(function() { resolve({ ok: true, text: fullText, model: model, provider: provider }); }, 100);
+            });
+        });
+        req.on('error', function(e) { resolve({ ok: false, error: e.message, provider: provider }); });
+        req.setTimeout(120000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: provider }); });
+        req.write(postData);
+        req.end();
+    });
+}
+
+// === IPC: OPENAI (optionnel, selection manuelle uniquement) ===
+ipcMain.handle('openai-chat', function(event, data) {
+    if (!OPENAI_KEY) return Promise.resolve({ ok: false, error: 'Aucune cle OpenAI enregistree', provider: 'openai' });
+    var postData = JSON.stringify({
+        model: data.model || OPENAI_MODELS.main,
+        messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000
+    });
+    return httpsRequest({
+        hostname: 'api.openai.com',
+        path: '/v1/chat/completions',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + OPENAI_KEY,
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    }, postData).then(function(res) {
+        if (res.status === 200) {
+            var d = JSON.parse(res.body);
+            return { ok: true, text: d.choices[0].message.content, model: data.model, provider: 'openai' };
+        }
+        logProviderError('OPENAI', res.status, res.body);
+        return { ok: false, error: 'Status ' + res.status, provider: 'openai' };
+    })['catch'](function(e) {
+        console.log('[OPENAI] Exception:', e.message);
+        return { ok: false, error: e.message, provider: 'openai' };
+    });
+});
+
+ipcMain.handle('openai-stream', function(event, data) {
+    if (!checkRateLimit('openai-stream')) {
+        return Promise.resolve({ ok: false, error: 'Rate limit exceeded.', provider: 'openai' });
+    }
+    if (!OPENAI_KEY) return Promise.resolve({ ok: false, error: 'Aucune cle OpenAI enregistree', provider: 'openai' });
+    var model = data.model || OPENAI_MODELS.main;
+    var postData = JSON.stringify({
+        model: model, messages: data.messages,
+        temperature: data.temperature || 0.6,
+        max_tokens: data.max_tokens || 3000,
+        stream: true
+    });
+    return sseStream({
+        hostname: 'api.openai.com', path: '/v1/chat/completions',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + OPENAI_KEY,
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    }, postData, 'openai', model, function(evt) {
+        var delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
+        return (delta && delta.content) || '';
+    });
+});
+
+// === IPC: ANTHROPIC (optionnel, selection manuelle uniquement) ===
+// L'API Messages differe du format OpenAI : le prompt systeme est un champ de
+// premier niveau, max_tokens est obligatoire, et la reponse est une liste de
+// blocs dont il faut extraire le texte en ignorant les blocs de raisonnement.
+function toAnthropicPayload(data, stream) {
+    var msgs = [];
+    var system = '';
+    var src = data.messages || [];
+    for (var i = 0; i < src.length; i++) {
+        if (src[i].role === 'system') { system += (system ? '\n\n' : '') + src[i].content; continue; }
+        msgs.push({ role: src[i].role === 'assistant' ? 'assistant' : 'user', content: src[i].content });
+    }
+    if (!msgs.length) msgs = [{ role: 'user', content: ' ' }];
+    var body = {
+        model: data.model || ANTHROPIC_MODELS.main,
+        max_tokens: data.max_tokens || 3000,
+        messages: msgs
+    };
+    if (system) body.system = system;
+    if (stream) body.stream = true;
+    return body;
+}
+
+function anthropicText(d) {
+    var out = '';
+    var blocks = (d && d.content) || [];
+    for (var i = 0; i < blocks.length; i++) {
+        if (blocks[i].type === 'text' && blocks[i].text) out += blocks[i].text;
+    }
+    return out;
+}
+
+ipcMain.handle('anthropic-chat', function(event, data) {
+    if (!ANTHROPIC_KEY) return Promise.resolve({ ok: false, error: 'Aucune cle Anthropic enregistree', provider: 'anthropic' });
+    var body = toAnthropicPayload(data, false);
+    var postData = JSON.stringify(body);
+    return httpsRequest({
+        hostname: 'api.anthropic.com',
+        path: '/v1/messages',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_KEY,
+            'anthropic-version': '2023-06-01',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    }, postData).then(function(res) {
+        if (res.status === 200) {
+            var d = JSON.parse(res.body);
+            if (d.stop_reason === 'refusal') {
+                return { ok: false, error: 'Requete refusee par le modele', provider: 'anthropic' };
+            }
+            return { ok: true, text: anthropicText(d), model: body.model, provider: 'anthropic' };
+        }
+        logProviderError('ANTHROPIC', res.status, res.body);
+        return { ok: false, error: 'Status ' + res.status, provider: 'anthropic' };
+    })['catch'](function(e) {
+        console.log('[ANTHROPIC] Exception:', e.message);
+        return { ok: false, error: e.message, provider: 'anthropic' };
+    });
+});
+
+ipcMain.handle('anthropic-stream', function(event, data) {
+    if (!checkRateLimit('anthropic-stream')) {
+        return Promise.resolve({ ok: false, error: 'Rate limit exceeded.', provider: 'anthropic' });
+    }
+    if (!ANTHROPIC_KEY) return Promise.resolve({ ok: false, error: 'Aucune cle Anthropic enregistree', provider: 'anthropic' });
+    var body = toAnthropicPayload(data, true);
+    var postData = JSON.stringify(body);
+    return sseStream({
+        hostname: 'api.anthropic.com', path: '/v1/messages',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_KEY,
+            'anthropic-version': '2023-06-01',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    }, postData, 'anthropic', body.model, function(evt) {
+        // Seuls les deltas de blocs texte comptent ; on ignore le raisonnement.
+        if (evt.type !== 'content_block_delta') return '';
+        var d = evt.delta || {};
+        return d.type === 'text_delta' ? (d.text || '') : '';
     });
 });
 
