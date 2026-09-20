@@ -1,12 +1,38 @@
 /**
  * ETHER API — Cloudflare Worker
- * Proxy securise entre l'app Electron et les providers IA
- * Les cles API sont dans les Cloudflare Secrets (jamais exposees au client)
+ * Proxy securise entre le client (web ou Electron) et les providers IA.
+ * Les cles API sont dans les Cloudflare Secrets, jamais exposees au client.
  */
+
+// Registre des providers : evite tout repli silencieux sur un provider par defaut.
+const PROVIDERS = {
+  groq:     { key: 'GROQ_KEY',     chat: callGroq,     stream: (env, m, ms, t, mt) => streamOpenAICompat(env, 'api.groq.com', env.GROQ_KEY, m || 'openai/gpt-oss-120b', ms, t, mt) },
+  gemini:   { key: 'GEMINI_KEY',   chat: callGemini,   stream: streamGemini },
+  cerebras: { key: 'CEREBRAS_KEY', chat: callCerebras, stream: (env, m, ms, t, mt) => streamOpenAICompat(env, 'api.cerebras.ai', env.CEREBRAS_KEY, m || 'gpt-oss-120b', ms, t, mt) },
+  mistral:  { key: 'MISTRAL_KEY',  chat: callMistral,  stream: (env, m, ms, t, mt) => streamOpenAICompat(env, 'api.mistral.ai', env.MISTRAL_KEY, m || 'mistral-medium-latest', ms, t, mt) },
+  openrouter: { key: 'OPENROUTER_KEY', chat: callOpenRouter, stream: (env, m, ms, t, mt) => streamOpenRouter(env, m, ms, t, mt) },
+  // Pollinations : palier anonyme, aucune cle requise.
+  // Attention : l'alias "openai" tape sur un compte credite et renvoie une
+  // erreur DANS un HTTP 200. Le modele anonyme est "openai-fast".
+  pollinations: { keyless: true, chat: callPollinations, stream: streamPollinations }
+};
+
+// Verifie qu'un provider existe ET qu'il est configure. Renvoie une Response
+// d'erreur explicite, ou null si tout va bien.
+function checkProvider(provider, env) {
+  const p = PROVIDERS[provider];
+  if (!p) {
+    return json({ ok: false, error: `Provider inconnu : ${provider}`, available: Object.keys(PROVIDERS) }, 400, env);
+  }
+  if (p.keyless) return null;
+  if (!env[p.key]) {
+    return json({ ok: false, error: `Provider non configure sur le serveur : ${provider}`, hint: `Deployer la cle avec : npx wrangler secret put ${p.key}` }, 503, env);
+  }
+  return null;
+}
 
 export default {
   async fetch(request, env) {
-    // CORS
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders(env) });
     }
@@ -17,67 +43,131 @@ export default {
     try {
       // --- HEALTH ---
       if (path === '/api/health') {
-        return json({ status: 'ok', name: 'ETHER API', version: '2.0' });
+        return json({ status: 'ok', name: 'ETHER API', version: '2.1', providers: configuredProviders(env) }, 200, env);
       }
 
-      // --- AUTH: verifier le token utilisateur ---
-      // Pour les routes protegees
-      if (path.startsWith('/api/chat') || path.startsWith('/api/quota')) {
-        const authErr = verifyAuth(request, env);
+      // --- AUTH sur les routes protegees ---
+      if (path.startsWith('/api/chat') || path.startsWith('/api/quota') ||
+          path.startsWith('/api/vision') || path.startsWith('/api/transcribe') ||
+          path.startsWith('/api/fetch') || path.startsWith('/api/image')) {
+        const authErr = await verifyAuth(request, env);
         if (authErr) return authErr;
       }
 
-      // --- CHAT: proxy vers le bon provider ---
+      // --- CHAT ---
       if (path === '/api/chat' && request.method === 'POST') {
         const body = await request.json();
         const provider = body.provider || 'gemini';
-        const model = body.model;
+
+        const bad = checkProvider(provider, env);
+        if (bad) return bad;
+
         const messages = body.messages;
-        const temperature = body.temperature || 0.7;
-        const maxTokens = body.max_tokens || 4000;
-        const stream = body.stream || false;
+        if (!messages || !messages.length) return json({ ok: false, error: 'Messages required' }, 400, env);
 
-        if (!messages || !messages.length) {
-          return json({ error: 'Messages required' }, 400);
-        }
+        // Quota impose ici : un client ne peut pas le contourner en
+        // sautant l'appel a /api/quota/use.
+        const q = await quotaConsume(request, env);
+        if (!q.ok) return json(q, 429, env);
 
-        let result;
-        if (provider === 'gemini') {
-          result = await callGemini(env, model, messages, temperature, maxTokens);
-        } else if (provider === 'cerebras') {
-          result = await callCerebras(env, model, messages, temperature, maxTokens);
-        } else {
-          result = await callGroq(env, model, messages, temperature, maxTokens);
-        }
-
+        const result = await PROVIDERS[provider].chat(
+          env, body.model, messages, body.temperature ?? 0.7, body.max_tokens || 4000
+        );
         return json(result, result.ok ? 200 : 502, env);
       }
 
-      // --- CHAT STREAM: streaming SSE ---
+      // --- CHAT STREAM (SSE) ---
       if (path === '/api/chat/stream' && request.method === 'POST') {
         const body = await request.json();
         const provider = body.provider || 'gemini';
-        const model = body.model;
-        const messages = body.messages;
-        const temperature = body.temperature || 0.7;
-        const maxTokens = body.max_tokens || 4000;
 
-        if (provider === 'gemini') {
-          return streamGemini(env, model, messages, temperature, maxTokens);
-        } else if (provider === 'cerebras') {
-          return streamOpenAICompat(env, 'api.cerebras.ai', env.CEREBRAS_KEY, model, messages, temperature, maxTokens);
-        } else {
-          return streamOpenAICompat(env, 'api.groq.com', env.GROQ_KEY, model, messages, temperature, maxTokens);
-        }
+        const bad = checkProvider(provider, env);
+        if (bad) return bad;
+
+        const messages = body.messages;
+        if (!messages || !messages.length) return json({ ok: false, error: 'Messages required' }, 400, env);
+
+        const q = await quotaConsume(request, env);
+        if (!q.ok) return json(q, 429, env);
+
+        return PROVIDERS[provider].stream(
+          env, body.model, messages, body.temperature ?? 0.7, body.max_tokens || 4000
+        );
       }
 
-      // --- REGISTER: creer un compte utilisateur ---
+      // --- MODELS : catalogue par provider ---
+      if (path === '/api/models') {
+        // Liste vivante : evite que des identifiants de modeles perimes
+        // provoquent des 404 silencieux comme avant.
+        let models = MODELS;
+        try {
+          const live = await diagnose(env);
+          const merged = {};
+          for (const p of Object.keys(PROVIDERS)) {
+            const l = live[p];
+            merged[p] = (l && l.models && l.models.length) ? l.models : (MODELS[p] || []);
+          }
+          models = merged;
+        } catch (e) { /* repli sur le catalogue statique */ }
+        return json({ ok: true, models, configured: configuredProviders(env) }, 200, env);
+      }
+
+      // --- VISION (Gemini) ---
+      if (path === '/api/vision' && request.method === 'POST') {
+        const bad = checkProvider('gemini', env);
+        if (bad) return bad;
+        const body = await request.json();
+        return json(await callGeminiVision(env, body), 200, env);
+      }
+
+      // --- TRANSCRIPTION AUDIO (Whisper via Groq) ---
+      if (path === '/api/transcribe' && request.method === 'POST') {
+        const bad = checkProvider('groq', env);
+        if (bad) return bad;
+        return json(await transcribeAudio(env, request), 200, env);
+      }
+
+      // --- PROXY DE CONTENU (avec garde SSRF) ---
+      if (path === '/api/fetch' && request.method === 'POST') {
+        const body = await request.json();
+        return json(await proxyFetch(body.url, 'text'), 200, env);
+      }
+      if (path === '/api/image' && request.method === 'POST') {
+        const body = await request.json();
+        return json(await proxyFetch(body.url, 'image'), 200, env);
+      }
+
+      // --- RECHERCHE WEB : pas de cle disponible ---
+      if (path === '/api/search') {
+        return json({ ok: false, error: 'Recherche web non configuree', hint: 'Necessite une cle Brave/Serper : npx wrangler secret put SEARCH_KEY' }, 501, env);
+      }
+
+      // --- EMAIL : pas de service configure ---
+      if (path === '/api/email') {
+        return json({ ok: false, error: 'Envoi d email non configure', hint: 'Necessite un service type Resend : npx wrangler secret put RESEND_KEY' }, 501, env);
+      }
+
+      // --- REGISTER ---
       if (path === '/api/register' && request.method === 'POST') {
         const body = await request.json();
-        if (!body.email || !body.name) return json({ error: 'Email and name required' }, 400);
-        // Generer un JWT token
+        if (!body.email || !body.name) return json({ ok: false, error: 'Email and name required' }, 400, env);
+        if (!env.JWT_SECRET) return json({ ok: false, error: 'JWT_SECRET absent sur le serveur' }, 503, env);
+
+        // Code d'invitation : sans lui, n'importe qui ayant le lien peut
+        // creer un compte et consommer les quotas du proprietaire.
+        // Si INVITE_CODE n'est pas defini, l'inscription reste ouverte.
+        if (env.INVITE_CODE) {
+          const fourni = (body.code || '').trim();
+          if (!fourni) {
+            return json({ ok: false, error: 'Code d invitation requis', needCode: true }, 403, env);
+          }
+          if (!timingSafeEqual(fourni, env.INVITE_CODE)) {
+            return json({ ok: false, error: 'Code d invitation invalide', needCode: true }, 403, env);
+          }
+        }
+
         const token = await createJWT({ email: body.email, name: body.name, pro: false }, env.JWT_SECRET);
-        return json({ ok: true, token: token }, 200, env);
+        return json({ ok: true, token }, 200, env);
       }
 
       // --- VERIFY TOKEN ---
@@ -88,24 +178,53 @@ export default {
         return json({ ok: false, error: 'Invalid token' }, 401, env);
       }
 
-      // --- QUOTA CHECK (server-side) ---
+      // --- QUOTAS ---
       if (path === '/api/quota' && request.method === 'GET') {
-        // Pour l'instant, quota cote client. Avec KV plus tard.
-        return json({ ok: true, remaining: 30, limit: 30 }, 200, env);
+        return json(await quotaRead(request, env), 200, env);
+      }
+      if (path === '/api/quota/use' && request.method === 'POST') {
+        return json(await quotaConsume(request, env), 200, env);
+      }
+      if (path === '/api/quota/bonus' && request.method === 'POST') {
+        const body = await request.json();
+        return json(await quotaBonus(request, env, body.bonus), 200, env);
+      }
+      if (path === '/api/quota/pro' && request.method === 'GET') {
+        const user = await currentUser(request, env);
+        return json({ ok: true, pro: !!(user && user.pro) }, 200, env);
+      }
+
+      // --- DIAG : modeles reellement disponibles chez chaque provider ---
+      if (path === '/api/diag') {
+        return json({ ok: true, diag: await diagnose(env) }, 200, env);
+      }
+
+      // --- PERSISTANCE UTILISATEUR (synchronisation multi-appareils) ---
+      if (path === '/api/persist') {
+        const authErr = await verifyAuth(request, env);
+        if (authErr) return authErr;
+        const user = await currentUser(request, env);
+        if (request.method === 'GET')  return json(await persistRead(env, user), 200, env);
+        if (request.method === 'POST') return json(await persistWrite(env, user, await request.json()), 200, env);
       }
 
       // --- PROVIDERS STATUS ---
       if (path === '/api/providers') {
-        const results = await testProviders(env);
-        return json({ providers: results }, 200, env);
+        return json({ ok: true, providers: await testProviders(env) }, 200, env);
+      }
+      if (path === '/api/providers/test' && request.method === 'POST') {
+        const body = await request.json();
+        const bad = checkProvider(body.id, env);
+        if (bad) return bad;
+        const r = await PROVIDERS[body.id].chat(env, null, [{ role: 'user', content: 'ok' }], 0.1, 5);
+        return json({ ok: r.ok, error: r.error }, 200, env);
       }
 
-      // --- STRIPE: Creer une session de paiement ---
+      // --- STRIPE: checkout ---
       if (path === '/api/stripe/checkout' && request.method === 'POST') {
         if (!env.STRIPE_SECRET) return json({ error: 'Stripe non configure' }, 503, env);
         const body = await request.json();
-        const email = body.email;
-        if (!email) return json({ error: 'Email required' }, 400, env);
+        if (!body.email) return json({ error: 'Email required' }, 400, env);
 
         const session = await fetch('https://api.stripe.com/v1/checkout/sessions', {
           method: 'POST',
@@ -115,7 +234,7 @@ export default {
           },
           body: new URLSearchParams({
             'mode': 'subscription',
-            'customer_email': email,
+            'customer_email': body.email,
             'line_items[0][price]': env.STRIPE_PRICE_ID || 'price_placeholder',
             'line_items[0][quantity]': '1',
             'success_url': 'https://ether-ai.app/success?session_id={CHECKOUT_SESSION_ID}',
@@ -128,24 +247,17 @@ export default {
         return json({ ok: false, error: data.error?.message || 'Stripe error' }, 400, env);
       }
 
-      // --- STRIPE: Webhook (recevoir les evenements de paiement) ---
+      // --- STRIPE: webhook ---
       if (path === '/api/stripe/webhook' && request.method === 'POST') {
         if (!env.STRIPE_SECRET) return json({ error: 'Stripe non configure' }, 503, env);
         const body = await request.text();
-        // En production, verifier la signature Stripe ici
-        // const sig = request.headers.get('stripe-signature');
         try {
           const event = JSON.parse(body);
           if (event.type === 'checkout.session.completed') {
-            const email = event.data.object.customer_email;
-            // Activer Pro pour cet utilisateur
-            // Avec KV: await env.ETHER_KV.put('pro:' + email, JSON.stringify({ active: true, since: Date.now() }));
-            console.log('[STRIPE] Pro active pour:', email);
+            console.log('[STRIPE] Pro active pour:', event.data.object.customer_email);
           }
           if (event.type === 'customer.subscription.deleted') {
-            const customerId = event.data.object.customer;
-            // Desactiver Pro
-            console.log('[STRIPE] Pro desactive pour customer:', customerId);
+            console.log('[STRIPE] Pro desactive pour customer:', event.data.object.customer);
           }
           return json({ received: true }, 200, env);
         } catch (e) {
@@ -153,12 +265,10 @@ export default {
         }
       }
 
-      // --- STRIPE: Verifier le statut Pro ---
+      // --- STRIPE: statut Pro ---
       if (path === '/api/stripe/status' && request.method === 'POST') {
         const body = await request.json();
         if (!body.email) return json({ error: 'Email required' }, 400, env);
-        // Avec KV: const pro = await env.ETHER_KV.get('pro:' + body.email);
-        // Pour l'instant, retourner false (pas de KV)
         return json({ ok: true, pro: false, email: body.email }, 200, env);
       }
 
@@ -187,58 +297,198 @@ function json(data, status = 200, env = null) {
   });
 }
 
-// === AUTH (JWT simple) ===
+function configuredProviders(env) {
+  return Object.keys(PROVIDERS).filter(p => PROVIDERS[p].keyless || !!env[PROVIDERS[p].key]);
+}
+
+// === BASE64 URL-SAFE (gere les accents : btoa seul casse sur "Zoe" accentue) ===
+function b64urlEncode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlDecodeToString(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function b64urlToBytes(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+
+function bytesToB64url(buf) {
+  let bin = '';
+  for (const b of new Uint8Array(buf)) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// === AUTH (JWT HS256) ===
 async function createJWT(payload, secret) {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = btoa(JSON.stringify({ ...payload, iat: Date.now(), exp: Date.now() + 365 * 24 * 60 * 60 * 1000 }));
+  const header = b64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const body = b64urlEncode(JSON.stringify({
+    ...payload,
+    iat: Date.now(),
+    exp: Date.now() + 365 * 24 * 60 * 60 * 1000
+  }));
   const data = header + '.' + body;
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  return data + '.' + btoa(String.fromCharCode(...new Uint8Array(sig)));
+  return data + '.' + bytesToB64url(sig);
 }
 
 async function verifyJWT(token, secret) {
   try {
-    const [header, body, sig] = token.split('.');
+    if (!token || !secret) return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [header, body, sig] = parts;
     const data = header + '.' + body;
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-    const sigBytes = Uint8Array.from(atob(sig), c => c.charCodeAt(0));
-    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(data));
+    const valid = await crypto.subtle.verify('HMAC', key, b64urlToBytes(sig), new TextEncoder().encode(data));
     if (!valid) return null;
-    const payload = JSON.parse(atob(body));
+    const payload = JSON.parse(b64urlDecodeToString(body));
     if (payload.exp && payload.exp < Date.now()) return null;
     return payload;
   } catch { return null; }
 }
 
-function verifyAuth(request, env) {
-  // Skip auth en dev (pas de JWT_SECRET)
-  if (!env.JWT_SECRET) return null;
+// Verifie REELLEMENT le token. L'ancienne version acceptait n'importe quel
+// Bearer non vide, ce qui laissait les quotas ouverts a tout le monde.
+async function verifyAuth(request, env) {
+  if (!env.JWT_SECRET) return null; // dev local sans secret
   const auth = request.headers.get('Authorization');
   if (!auth || !auth.startsWith('Bearer ')) {
-    return json({ error: 'Authorization required' }, 401, env);
+    return json({ ok: false, error: 'Authorization required' }, 401, env);
   }
-  // Pour l'instant on accepte tout token non-vide (le JWT sera verifie dans /api/verify)
+  const payload = await verifyJWT(auth.slice(7).trim(), env.JWT_SECRET);
+  if (!payload) {
+    return json({ ok: false, error: 'Token invalide ou expire' }, 401, env);
+  }
   return null;
+}
+
+async function currentUser(request, env) {
+  const auth = request.headers.get('Authorization');
+  if (!auth || !auth.startsWith('Bearer ')) return null;
+  return await verifyJWT(auth.slice(7).trim(), env.JWT_SECRET);
+}
+
+// === QUOTAS ===
+// Sans KV, le quota reste indicatif. Avec le binding ETHER_KV il devient reel.
+const DAILY_LIMIT = 30;
+
+function quotaKey(user) {
+  const day = new Date().toISOString().slice(0, 10);
+  return `quota:${(user && user.email) || 'anon'}:${day}`;
+}
+
+async function quotaRead(request, env) {
+  const user = await currentUser(request, env);
+  if (user && user.pro) return { ok: true, unlimited: true, pro: true };
+  if (!env.ETHER_KV) return { ok: true, remaining: DAILY_LIMIT, limit: DAILY_LIMIT, tracked: false };
+  const raw = await env.ETHER_KV.get(quotaKey(user));
+  const used = raw ? parseInt(raw, 10) : 0;
+  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), limit: DAILY_LIMIT, tracked: true };
+}
+
+async function quotaConsume(request, env) {
+  const user = await currentUser(request, env);
+  if (user && user.pro) return { ok: true, unlimited: true };
+  if (!env.ETHER_KV) return { ok: true, tracked: false };
+  const k = quotaKey(user);
+  const raw = await env.ETHER_KV.get(k);
+  const used = (raw ? parseInt(raw, 10) : 0) + 1;
+  if (used > DAILY_LIMIT) return { ok: false, error: 'Quota journalier atteint', remaining: 0 };
+  await env.ETHER_KV.put(k, String(used), { expirationTtl: 172800 });
+  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), tracked: true };
+}
+
+async function quotaBonus(request, env, bonus) {
+  const user = await currentUser(request, env);
+  if (!env.ETHER_KV) return { ok: true, tracked: false };
+  const n = Math.max(0, Math.min(10, parseInt(bonus, 10) || 0));
+  const k = quotaKey(user);
+  const raw = await env.ETHER_KV.get(k);
+  const used = Math.max(0, (raw ? parseInt(raw, 10) : 0) - n);
+  await env.ETHER_KV.put(k, String(used), { expirationTtl: 172800 });
+  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), tracked: true };
+}
+
+// === PROXY DE CONTENU (garde SSRF) ===
+// Empeche le worker de servir de relais vers des adresses internes.
+const BLOCKED_HOSTS = /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?|.*\.internal|.*\.local)$/i;
+
+async function proxyFetch(target, kind) {
+  let u;
+  try { u = new URL(target); } catch { return { ok: false, error: 'URL invalide' }; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+    return { ok: false, error: 'Protocole non autorise' };
+  }
+  if (BLOCKED_HOSTS.test(u.hostname)) {
+    return { ok: false, error: 'Adresse interne refusee' };
+  }
+  try {
+    const resp = await fetch(u.toString(), {
+      redirect: 'follow',
+      headers: { 'User-Agent': 'EtherAI/2.1' },
+      cf: { cacheTtl: 300 }
+    });
+    if (!resp.ok) return { ok: false, error: 'HTTP ' + resp.status };
+
+    if (kind === 'image') {
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.startsWith('image/')) return { ok: false, error: 'Pas une image' };
+      const buf = await resp.arrayBuffer();
+      if (buf.byteLength > 5 * 1024 * 1024) return { ok: false, error: 'Image trop volumineuse (>5 Mo)' };
+      let bin = '';
+      for (const b of new Uint8Array(buf)) bin += String.fromCharCode(b);
+      return { ok: true, dataUrl: `data:${ct};base64,` + btoa(bin) };
+    }
+
+    const text = await resp.text();
+    return { ok: true, content: text.slice(0, 200000), truncated: text.length > 200000 };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
 
 // === PROVIDERS ===
 
-// --- GROQ (OpenAI-compatible) ---
-async function callGroq(env, model, messages, temperature, maxTokens) {
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+async function callOpenAICompat(hostname, apiKey, defaultModel, label, model, messages, temperature, maxTokens, extraHeaders) {
+  const resp = await fetch(`https://${hostname}/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.GROQ_KEY },
-    body: JSON.stringify({ model: model || 'llama-3.3-70b-versatile', messages, temperature, max_tokens: maxTokens })
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey, ...(extraHeaders || {}) },
+    body: JSON.stringify({ model: model || defaultModel, messages, temperature, max_tokens: maxTokens })
   });
-  if (!resp.ok) return { ok: false, error: 'Groq error ' + resp.status, provider: 'groq' };
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    return { ok: false, error: `${label} error ${resp.status}`, detail: detail.slice(0, 300), provider: label };
+  }
   const data = await resp.json();
-  return { ok: true, text: data.choices[0].message.content, model: model, provider: 'groq' };
+  return { ok: true, text: data.choices[0].message.content, model: model || defaultModel, provider: label };
 }
 
-// --- GEMINI ---
-async function callGemini(env, model, messages, temperature, maxTokens) {
-  model = model || 'gemini-2.5-flash';
+function callGroq(env, model, messages, temperature, maxTokens) {
+  return callOpenAICompat('api.groq.com/openai', env.GROQ_KEY, 'openai/gpt-oss-120b', 'groq', model, messages, temperature, maxTokens);
+}
+
+function callCerebras(env, model, messages, temperature, maxTokens) {
+  return callOpenAICompat('api.cerebras.ai', env.CEREBRAS_KEY, 'gpt-oss-120b', 'cerebras', model, messages, temperature, maxTokens);
+}
+
+function callMistral(env, model, messages, temperature, maxTokens) {
+  return callOpenAICompat('api.mistral.ai', env.MISTRAL_KEY, 'mistral-medium-latest', 'mistral', model, messages, temperature, maxTokens);
+}
+
+function geminiBody(messages, temperature, maxTokens, model) {
   const contents = [];
   let systemInstruction = null;
   for (const m of messages) {
@@ -248,111 +498,349 @@ async function callGemini(env, model, messages, temperature, maxTokens) {
   const body = { contents, generationConfig: { maxOutputTokens: maxTokens, temperature } };
   if (systemInstruction) body.systemInstruction = systemInstruction;
   if (model.includes('2.5')) body.generationConfig.thinkingConfig = { thinkingBudget: 2048 };
+  return body;
+}
 
+async function callGemini(env, model, messages, temperature, maxTokens) {
+  model = model || 'gemini-flash-latest';
   const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify(geminiBody(messages, temperature, maxTokens, model))
   });
-  if (!resp.ok) return { ok: false, error: 'Gemini error ' + resp.status, provider: 'gemini' };
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    return { ok: false, error: 'Gemini error ' + resp.status, detail: detail.slice(0, 400), provider: 'gemini' };
+  }
   const data = await resp.json();
   if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-    const parts = data.candidates[0].content.parts;
     let text = '';
-    for (const p of parts) { if (!p.thought) text += p.text || ''; }
+    for (const p of data.candidates[0].content.parts) { if (!p.thought) text += p.text || ''; }
     return { ok: true, text, model, provider: 'gemini' };
   }
   return { ok: false, error: 'No candidates', provider: 'gemini' };
 }
 
-// --- CEREBRAS (OpenAI-compatible) ---
-async function callCerebras(env, model, messages, temperature, maxTokens) {
-  const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+async function callGeminiVision(env, body) {
+  const model = body.model || 'gemini-flash-latest';
+  const parts = [{ text: body.prompt || 'Decris cette image.' }];
+  if (body.image) {
+    const m = /^data:([^;]+);base64,(.*)$/.exec(body.image);
+    if (m) parts.push({ inline_data: { mime_type: m[1], data: m[2] } });
+    else parts.push({ inline_data: { mime_type: body.mimeType || 'image/png', data: body.image } });
+  }
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_KEY}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.CEREBRAS_KEY },
-    body: JSON.stringify({ model: model || 'qwen-3-235b-a22b-instruct-2507', messages, temperature, max_tokens: maxTokens })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ role: 'user', parts }] })
   });
-  if (!resp.ok) return { ok: false, error: 'Cerebras error ' + resp.status, provider: 'cerebras' };
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    return { ok: false, error: 'Gemini vision error ' + resp.status, detail: detail.slice(0, 400) };
+  }
   const data = await resp.json();
-  return { ok: true, text: data.choices[0].message.content, model, provider: 'cerebras' };
+  const c = data.candidates && data.candidates[0];
+  if (!c || !c.content) return { ok: false, error: 'No candidates' };
+  let text = '';
+  for (const p of c.content.parts) { if (!p.thought) text += p.text || ''; }
+  return { ok: true, text, model, provider: 'gemini' };
+}
+
+async function transcribeAudio(env, request) {
+  const form = await request.formData().catch(() => null);
+  if (!form || !form.get('file')) {
+    return { ok: false, error: 'Envoyer un multipart/form-data avec un champ "file"' };
+  }
+  const out = new FormData();
+  out.append('file', form.get('file'));
+  out.append('model', 'whisper-large-v3-turbo');
+  const resp = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + env.GROQ_KEY },
+    body: out
+  });
+  if (!resp.ok) return { ok: false, error: 'Whisper error ' + resp.status };
+  const data = await resp.json();
+  return { ok: true, text: data.text };
 }
 
 // === STREAMING ===
 
-// Gemini SSE streaming
 function streamGemini(env, model, messages, temperature, maxTokens) {
-  model = model || 'gemini-2.5-flash';
-  const contents = [];
-  let systemInstruction = null;
-  for (const m of messages) {
-    if (m.role === 'system') systemInstruction = { parts: [{ text: m.content }] };
-    else contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] });
-  }
-  const body = { contents, generationConfig: { maxOutputTokens: maxTokens, temperature } };
-  if (systemInstruction) body.systemInstruction = systemInstruction;
-  if (model.includes('2.5')) body.generationConfig.thinkingConfig = { thinkingBudget: 2048 };
-
+  model = model || 'gemini-flash-latest';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${env.GEMINI_KEY}`;
-
-  // Proxy le stream SSE
   return fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }).then(resp => {
-    return new Response(resp.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        ...corsHeaders(env)
-      }
-    });
-  });
+    body: JSON.stringify(geminiBody(messages, temperature, maxTokens, model))
+  }).then(resp => sseResponse(resp, env));
 }
 
-// OpenAI-compatible streaming (Groq, Cerebras)
 function streamOpenAICompat(env, hostname, apiKey, model, messages, temperature, maxTokens) {
-  const url = `https://${hostname}/v1/chat/completions`;
-
-  return fetch(url, {
+  const base = hostname === 'api.groq.com' ? 'api.groq.com/openai' : hostname;
+  return fetch(`https://${base}/v1/chat/completions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
     body: JSON.stringify({ model, messages, temperature, max_tokens: maxTokens, stream: true })
-  }).then(resp => {
-    return new Response(resp.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        ...corsHeaders(env)
-      }
-    });
+  }).then(resp => sseResponse(resp, env));
+}
+
+function sseResponse(resp, env) {
+  return new Response(resp.body, {
+    status: resp.ok ? 200 : resp.status,
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      ...corsHeaders(env)
+    }
   });
 }
+
+// === CATALOGUE MODELES ===
+const MODELS = {
+  groq:     ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound', 'groq/compound-mini', 'qwen/qwen3.8-27b'],
+  gemini:   ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-pro-latest', 'gemini-2.5-pro'],
+  cerebras: ['gpt-oss-120b', 'qwen-3.8-27b'],
+  mistral:  ['mistral-medium-latest', 'mistral-small-latest', 'magistral-medium-latest', 'ministral-8b-latest', 'codestral-latest'],
+  pollinations: ['openai-fast'],
+  openrouter: [
+    'openrouter/free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'deepseek/deepseek-v4-flash-0731:free',
+    'qwen/qwen3.8-27b:free',
+    'google/gemma-4-31b-it:free'
+  ]
+};
 
 // === TEST PROVIDERS ===
 async function testProviders(env) {
   const results = [];
-
-  // Groq
-  try {
-    const r = await callGroq(env, 'llama-3.1-8b-instant', [{ role: 'user', content: 'ok' }], 0.1, 5);
-    results.push({ provider: 'groq', ok: r.ok });
-  } catch { results.push({ provider: 'groq', ok: false }); }
-
-  // Gemini (test via listModels pour eviter le rate limit)
-  try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.GEMINI_KEY}&pageSize=1`);
-    results.push({ provider: 'gemini', ok: r.ok });
-  } catch { results.push({ provider: 'gemini', ok: false }); }
-
-  // Cerebras
-  try {
-    const r = await callCerebras(env, 'llama3.1-8b', [{ role: 'user', content: 'ok' }], 0.1, 5);
-    results.push({ provider: 'cerebras', ok: r.ok });
-  } catch { results.push({ provider: 'cerebras', ok: false }); }
-
+  for (const name of Object.keys(PROVIDERS)) {
+    if (!PROVIDERS[name].keyless && !env[PROVIDERS[name].key]) {
+      results.push({ provider: name, ok: false, error: 'non configure' });
+      continue;
+    }
+    try {
+      const r = await PROVIDERS[name].chat(env, null, [{ role: 'user', content: 'ok' }], 0.1, 5);
+      results.push({ provider: name, ok: r.ok, error: r.error, detail: r.detail });
+    } catch (e) {
+      results.push({ provider: name, ok: false, error: e.message });
+    }
+  }
   return results;
+}
+
+// === DIAGNOSTIC ===
+// Interroge l'endpoint /v1/models de chaque provider pour connaitre les
+// identifiants de modeles reellement acceptes par le compte.
+const MODEL_ENDPOINTS = {
+  groq:     { url: 'https://api.groq.com/openai/v1/models', key: 'GROQ_KEY' },
+  cerebras: { url: 'https://api.cerebras.ai/v1/models',     key: 'CEREBRAS_KEY' },
+  mistral:  { url: 'https://api.mistral.ai/v1/models',      key: 'MISTRAL_KEY' },
+  openrouter: { url: 'https://openrouter.ai/api/v1/models', key: 'OPENROUTER_KEY' }
+};
+
+async function diagnose(env) {
+  const out = {};
+  for (const [name, cfg] of Object.entries(MODEL_ENDPOINTS)) {
+    if (!env[cfg.key]) { out[name] = { configured: false }; continue; }
+    try {
+      const r = await fetch(cfg.url, { headers: { 'Authorization': 'Bearer ' + env[cfg.key] } });
+      if (!r.ok) {
+        const t = await r.text().catch(() => '');
+        out[name] = { configured: true, status: r.status, error: t.slice(0, 300) };
+        continue;
+      }
+      const d = await r.json();
+      const ids = (d.data || []).map(m => m.id).sort();
+      out[name] = { configured: true, status: 200, count: ids.length, models: ids.slice(0, 40) };
+    } catch (e) {
+      out[name] = { configured: true, error: e.message };
+    }
+  }
+  // Gemini a une API differente
+  if (env.GEMINI_KEY) {
+    try {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + env.GEMINI_KEY + '&pageSize=50');
+      const d = await r.json();
+      const ids = (d.models || [])
+        .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+        .map(m => m.name.replace('models/', '')).sort();
+      out.gemini = { configured: true, status: r.status, count: ids.length, models: ids.slice(0, 40) };
+    } catch (e) { out.gemini = { configured: true, error: e.message }; }
+  }
+  return out;
+}
+
+// === POLLINATIONS (sans cle) ===
+const POLLINATIONS_URL = 'https://text.pollinations.ai/openai';
+const POLLINATIONS_MODEL = 'openai-fast';
+
+// Pollinations renvoie parfois un HTTP 200 dont le CONTENU est un message
+// d'erreur (credits epuises). Sans ce controle, on afficherait une publicite
+// de rechargement comme si c'etait la reponse de l'IA.
+function pollinationsError(text) {
+  if (!text) return null;
+  if (/doesn't have enough credits|low_balance|top-up|top up/i.test(text)) {
+    return 'Palier anonyme Pollinations indisponible (credits epuises cote fournisseur)';
+  }
+  return null;
+}
+
+async function callPollinations(env, model, messages, temperature, maxTokens) {
+  const resp = await fetch(POLLINATIONS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: model || POLLINATIONS_MODEL, messages, temperature, max_tokens: maxTokens })
+  });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    return { ok: false, error: 'Pollinations error ' + resp.status, detail: detail.slice(0, 300), provider: 'pollinations' };
+  }
+  const raw = await resp.text();
+  const bad = pollinationsError(raw);
+  if (bad) return { ok: false, error: bad, provider: 'pollinations' };
+  let data;
+  try { data = JSON.parse(raw); } catch { return { ok: false, error: 'Reponse Pollinations illisible', provider: 'pollinations' }; }
+  const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  const bad2 = pollinationsError(text);
+  if (bad2) return { ok: false, error: bad2, provider: 'pollinations' };
+  if (!text) return { ok: false, error: 'Reponse Pollinations vide', provider: 'pollinations' };
+  return { ok: true, text, model: model || POLLINATIONS_MODEL, provider: 'pollinations' };
+}
+
+// Le flux natif de Pollinations peut livrer le message "credits epuises"
+// comme s'il s'agissait de la reponse de l'IA. On ne le relaie donc pas :
+// on passe par l'appel controle, puis on fabrique un SSE a partir du
+// resultat verifie. La garde s'applique ainsi dans tous les cas.
+async function streamPollinations(env, model, messages, temperature, maxTokens) {
+  const r = await callPollinations(env, model, messages, temperature, maxTokens);
+
+  const encoder = new TextEncoder();
+  const body = new ReadableStream({
+    start(controller) {
+      const send = (obj) => controller.enqueue(encoder.encode('data: ' + JSON.stringify(obj) + '\n\n'));
+
+      if (!r.ok) {
+        send({ error: { message: r.error } });
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+        return;
+      }
+
+      // Decoupe en petits morceaux pour garder un rendu progressif a l'ecran.
+      const text = r.text || '';
+      const STEP = 24;
+      for (let i = 0; i < text.length; i += STEP) {
+        send({ choices: [{ index: 0, delta: { content: text.slice(i, i + STEP) } }] });
+      }
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    }
+  });
+
+  return new Response(body, {
+    status: r.ok ? 200 : 502,
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      ...corsHeaders(env)
+    }
+  });
+}
+
+// === OPENROUTER ===
+// OpenAI-compatible. Les en-tetes Referer/Title sont recommandes par
+// OpenRouter pour identifier l'application appelante.
+// Routeur automatique : choisit un modele gratuit disponible. Teste le
+// 2026-09-20, c'est le seul avec nemotron a repondre de facon fiable ;
+// les modeles gratuits pris individuellement tombent souvent en 429/504.
+const OPENROUTER_MODEL = 'openrouter/free';
+const OPENROUTER_HEADERS = {
+  'HTTP-Referer': 'https://ether-api.ether-hichem.workers.dev',
+  'X-Title': 'Ether AI'
+};
+
+function callOpenRouter(env, model, messages, temperature, maxTokens) {
+  return callOpenAICompat('openrouter.ai/api', env.OPENROUTER_KEY, OPENROUTER_MODEL,
+    'openrouter', model, messages, temperature, maxTokens, OPENROUTER_HEADERS);
+}
+
+function streamOpenRouter(env, model, messages, temperature, maxTokens) {
+  return fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + env.OPENROUTER_KEY,
+      ...OPENROUTER_HEADERS
+    },
+    body: JSON.stringify({
+      model: model || OPENROUTER_MODEL,
+      messages, temperature, max_tokens: maxTokens, stream: true
+    })
+  }).then(resp => sseResponse(resp, env));
+}
+
+// === PERSISTANCE UTILISATEUR ===
+// Stocke le coffre de donnees d'un utilisateur (conversations, reglages,
+// modes) pour qu'il le retrouve depuis n'importe quel ordinateur.
+// Chaque cle porte un horodatage : en cas d'ecriture depuis deux machines,
+// la plus recente gagne, cle par cle.
+function persistKey(user) {
+  return 'persist:' + ((user && user.email) || 'anonyme');
+}
+
+async function persistRead(env, user) {
+  if (!env.ETHER_KV) return { ok: true, data: {}, keyTimes: {}, tracked: false };
+  const raw = await env.ETHER_KV.get(persistKey(user));
+  if (!raw) return { ok: true, data: {}, keyTimes: {}, tracked: true };
+  try {
+    const parsed = JSON.parse(raw);
+    return { ok: true, data: parsed.data || {}, keyTimes: parsed.keyTimes || {}, tracked: true };
+  } catch {
+    return { ok: true, data: {}, keyTimes: {}, tracked: true };
+  }
+}
+
+async function persistWrite(env, user, incoming) {
+  if (!env.ETHER_KV) return { ok: false, error: 'Stockage indisponible', tracked: false };
+  if (!incoming || typeof incoming !== 'object') return { ok: false, error: 'Charge utile invalide' };
+
+  const inData = incoming.data || {};
+  const inTimes = incoming.keyTimes || {};
+
+  const current = await persistRead(env, user);
+  const data = { ...current.data };
+  const keyTimes = { ...current.keyTimes };
+
+  for (const k of Object.keys(inData)) {
+    if (!/^[\w-]{1,120}$/.test(k)) continue;           // nom de cle plausible
+    const t = Number(inTimes[k]) || Date.now();
+    if (!keyTimes[k] || t >= keyTimes[k]) {             // la plus recente gagne
+      data[k] = inData[k];
+      keyTimes[k] = t;
+    }
+  }
+
+  const body = JSON.stringify({ data, keyTimes });
+  if (body.length > 20 * 1024 * 1024) {
+    return { ok: false, error: 'Coffre trop volumineux (plus de 20 Mo)' };
+  }
+  await env.ETHER_KV.put(persistKey(user), body);
+  return { ok: true, keys: Object.keys(data).length, bytes: body.length, tracked: true };
+}
+
+// Comparaison a duree constante : evite qu'on devine le code lettre par
+// lettre en mesurant le temps de reponse.
+function timingSafeEqual(a, b) {
+  const ba = new TextEncoder().encode(String(a));
+  const bb = new TextEncoder().encode(String(b));
+  let diff = ba.length ^ bb.length;
+  const n = Math.max(ba.length, bb.length);
+  for (let i = 0; i < n; i++) {
+    diff |= (ba[i] || 0) ^ (bb[i] || 0);
+  }
+  return diff === 0;
 }

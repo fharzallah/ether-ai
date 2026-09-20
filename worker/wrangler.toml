@@ -3,11 +3,27 @@ main = "src/index.js"
 compatibility_date = "2025-01-01"
 
 [vars]
+# En production, remplacer "*" par l'origine exacte du site (Cloudflare Pages).
+# Exemple : CORS_ORIGIN = "https://ether-ai.pages.dev"
 CORS_ORIGIN = "*"
 
-# Les cles API sont dans les secrets (pas ici)
-# Deployer avec: npx wrangler secret put GROQ_KEY
-#                npx wrangler secret put GEMINI_KEY
-#                npx wrangler secret put CEREBRAS_KEY
-#                npx wrangler secret put STRIPE_SECRET
-#                npx wrangler secret put JWT_SECRET
+# Les cles API sont des secrets, jamais dans ce fichier.
+# Deployer avec :
+#   npx wrangler secret put GROQ_KEY
+#   npx wrangler secret put GEMINI_KEY
+#   npx wrangler secret put CEREBRAS_KEY
+#   npx wrangler secret put MISTRAL_KEY
+#   npx wrangler secret put JWT_SECRET      <- OBLIGATOIRE : sans lui l'auth est desactivee
+#   npx wrangler secret put STRIPE_SECRET   (optionnel)
+
+# Quotas reels par utilisateur. Sans ce binding, les quotas ne sont
+# qu'indicatifs et ne bloquent personne.
+[[kv_namespaces]]
+binding = "ETHER_KV"
+id = "601d23be0b40404f8019f753ffad6210"
+
+# Le site statique est servi par le meme worker que l'API :
+# une seule origine, donc plus aucun probleme de CORS.
+[assets]
+directory = "./public"
+not_found_handling = "single-page-application"

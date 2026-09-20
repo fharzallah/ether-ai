@@ -718,6 +718,10 @@
 <div id="SOV" class="sov"></div>
 
 <script src="marked.min.js"></script>
+<!-- Web : adresse du worker Cloudflare. Ignore sous Electron. -->
+<script>window.ETHER_API_BASE = window.ETHER_API_BASE || 'https://ether-api.ether-hichem.workers.dev';</script>
+<!-- Shim navigateur : ne s'installe que si le pont Electron est absent. -->
+<script src="renderer/platform-web.js"></script>
 <script src="renderer/core.js"></script>
 <script src="renderer/memory.js"></script>
 <script src="renderer/engine.js"></script>
