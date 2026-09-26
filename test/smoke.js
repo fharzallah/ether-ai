@@ -1,6 +1,6 @@
 /**
  * ETHER — Smoke Tests
- * Vérifie que l'app démarre et que les composants critiques fonctionnent
+ * Vérifie la structure du site web et du worker Cloudflare
  * Usage: node test/smoke.js
  */
 
@@ -41,15 +41,11 @@ test('style.css existe', () => {
   assert(fs.existsSync(path.join(__dirname, '..', 'style.css')));
 });
 
-test('main.js existe', () => {
-  assert(fs.existsSync(path.join(__dirname, '..', 'main.js')));
+test('_headers (CSP) existe', () => {
+  assert(fs.existsSync(path.join(__dirname, '..', '_headers')));
 });
 
-test('preload.js existe', () => {
-  assert(fs.existsSync(path.join(__dirname, '..', 'preload.js')));
-});
-
-const rendererFiles = ['core.js', 'engine.js', 'ui.js', 'app-main.js'];
+const rendererFiles = ['platform-web.js', 'core.js', 'memory.js', 'engine.js', 'ui.js', 'skill-creator.js', 'app-main.js'];
 rendererFiles.forEach(f => {
   test('renderer/' + f + ' existe', () => {
     assert(fs.existsSync(path.join(__dirname, '..', 'renderer', f)));
@@ -63,7 +59,7 @@ test('marked.min.js existe', () => {
 // === 2. SYNTAXE ===
 console.log('\n\x1b[36m2. Syntaxe JavaScript\x1b[0m');
 
-['main.js', 'preload.js'].concat(rendererFiles.map(f => 'renderer/' + f)).forEach(f => {
+rendererFiles.map(f => 'renderer/' + f).concat(['worker/src/index.js']).forEach(f => {
   test(f + ' syntaxe valide', () => {
     try {
       execSync('node --check "' + path.join(__dirname, '..', f) + '"', { stdio: 'pipe' });
@@ -84,6 +80,13 @@ test('index.html contient les script tags', () => {
   assert(html.includes('renderer/app-main.js'), 'Missing app-main.js');
   assert(html.includes('marked.min.js'), 'Missing marked.min.js');
   assert(html.includes('style.css'), 'Missing style.css');
+});
+
+test('platform-web.js est charge avant core.js', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const shim = html.indexOf('renderer/platform-web.js');
+  assert(shim !== -1, 'Missing platform-web.js');
+  assert(shim < html.indexOf('renderer/core.js'), 'platform-web.js doit preceder core.js');
 });
 
 test('index.html contient les elements critiques', () => {
@@ -123,27 +126,48 @@ test('engine.js contient les 4 providers', () => {
   assert(engine.includes('MISTRAL_MODELS'), 'Missing MISTRAL_MODELS');
   assert(engine.includes('CEREBRAS_MODELS'), 'Missing CEREBRAS_MODELS');
   assert(engine.includes('GROQ_MODELS'), 'Missing GROQ_MODELS');
+  assert(engine.includes('OPENROUTER_MODELS'), 'Missing OPENROUTER_MODELS');
   assert(engine.includes('getSmartRoute'), 'Missing getSmartRoute');
 });
 
 // === 6. SECURITE ===
 console.log('\n\x1b[36m6. Securite\x1b[0m');
 
-test('main.js ne contient pas de cles en clair', () => {
-  const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-  // Les cles sont chargees via process.env
-  assert(main.includes('process.env.GROQ_KEY'), 'Missing GROQ_KEY env check');
-  assert(main.includes('process.env.MISTRAL_KEY'), 'Missing MISTRAL_KEY env check');
+// Motifs de cles reelles : Groq, Google, OpenAI/Anthropic, Tavily, Brave, Stripe live.
+const KEY_PATTERNS = /gsk_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9_-]{30,}|tvly-[A-Za-z0-9]{20,}|BSA[A-Za-z0-9]{20,}|sk_live_[A-Za-z0-9]{20,}/;
+const shipped = ['index.html', 'worker/src/index.js'].concat(rendererFiles.map(f => 'renderer/' + f));
+shipped.forEach(f => {
+  test(f + ' ne contient pas de cle en clair', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    const m = src.match(KEY_PATTERNS);
+    assert(!m, 'Cle suspecte : ' + (m && m[0].slice(0, 8)) + '...');
+  });
 });
 
-test('main.js contient la CSP', () => {
-  const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-  assert(main.includes('Content-Security-Policy'), 'Missing CSP');
+test('le worker lit les cles depuis env (secrets)', () => {
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'index.js'), 'utf8');
+  assert(worker.includes('env.GROQ_KEY'), 'Missing env.GROQ_KEY');
+  assert(worker.includes('env.JWT_SECRET'), 'Missing env.JWT_SECRET');
 });
 
-test('preload.js utilise contextBridge', () => {
-  const preload = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf8');
-  assert(preload.includes('contextBridge.exposeInMainWorld'), 'Missing contextBridge');
+test('_headers definit une CSP stricte', () => {
+  const h = fs.readFileSync(path.join(__dirname, '..', '_headers'), 'utf8');
+  assert(h.includes('Content-Security-Policy'), 'Missing CSP');
+  assert(h.includes("object-src 'none'"), "Missing object-src 'none'");
+  assert(h.includes("frame-ancestors 'none'"), "Missing frame-ancestors 'none'");
+});
+
+// === 6b. NON-REGRESSION ===
+test('updProjs tolere l absence de #CFP (bug envoi bloque apres rechargement)', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'app-main.js'), 'utf8');
+  assert(/var sel=G\('CFP'\);if\(!sel\)return;/.test(app), 'Garde manquant sur #CFP');
+});
+
+test('plus aucune reference a Ollama dans le renderer', () => {
+  rendererFiles.forEach(f => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'renderer', f), 'utf8');
+    assert(!/ollama/i.test(src), 'ollama encore present dans ' + f);
+  });
 });
 
 // === 7. WORKER ===
@@ -159,6 +183,8 @@ test('worker contient les routes API', () => {
   assert(worker.includes('/api/chat'), 'Missing /api/chat');
   assert(worker.includes('/api/register'), 'Missing /api/register');
   assert(worker.includes('/api/providers'), 'Missing /api/providers');
+  assert(worker.includes('/api/search'), 'Missing /api/search');
+  assert(worker.includes('/api/persist'), 'Missing /api/persist');
   assert(worker.includes('/api/stripe/checkout'), 'Missing /api/stripe/checkout');
   assert(worker.includes('/api/stripe/webhook'), 'Missing /api/stripe/webhook');
 });

@@ -1,16 +1,11 @@
-// === ETHER — Platform Web (shim navigateur pour etherDesktop) ===
+// === ETHER — Plateforme web ===
 //
-// Reexpose exactement la meme API que preload.js, mais implementee en HTTP
-// vers le worker Cloudflare. Les 129 appels du renderer restent inchanges.
-//
-// IMPORTANT : ce fichier ne s'installe QUE si window.etherDesktop est absent.
-// Sous Electron, preload.js a deja installe le pont natif et ce shim
-// ne fait rien. Le build desktop reste donc intact.
+// Expose window.etherDesktop, l'API de plateforme qu'utilise tout le renderer
+// (le nom vient de l'ancienne version Electron). Chaque appel passe en HTTP
+// par le worker Cloudflare, qui detient les cles API.
 
 (function() {
     'use strict';
-
-    if (window.etherDesktop) return; // Electron : pont natif deja en place
 
     // === Config ===
     var API_BASE = window.ETHER_API_BASE || 'https://ether-api.workers.dev';
@@ -434,6 +429,8 @@
         anthropicStream: function(d) { return stream('anthropic', d); },
         customChat:      function(d) { return chat('custom', d); },
         customStream:    function(d) { return stream('custom', d); },
+        openrouterChat:   function(d) { return chat('openrouter', d); },
+        openrouterStream: function(d) { return stream('openrouter', d); },
         pollinationsChat: function(d) { return chat('pollinations', d); },
         geminiVision:    function(d) { return request('/api/vision', d); },
 
@@ -621,12 +618,10 @@
         authToken:    getToken,
         authSetToken: function(t) { setToken(t); return Promise.resolve({ ok: true }); },
 
-        // === Specifique desktop : indisponible en web ===
+        // === Heritage desktop : sans objet dans un navigateur ===
         installUpdate:     unavailable('installUpdate'),
         onUpdateAvailable:  function() {},  // web : toujours a jour
         onUpdateDownloaded: function() {},
-        ollamaChat:        unavailable('ollamaChat'),
-        ollamaStream:      unavailable('ollamaStream'),
         getUserDataPath:   unavailable('getUserDataPath'),
         getApiPort:        unavailable('getApiPort'),
         getLocalIp:        unavailable('getLocalIp'),
@@ -665,15 +660,6 @@
                 'securisee cote serveur et ne transitent jamais par votre ' +
                 'navigateur. Vous n\'avez aucune cle a saisir.';
             grid.parentNode.insertBefore(note, grid);
-        }
-
-        // La ligne de routing qui promet Ollama « jamais indisponible » est
-        // fausse en web : Ollama tourne sur la machine de l'utilisateur.
-        var spans = document.querySelectorAll('.ss span');
-        for (var i = 0; i < spans.length; i++) {
-            if (spans[i].textContent.trim() === 'Ollama' && spans[i].parentNode) {
-                spans[i].parentNode.style.display = 'none';
-            }
         }
     }
 

@@ -1,64 +1,122 @@
-# ETHER — Guide de déploiement
+# Déployer ta propre instance d'ETHER
 
-## 1. GitHub Releases (Auto-updater)
+Tout tient dans un seul Cloudflare Worker : il sert le site et l'API. Le palier gratuit de Cloudflare suffit pour un usage personnel ou un petit groupe.
 
-### Créer le repo
+Chaque instance a **ses propres clés API**, **son propre stockage** et **son propre code d'invitation** : rien n'est partagé avec l'instance d'origine.
+
+## 1. Prérequis
+
+- Node.js 18+ et un compte [Cloudflare](https://dash.cloudflare.com/sign-up) (gratuit)
+- Au moins une clé de fournisseur IA :
+
+| Fournisseur | Où créer la clé | Secret |
+|---|---|---|
+| OpenRouter (palier gratuit, sans carte) | [openrouter.ai/keys](https://openrouter.ai/keys) | `OPENROUTER_KEY` |
+| Groq | [console.groq.com/keys](https://console.groq.com/keys) | `GROQ_KEY` |
+| Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `GEMINI_KEY` |
+| Mistral | [console.mistral.ai](https://console.mistral.ai) | `MISTRAL_KEY` |
+| Cerebras | [cloud.cerebras.ai](https://cloud.cerebras.ai) | `CEREBRAS_KEY` |
+
+Plus tu en configures, mieux ETHER encaisse les quotas épuisés : le routage saute automatiquement un fournisseur indisponible. Groq est aussi utilisé pour la dictée vocale, Gemini pour l'analyse d'images.
+
+## 2. Installer et se connecter
+
 ```bash
-cd /Users/utilisateur/Desktop/Claude\ Code/ether-app
-git init
-git add -A
-git commit -m "ETHER v1.0.0"
-gh repo create ether-ai --private --source=. --push
+git clone https://github.com/<ton-compte>/ether-ai.git
+cd ether-ai
+npm install
+npx wrangler login
 ```
 
-### Configurer les variables
-Dans `package.json`, remplacer `OWNER` par ton username GitHub dans :
-- `repository.url`
-- `build.publish[0].owner`
+## 3. Créer le stockage (Workers KV)
 
-### Publier une release
+Comptes, quotas et conversations vivent dans un namespace KV.
+
 ```bash
-# Creer un token GitHub : https://github.com/settings/tokens
-export GH_TOKEN=ton_token_github
-
-# Build + publish
-npm run release
+cd worker
+npx wrangler kv namespace create ETHER_KV
 ```
 
-L'auto-updater vérifiera automatiquement les nouvelles releases toutes les 4 heures.
+La commande affiche un `id` : remplace celui de `[[kv_namespaces]]` dans `worker/wrangler.toml`. Sans ce binding, les quotas ne bloquent personne et rien n'est synchronisé.
 
-## 2. Cloudflare Workers (Backend API)
+## 4. Poser les secrets
 
-### Créer le compte
-1. https://dash.cloudflare.com/sign-up
-2. Installer wrangler: `npm install -g wrangler`
-3. Se connecter: `npx wrangler login`
+Depuis `worker/`, chaque commande te demande la valeur. Elle est chiffrée chez Cloudflare et n'apparaît jamais dans le code.
 
-### Déployer
 ```bash
-cd worker/
-npx wrangler deploy
+npx wrangler secret put JWT_SECRET       # OBLIGATOIRE : longue chaîne aléatoire
+npx wrangler secret put OPENROUTER_KEY   # au moins un fournisseur IA
+npx wrangler secret put GROQ_KEY         # optionnel, idem pour GEMINI_KEY, MISTRAL_KEY, CEREBRAS_KEY
 ```
 
-### Configurer les secrets
+Pour générer `JWT_SECRET` :
+
 ```bash
-npx wrangler secret put GROQ_KEY
-npx wrangler secret put GEMINI_KEY
-npx wrangler secret put CEREBRAS_KEY
-npx wrangler secret put JWT_SECRET
-npx wrangler secret put STRIPE_SECRET      # quand Stripe est prêt
-npx wrangler secret put STRIPE_PRICE_ID    # ID du prix Pro
+openssl rand -base64 48
 ```
 
-## 3. Stripe (Paiement Pro)
+**Sans `JWT_SECRET`, l'authentification est désactivée** et n'importe qui peut consommer tes clés. Ne déploie jamais sans.
 
-### Créer le compte
-1. https://dashboard.stripe.com/register
-2. Créer un produit "ETHER Pro" à 9.99€/mois
-3. Copier le `price_id` (format: `price_xxx`)
-4. Copier la clé secrète API (format: `sk_live_xxx`)
+### Recherche web (optionnel)
 
-### Configurer le webhook
-1. Stripe Dashboard > Developers > Webhooks
-2. URL: `https://ether-api.ton-compte.workers.dev/api/stripe/webhook`
-3. Events: `checkout.session.completed`, `customer.subscription.deleted`
+Sans clé, la recherche utilise Wikipedia et DuckDuckGo. Pour de vrais résultats web, pose `SEARCH_KEY` ; le fournisseur est reconnu à la clé :
+
+| Fournisseur | Palier gratuit | Format de clé |
+|---|---|---|
+| [Tavily](https://app.tavily.com) (recommandé) | 1000 recherches/mois, sans carte | `tvly-...` |
+| [Brave Search](https://brave.com/search/api/) | crédit mensuel | `BSA...` |
+| [Serper](https://serper.dev) | 2500 requêtes à l'inscription | autre |
+
+```bash
+npx wrangler secret put SEARCH_KEY
+```
+
+### Accès sur invitation (optionnel)
+
+```bash
+npx wrangler secret put INVITE_CODE
+```
+
+Sans `INVITE_CODE`, l'inscription est ouverte à tous. Avec, seuls ceux qui ont le lien peuvent créer un compte :
+
+```
+https://<ton-worker>.workers.dev/?code=<INVITE_CODE>
+```
+
+Le code est mémorisé dans le navigateur puis retiré de la barre d'adresse. Pour révoquer tous les liens, change la valeur du secret.
+
+## 5. Déployer
+
+Depuis la racine du projet :
+
+```bash
+npm run deploy
+```
+
+Le script copie le site dans `worker/public/` puis lance `wrangler deploy`. L'URL finale s'affiche à la fin (`https://ether-api.<ton-sous-domaine>.workers.dev`). Pour changer le nom du worker, modifie `name` dans `worker/wrangler.toml`.
+
+Vérifie ensuite quels fournisseurs répondent :
+
+```bash
+curl https://<ton-worker>.workers.dev/api/providers
+```
+
+## 6. Mettre à jour et revenir en arrière
+
+```bash
+git pull && npm run deploy          # mettre à jour
+cd worker && npx wrangler rollback  # revenir à la version précédente
+```
+
+## 7. Développement local
+
+```bash
+cp worker/.dev.vars.example worker/.dev.vars   # ignoré par git
+npm run dev                                     # http://localhost:8787
+```
+
+En local, le KV est simulé et laisser `JWT_SECRET` vide désactive l'authentification.
+
+## Paiement (expérimental)
+
+Les routes `/api/stripe/*` sont une ébauche : le webhook ne vérifie pas encore la signature Stripe et n'active rien, et l'URL de retour est codée en dur. **Ne pose pas `STRIPE_SECRET` en production** tant que ce n'est pas terminé.

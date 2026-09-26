@@ -8,16 +8,17 @@ compatibility_date = "2025-01-01"
 CORS_ORIGIN = "*"
 
 # Les cles API sont des secrets, jamais dans ce fichier.
-# Deployer avec :
-#   npx wrangler secret put GROQ_KEY
-#   npx wrangler secret put GEMINI_KEY
-#   npx wrangler secret put CEREBRAS_KEY
-#   npx wrangler secret put MISTRAL_KEY
+# Liste complete et guide : DEPLOY.md. Par exemple :
 #   npx wrangler secret put JWT_SECRET      <- OBLIGATOIRE : sans lui l'auth est desactivee
-#   npx wrangler secret put STRIPE_SECRET   (optionnel)
+#   npx wrangler secret put GROQ_KEY        (au moins un fournisseur IA)
+#   npx wrangler secret put OPENROUTER_KEY
+#   npx wrangler secret put SEARCH_KEY      (optionnel : Tavily / Brave / Serper)
+#   npx wrangler secret put INVITE_CODE     (optionnel : acces sur invitation)
 
 # Quotas reels par utilisateur. Sans ce binding, les quotas ne sont
 # qu'indicatifs et ne bloquent personne.
+# Fork : cree ton propre namespace (npx wrangler kv namespace create ETHER_KV)
+# et remplace l'id ci-dessous par celui qu'affiche la commande.
 [[kv_namespaces]]
 binding = "ETHER_KV"
 id = "601d23be0b40404f8019f753ffad6210"
