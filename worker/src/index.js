@@ -49,7 +49,8 @@ export default {
       // --- AUTH sur les routes protegees ---
       if (path.startsWith('/api/chat') || path.startsWith('/api/quota') ||
           path.startsWith('/api/vision') || path.startsWith('/api/transcribe') ||
-          path.startsWith('/api/fetch') || path.startsWith('/api/image')) {
+          path.startsWith('/api/fetch') || path.startsWith('/api/image') ||
+          path.startsWith('/api/search')) {
         const authErr = await verifyAuth(request, env);
         if (authErr) return authErr;
       }
@@ -137,9 +138,14 @@ export default {
         return json(await proxyFetch(body.url, 'image'), 200, env);
       }
 
-      // --- RECHERCHE WEB : pas de cle disponible ---
+      // --- RECHERCHE WEB ---
+      // Meme contrat que l'IPC 'web-search' du desktop : { results, extract }.
       if (path === '/api/search') {
-        return json({ ok: false, error: 'Recherche web non configuree', hint: 'Necessite une cle Brave/Serper : npx wrangler secret put SEARCH_KEY' }, 501, env);
+        const query = request.method === 'POST'
+          ? ((await request.json().catch(() => ({}))).query || '')
+          : (url.searchParams.get('q') || '');
+        if (!String(query).trim()) return json({ ok: false, error: 'Requete vide' }, 400, env);
+        return json(await webSearch(env, String(query).slice(0, 300)), 200, env);
       }
 
       // --- EMAIL : pas de service configure ---
@@ -843,4 +849,98 @@ function timingSafeEqual(a, b) {
     diff |= (ba[i] || 0) ^ (bb[i] || 0);
   }
   return diff === 0;
+}
+
+// === RECHERCHE WEB ===
+// Sans cle : Wikipedia FR/EN + DuckDuckGo Instant Answer (gratuits, sans compte).
+// Avec SEARCH_KEY : vrais resultats web en plus. Le fournisseur se deduit de la
+// cle (tvly-... = Tavily, BSA... = Brave), sinon SEARCH_PROVIDER, sinon Serper.
+function searchProvider(env) {
+  const k = env.SEARCH_KEY || '';
+  if (!k) return '';
+  if (env.SEARCH_PROVIDER) return env.SEARCH_PROVIDER;
+  if (k.startsWith('tvly-')) return 'tavily';
+  if (k.startsWith('BSA')) return 'brave';
+  return 'serper';
+}
+
+async function getJson(url, init) {
+  try {
+    // Wikimedia refuse les requetes sans User-Agent identifiable.
+    const headers = { 'User-Agent': 'EtherAI/2.1 (https://github.com/fharzallah/ether-ai)', ...((init && init.headers) || {}) };
+    const r = await fetch(url, { ...init, headers, signal: AbortSignal.timeout(6000) });
+    return r.ok ? await r.json() : null;
+  } catch (e) { return null; }
+}
+
+async function keyedSearch(env, query) {
+  const provider = searchProvider(env);
+  if (provider === 'tavily') {
+    const d = await getJson('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.SEARCH_KEY },
+      body: JSON.stringify({ query, max_results: 6, include_answer: true })
+    });
+    if (!d) return { results: [], extract: '' };
+    return {
+      results: (d.results || []).map(r => ({ title: r.title || '', snippet: r.content || '', source: hostOf(r.url), url: r.url })),
+      extract: d.answer ? '=== Synthese web (Tavily) ===\n' + d.answer : ''
+    };
+  }
+  if (provider === 'brave') {
+    const d = await getJson('https://api.search.brave.com/res/v1/web/search?count=6&q=' + encodeURIComponent(query), {
+      headers: { 'Accept': 'application/json', 'X-Subscription-Token': env.SEARCH_KEY }
+    });
+    const list = (d && d.web && d.web.results) || [];
+    return { results: list.map(r => ({ title: r.title || '', snippet: stripTags(r.description || ''), source: hostOf(r.url), url: r.url })), extract: '' };
+  }
+  if (provider === 'serper') {
+    const d = await getJson('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-KEY': env.SEARCH_KEY },
+      body: JSON.stringify({ q: query, num: 6, hl: 'fr' })
+    });
+    if (!d) return { results: [], extract: '' };
+    const results = (d.organic || []).map(r => ({ title: r.title || '', snippet: r.snippet || '', source: hostOf(r.link), url: r.link }));
+    const box = d.answerBox && (d.answerBox.answer || d.answerBox.snippet);
+    return { results, extract: box ? '=== Reponse directe (Google) ===\n' + box : '' };
+  }
+  return { results: [], extract: '' };
+}
+
+async function wikipediaExtract(lang, query) {
+  const s = await getJson(`https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=1`);
+  const hit = s && s.query && s.query.search && s.query.search[0];
+  if (!hit) return '';
+  const d = await getJson(`https://${lang}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(hit.title)}&prop=extracts&exintro=1&explaintext=1&format=json`);
+  const pages = (d && d.query && d.query.pages) || {};
+  for (const k in pages) {
+    if (pages[k].extract) return `=== ${pages[k].title} (Wikipedia ${lang.toUpperCase()}) ===\n` + pages[k].extract.substring(0, 800);
+  }
+  return '';
+}
+
+async function ddgInstant(query) {
+  const d = await getJson('https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=' + encodeURIComponent(query));
+  const out = [];
+  if (!d) return out;
+  if (d.Answer) out.push({ title: 'Reponse directe', snippet: String(d.Answer), source: 'DuckDuckGo' });
+  if (d.Abstract) out.push({ title: d.Heading || query, snippet: d.Abstract, source: d.AbstractSource || 'DuckDuckGo', url: d.AbstractURL });
+  return out;
+}
+
+async function webSearch(env, query) {
+  const [keyed, frWiki, enWiki, ddg] = await Promise.all([
+    keyedSearch(env, query), wikipediaExtract('fr', query), wikipediaExtract('en', query), ddgInstant(query)
+  ]);
+  const extract = [keyed.extract, frWiki, enWiki].filter(Boolean).join('\n\n');
+  return { ok: true, provider: searchProvider(env) || 'libre', results: keyed.results.concat(ddg), extract };
+}
+
+function hostOf(u) {
+  try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'web'; }
+}
+
+function stripTags(s) {
+  return String(s).replace(/<[^>]+>/g, '');
 }
