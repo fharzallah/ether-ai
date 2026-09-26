@@ -417,6 +417,8 @@
     });
 
     window.etherDesktop = {
+        isWeb: true,
+
         // === IA (cles cote serveur, jamais dans le navigateur) ===
         groqChat:        function(d) { return chat('groq', d); },
         groqStream:      function(d) { return stream('groq', d); },

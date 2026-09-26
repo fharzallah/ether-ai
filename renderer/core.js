@@ -107,6 +107,21 @@ function sGet(k,d) {
         }
         // ether_provider_keys est migre vers le coffre par loadProviderKeys() puis
         // efface la. Ici on ne fait rien pour ne pas perdre des cles non encore migrees.
+
+        // Reparer les cles laissees a la chaine "undefined" par l'ancien bug de
+        // sSet. sGet retombe sur sa valeur par defaut, donc rien n'est casse,
+        // mais l'avertissement revient a chaque demarrage tant que la valeur
+        // n'est pas reecrite — et rien ne la reecrit avant que l'utilisateur
+        // n'ouvre la section concernee.
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+            var k = localStorage.key(i);
+            if (!k || k.indexOf('ether_') !== 0) continue;
+            var v = localStorage.getItem(k);
+            if (v === 'undefined' || v === 'null') {
+                localStorage.removeItem(k);
+                console.log('[MIGRATION] Cle corrompue reparee :', k);
+            }
+        }
     } catch(e) { /* stockage indisponible */ }
 })();
 
