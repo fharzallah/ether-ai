@@ -56,6 +56,9 @@ var G = function(id) { return document.getElementById(id); };
 var isPro = false; // sera écrasé par sGet('pro', false) dans app-main.js au boot
 function sSet(k,v) {
     try {
+        // JSON.stringify(undefined) renvoie undefined et setItem stocke la chaine "undefined",
+        // ce qui corrompt la cle et fait echouer sGet au demarrage suivant.
+        if (v === undefined) { console.warn('[STORAGE] Ecriture undefined ignoree pour', k); return; }
         localStorage.setItem('ether_'+k, JSON.stringify(v));
     } catch(e) {
         // localStorage plein ou indisponible — tenter de liberer de l'espace
@@ -92,6 +95,35 @@ function sGet(k,d) {
         return d;
     }
 }
+
+// Purge unique de l'ancien fournisseur personnalise stocke en clair : sa cle API vivait
+// dans localStorage avant le passage a safeStorage. On l'efface pour ne pas laisser
+// trainer un secret lisible sur le disque.
+(function purgeLegacyCustomProvider() {
+    try {
+        if (localStorage.getItem('ether_custom_provider') !== null) {
+            localStorage.removeItem('ether_custom_provider');
+            console.log('[MIGRATION] Ancien custom_provider en clair supprime du stockage local.');
+        }
+        // ether_provider_keys est migre vers le coffre par loadProviderKeys() puis
+        // efface la. Ici on ne fait rien pour ne pas perdre des cles non encore migrees.
+
+        // Reparer les cles laissees a la chaine "undefined" par l'ancien bug de
+        // sSet. sGet retombe sur sa valeur par defaut, donc rien n'est casse,
+        // mais l'avertissement revient a chaque demarrage tant que la valeur
+        // n'est pas reecrite — et rien ne la reecrit avant que l'utilisateur
+        // n'ouvre la section concernee.
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+            var k = localStorage.key(i);
+            if (!k || k.indexOf('ether_') !== 0) continue;
+            var v = localStorage.getItem(k);
+            if (v === 'undefined' || v === 'null') {
+                localStorage.removeItem(k);
+                console.log('[MIGRATION] Cle corrompue reparee :', k);
+            }
+        }
+    } catch(e) { /* stockage indisponible */ }
+})();
 
 // Au demarrage, restaurer les donnees du fichier persistant si localStorage est vide
 function restoreFromPersist() {
@@ -302,6 +334,14 @@ greeting_morning:'Здравствуйте',greeting_evening:'Добрый ве�
 }
 };
 
+// La langue courante est declaree ici et non dans app-main.js, qui se charge en
+// dernier : t(), getLangCode() et applyLanguage() vivent dans ce fichier et
+// peuvent etre appelees depuis un callback asynchrone avant que app-main.js ne
+// s'execute. Un identifiant non declare leve une ReferenceError, que le
+// "curLang || 'fr'" plus bas ne rattrape pas. app-main.js la reassigne ensuite
+// avec la valeur stockee.
+var curLang = 'fr';
+
 // Language codes for speech recognition/synthesis
 var LANG_CODES = {fr:'fr-FR',en:'en-US',es:'es-ES',ar:'ar-SA',de:'de-DE',it:'it-IT',pt:'pt-BR',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',tr:'tr-TR',ru:'ru-RU',nl:'nl-NL',pl:'pl-PL',sv:'sv-SE',hi:'hi-IN',vi:'vi-VN',th:'th-TH',id:'id-ID',ro:'ro-RO',el:'el-GR',cs:'cs-CZ',uk:'uk-UA',he:'he-IL',da:'da-DK',fi:'fi-FI',no:'nb-NO',hu:'hu-HU',ms:'ms-MY',bn:'bn-BD',sw:'sw-KE'};
 
@@ -382,7 +422,22 @@ var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true, 
 
 // getSmartRoute et getSmartModel sont definis dans engine.js (routing intelligent)
 
-if (window.etherDesktop) { window.etherDesktop.getModels().then(function(m) { if (m && m.groq) { GROQ_MODELS = m.groq; GEMINI_MODELS = m.gemini; MISTRAL_MODELS = m.mistral; CEREBRAS_MODELS = m.cerebras; if (m.ollama) OLLAMA_MODELS = m.ollama; } else if (m) { GROQ_MODELS = m; } }); }
+// N'ecraser les constantes que si la reponse a la forme attendue. L'ancien repli
+// assignait n'importe quelle valeur non nulle a GROQ_MODELS, ce qui suffisait a
+// rendre GROQ_MODELS.main indefini et a envoyer un nom de modele vide a l'API.
+function validModelSet(o) { return !!(o && typeof o === 'object' && !Array.isArray(o) && o.main); }
+if (window.etherDesktop) {
+    window.etherDesktop.getModels().then(function(m) {
+        if (!m || typeof m !== 'object') return;
+        if (validModelSet(m.groq)) GROQ_MODELS = m.groq;
+        if (validModelSet(m.gemini)) GEMINI_MODELS = m.gemini;
+        if (validModelSet(m.mistral)) MISTRAL_MODELS = m.mistral;
+        if (validModelSet(m.cerebras)) CEREBRAS_MODELS = m.cerebras;
+        if (validModelSet(m.ollama)) OLLAMA_MODELS = m.ollama;
+        if (!m.groq && validModelSet(m)) GROQ_MODELS = m; // ancienne forme plate
+        if (typeof renderModelOptions === 'function') renderModelOptions();
+    })['catch'](function() {});
+}
 var activeModel = null;
 var apiAvailable = false;
 

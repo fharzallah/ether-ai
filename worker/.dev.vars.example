@@ -1,4 +1,7 @@
+# Copier en worker/.dev.vars (gitignore) pour le developpement local.
 GROQ_KEY=your_groq_key_here
 GEMINI_KEY=your_gemini_key_here
 CEREBRAS_KEY=your_cerebras_key_here
+MISTRAL_KEY=your_mistral_key_here
+# Sans JWT_SECRET, verifyAuth laisse tout passer (pratique en local, jamais en prod).
 JWT_SECRET=change_me_to_a_random_secret
