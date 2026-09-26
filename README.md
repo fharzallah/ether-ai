@@ -1,121 +1,86 @@
 # ETHER — Ton partenaire intellectuel sans complaisance
 
-ETHER est une application de chat IA de bureau (Electron) qui route intelligemment tes requêtes entre plusieurs fournisseurs d'API — **Groq, Gemini et Mistral AI** — plus un modèle local via **Ollama** en dernier recours, tout en gardant une personnalité distincte : honnête, directe, sans complaisance.
+ETHER est un assistant IA **web et open-source** qui route tes questions entre plusieurs fournisseurs de modèles (Groq, Gemini, Mistral, OpenRouter…), avec une personnalité assumée : honnête, directe, sans complaisance.
 
 La plupart des assistants IA sont conçus pour valider tes idées. ETHER fait l'inverse : il les challenge.
 
+Tout tourne sur un seul **Cloudflare Worker** : il sert le site, détient les clés API (jamais envoyées au navigateur) et stocke comptes, quotas et conversations dans Workers KV. Tu peux déployer ta propre instance gratuitement en une dizaine de minutes.
+
 ## Ce qui rend ETHER différent
 
-- **Aucune fausse politesse** — La contradiction est attendue, pas évitée.
-- **Analyse critique systématique** — Une idée faible se fait démonter, avec les raisons et la correction.
-- **Longueur de réponse adaptative** — Concis quand il le faut, détaillé avec exemples concrets quand le sujet l'exige.
-- **Pas de blabla creux** — Les réponses vides et les tutoriels trop techniques sont évités par design.
+- **Aucune fausse politesse** — la contradiction est attendue, pas évitée.
+- **Analyse critique systématique** — une idée faible se fait démonter, avec les raisons et la correction.
+- **Longueur adaptative** — concis quand il le faut, détaillé avec des exemples quand le sujet l'exige.
 
-## Fonctionnalités principales
+## Fonctionnalités
 
-- **Routing multi-provider intelligent** — Bascule entre Groq (GPT-OSS 120B/20B), Gemini 2.5 Flash (rotation automatique sur jusqu'à 3 clés) et Mistral Large/Small selon la tâche. Cerebras reste dans le code comme fallback possible, mais son tier gratuit actuel ne couvre plus aucun modèle utilisable (paiement requis ou quota systématiquement dépassé) — ETHER le détecte et l'ignore automatiquement.
-- **Fallback local via Ollama** — Si tous les providers cloud sont indisponibles (quota épuisé, panne réseau), ETHER bascule automatiquement sur un modèle tournant en local (Llama 3.2 3B + Qwen2.5 3B pour le raisonnement) — y compris dans le pipeline "Réflexion approfondie". Aucune clé, aucun quota, ne dépend de rien d'externe.
-- **Réflexion approfondie** — Pipeline en 5 étapes (Décomposition → Recherche web → Analyse → Critique → Synthèse) pour les questions qui demandent plus qu'une réponse directe.
-- **Providers personnalisés** — Possibilité de brancher un endpoint compatible OpenAI (LM Studio, vLLM, OpenRouter, Together AI...) en renseignant URL, clé et modèle dans les réglages.
-- **OpenAI et Anthropic (optionnels)** — Renseigne ta propre clé et ils apparaissent dans le sélecteur de modèle (GPT-4o, Claude Opus 5). Volontairement exclus du routing automatique : ce sont des clés payantes, elles ne sont utilisées que si tu les choisis explicitement.
-- **Sélecteur de modèle** — Mode Auto (routing intelligent) ou choix manuel d'un fournisseur précis. Un choix manuel est ferme : en cas d'échec, ETHER affiche l'erreur au lieu de basculer en silence vers un autre fournisseur, et les tâches internes (mémoire, suggestions, résumé) ainsi que les 5 étapes de la réflexion approfondie suivent le même fournisseur.
-- **Modes de conversation** — Teacher (apprentissage guidé), Créatif, Débat (argumentation contradictoire), Écriture, Image, et modes 100% personnalisés.
-- **Génération d'images** — Mode Image via Pollinations, limité à 5 images par jour en gratuit (compteur affiché dans la barre de modes), illimité en Pro.
-- **Génération et lecture de documents** — Import/analyse de PDF, Word (`.docx`) et Excel (`.xlsx`) via `pdf-parse`, `mammoth` et `xlsx`.
-- **Recherche web** — Intégration DuckDuckGo pour enrichir les réponses avec des résultats récents.
-- **Clés API chiffrées** — Toutes les clés (fournisseurs intégrés, optionnels et personnalisés) sont chiffrées via Electron `safeStorage` et stockées hors du navigateur. Le renderer ne voit jamais leur valeur.
-- **Thèmes** — 8 thèmes complets (Sombre, Clair, Minuit, Ocean, Forêt, Sunset, Rose, Arctique) plus un mode Auto qui suit le thème du système.
-- **Auto-update** — Mise à jour automatique via GitHub Releases (`electron-updater`).
-- **Backend Cloudflare Workers** (optionnel) — API serverless pour l'orchestration multi-utilisateurs, l'authentification et un futur module de paiement Stripe (`worker/`).
+- **Routage multi-fournisseurs** — Mistral, Gemini, Groq, Cerebras, puis OpenRouter en dernier recours. Un fournisseur à court de quota est détecté et sauté automatiquement. Tu peux aussi en choisir un à la main.
+- **Réflexion approfondie** — pipeline en 5 étapes (décomposition → recherche web → analyse → critique → synthèse).
+- **Recherche web** — Wikipedia et DuckDuckGo sans clé ; vrais résultats web avec une clé Tavily, Brave ou Serper.
+- **Modes** — Teacher, Débat, Créatif, Écriture, et modes personnalisés qui **s'activent tout seuls** selon la demande, avec leurs propres documents de référence. Un assistant guide leur création et permet de les tester avant de les enregistrer.
+- **Synchronisation** — les conversations suivent le compte, sur tous tes appareils.
+- **Accès sur invitation** (optionnel) — un lien `?code=…` suffit pour inviter quelqu'un.
+- **Images, vision, dictée vocale**, thèmes Dark / Light / Midnight.
 
-## Stack technique
+## Architecture
 
-- **Application** — Electron (process principal `main.js`, UI en HTML/CSS/JS vanilla dans `index.html` + `renderer/`, `preload.js` en `contextBridge` avec `contextIsolation`)
-- **Providers IA** — Groq, Google Gemini, Mistral AI, Ollama (local, fallback). Cerebras present dans le code mais non recommande actuellement.
-- **Backend optionnel** — Cloudflare Workers (`worker/`)
-- **Environnement** — Node.js 18+, clés API chargées via `.env` (jamais committées)
+```
+navigateur ──► Cloudflare Worker (worker/src/index.js)
+               ├─ fichiers statiques : index.html, style.css, renderer/*.js
+               ├─ /api/chat, /api/chat/stream  → Groq, Gemini, Mistral, OpenRouter…
+               ├─ /api/search, /api/fetch      → recherche et lecture de pages
+               ├─ /api/register, /api/quota    → comptes (JWT) et quotas
+               └─ /api/persist                 → conversations, dans Workers KV
+```
 
-## Démarrage
+- **Front** — HTML/CSS/JS vanilla, sans framework ni étape de build. `renderer/platform-web.js` expose l'API de plateforme (`window.etherDesktop`, nom hérité de l'ancienne version de bureau) utilisée par le reste du code.
+- **Back** — un seul fichier, `worker/src/index.js`.
 
-### Prérequis
+## Démarrer en local
 
-- Node.js 18+
-- Au moins une clé API parmi : Groq, Gemini, Mistral — ou [Ollama](https://ollama.com) installé en local (aucune clé requise)
-
-### Installation
+Prérequis : Node.js 18+ et au moins une clé de fournisseur IA ([OpenRouter](https://openrouter.ai/keys) a un palier gratuit sans carte).
 
 ```bash
 git clone https://github.com/fharzallah/ether-ai.git
 cd ether-ai
 npm install
+cp worker/.dev.vars.example worker/.dev.vars   # puis renseigne tes clés
+npm run dev                                     # http://localhost:8787
 ```
 
-### Configuration
+`worker/.dev.vars` est ignoré par git : tes clés ne quittent pas ta machine.
 
-Crée un fichier `.env` à la racine du projet :
+## Déployer ta propre instance
 
-```env
-GROQ_KEY=ta_cle_groq
-GEMINI_KEY_1=ta_cle_gemini_1
-GEMINI_KEY_2=ta_cle_gemini_2
-GEMINI_KEY_3=ta_cle_gemini_3
-MISTRAL_KEY=ta_cle_mistral
-CEREBRAS_KEY=ta_cle_cerebras
-```
-
-Seule une clé est nécessaire pour démarrer ; les autres providers restent simplement indisponibles tant qu'ils ne sont pas configurés.
-
-### Ollama (fallback local, optionnel mais recommandé)
+Le guide complet (compte Cloudflare, KV, secrets, code d'invitation, Stripe) est dans **[DEPLOY.md](DEPLOY.md)**. En résumé :
 
 ```bash
-brew install ollama
-brew services start ollama
-ollama pull llama3.2:3b          # rapide, usage general
-ollama pull qwen2.5:3b-instruct  # raisonnement (analyse, critique, mode Teacher/Debat)
+npx wrangler login
+npx wrangler kv namespace create ETHER_KV      # reporte l'id dans worker/wrangler.toml
+cd worker && npx wrangler secret put JWT_SECRET && npx wrangler secret put OPENROUTER_KEY && cd ..
+npm run deploy
 ```
 
-Aucune configuration côté ETHER : si un serveur Ollama tourne sur `http://127.0.0.1:11434`, il est détecté et utilisé automatiquement comme dernier recours quand les providers cloud sont en échec — y compris dans le pipeline "Réflexion approfondie" (Décomposition/Analyse/Critique/Synthèse), qui bascule sur Ollama à chaque étape si besoin. Pour changer d'URL ou de modèles : variables d'environnement `OLLAMA_URL`, `OLLAMA_MODEL`, `OLLAMA_MODEL_FAST`, `OLLAMA_MODEL_REASONING` dans `.env`.
+## Scripts
 
-### Lancer l'app
+| Commande | Rôle |
+|---|---|
+| `npm run dev` | Site + API en local avec `wrangler dev` |
+| `npm run deploy` | Construit `worker/public/` et déploie sur Cloudflare |
+| `npm run lint` | Vérifie la syntaxe du front et du worker |
+| `npm test` | Tests de fumée : structure, absence de clés, CSP, non-régression |
 
-```bash
-npm start
-```
+## Limites connues
 
-### Tests
+Bonnes premières contributions :
 
-```bash
-npm run lint   # vérifie la syntaxe de main.js, preload.js et renderer/*.js
-npm test       # smoke tests (structure, sécurité, CSP, contextBridge...)
-```
+- L'import de fichiers ne lit que le **texte brut** : PDF, Word et Excel ne sont pas encore extraits côté web.
+- Les **fournisseurs personnalisés** (endpoint compatible OpenAI) ne sont pas encore relayés par le worker.
+- Le quota est fixe (30 messages/jour/utilisateur, `DAILY_LIMIT` dans le worker).
 
-### Build (macOS)
+## Contribuer
 
-```bash
-npm run build
-```
-
-## Backend Cloudflare Workers (optionnel)
-
-Le dossier `worker/` contient une API serverless Cloudflare Workers pour l'orchestration multi-utilisateurs et un futur module Stripe. Voir [DEPLOY.md](DEPLOY.md) pour le guide de déploiement complet (releases GitHub, Workers, Stripe).
-
-```bash
-cd worker/
-cp .dev.vars.example .dev.vars   # renseigne tes clés localement, jamais commité
-npx wrangler dev
-```
-
-## Sécurité
-
-- Aucune clé API n'est codée en dur dans le code source : tout passe par des variables d'environnement (`.env`, `worker/.dev.vars`), toutes deux exclues du dépôt via `.gitignore`.
-- Le renderer tourne avec `contextIsolation` activé ; toute communication avec le process principal passe par `contextBridge` (`preload.js`).
-- Une politique CSP (Content-Security-Policy) est appliquée à la fenêtre principale.
-
-Si tu repères une faille de sécurité, ouvre une issue privée ou contacte directement le mainteneur plutôt que de la divulguer publiquement.
-
-## Statut du projet
-
-En développement actif (v1.2.0). Projet personnel — retours et contributions bienvenus via issues et pull requests.
+Les contributions sont bienvenues : lis [CONTRIBUTING.md](CONTRIBUTING.md). Pour signaler une faille, suis [SECURITY.md](SECURITY.md) plutôt que d'ouvrir une issue publique.
 
 ## Licence
 

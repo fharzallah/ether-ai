@@ -415,10 +415,11 @@ var GROQ_MODELS = { main: 'openai/gpt-oss-120b', reasoning: 'openai/gpt-oss-120b
 var GEMINI_MODELS = { main: 'gemini-2.5-flash', fast: 'gemini-2.5-flash-lite' };
 var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest' };
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };
-var OLLAMA_MODELS = { main: 'llama3.2:3b', fast: 'llama3.2:3b', reasoning: 'qwen2.5:3b-instruct' };
+// OpenRouter : routeur gratuit cote serveur, dernier recours quand les autres sont a court de quota.
+var OPENROUTER_MODELS = { main: 'openrouter/free', fast: 'openrouter/free', reasoning: 'openrouter/free' };
 
 // Provider availability tracking
-var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true, ollama: true };
+var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true, openrouter: true };
 
 // getSmartRoute et getSmartModel sont definis dans engine.js (routing intelligent)
 
@@ -433,7 +434,6 @@ if (window.etherDesktop) {
         if (validModelSet(m.gemini)) GEMINI_MODELS = m.gemini;
         if (validModelSet(m.mistral)) MISTRAL_MODELS = m.mistral;
         if (validModelSet(m.cerebras)) CEREBRAS_MODELS = m.cerebras;
-        if (validModelSet(m.ollama)) OLLAMA_MODELS = m.ollama;
         if (!m.groq && validModelSet(m)) GROQ_MODELS = m; // ancienne forme plate
         if (typeof renderModelOptions === 'function') renderModelOptions();
     })['catch'](function() {});
