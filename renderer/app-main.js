@@ -113,7 +113,8 @@ function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_EN
 
 // TRASH
 function cleanTrash(){var now=Date.now();for(var id in trash){if(now-trash[id].deletedAt>30*24*60*60*1000){delete trash[id];}}sSet('trash',trash);}
-// NB: pas d'appel ici — 'trash' n'est assigne qu'en fin de fichier. updTrash() purge au demarrage.
+// NB: pas d'appel ici — 'trash' n'est assigne qu'en fin de fichier. La purge des
+// entrees de plus de 30 jours se fait via updTrash(), a l'ouverture de la corbeille.
 function updTrash(){cleanTrash();var ids=Object.keys(trash).sort(function(a,b){return trash[b].deletedAt-trash[a].deletedAt;});var tl=G('TL');var etb=G('ETB');if(!ids.length){tl.innerHTML='<div class="il-e" data-i18n="sb_trash_empty">'+t('sb_trash_empty')+'</div>';etb.style.display='none';return;}etb.style.display='block';var h='';for(var i=0;i<ids.length;i++){var id=ids[i];var ti=trash[id];var dl=30-Math.floor((Date.now()-ti.deletedAt)/(24*60*60*1000));h+='<div class="trash-item"><div class="tr-info"><div class="tr-title">'+esc(ti.title)+'</div><div class="tr-date">'+dl+' d</div></div><div class="trash-actions"><button class="tr-restore" onclick="restoreConv(\''+id+'\')">'+t('btn_save')+'</button><button class="tr-del" onclick="permDelConv(\''+id+'\')">'+t('btn_delete')+'</button></div></div>';}tl.innerHTML=h;}
 function restoreConv(id){if(!trash[id])return;convs[id]=trash[id].data;sSet('convs',convs);delete trash[id];sSet('trash',trash);updHist();updTrash();}
 function permDelConv(id){delete trash[id];sSet('trash',trash);updTrash();}
@@ -131,7 +132,9 @@ function updProjs(){
     pl.innerHTML=h;
     var items=pl.querySelectorAll('.pi');for(var i=0;i<items.length;i++){items[i].onclick=(function(el){return function(e){if(e.target.classList.contains('idel'))return;curProj=el.getAttribute('data-id');updProjs();updHist();newChat(curProj);};})(items[i]);}
     var dels=pl.querySelectorAll('.idel');for(var i=0;i<dels.length;i++){dels[i].onclick=(function(b){return function(e){e.stopPropagation();var bid=b.getAttribute('data-id');delete projs[bid];sSet('projs',projs);if(curProj===bid){curProj=null;newChat();}updProjs();};})(dels[i]);}
-    var sel=G('CFP');sel.innerHTML='<option value="all">Tous</option>';for(var i=0;i<ids.length;i++)sel.innerHTML+='<option value="'+ids[i]+'">'+esc(projs[ids[i]].name)+'</option>';
+    // CFP (filtre par projet) n'existe pas dans index.html : sans ce garde, showApp()
+    // plantait au rechargement et tout le reste du fichier (envoi, Entree...) n'etait jamais branche.
+    var sel=G('CFP');if(!sel)return;sel.innerHTML='<option value="all">Tous</option>';for(var i=0;i<ids.length;i++)sel.innerHTML+='<option value="'+ids[i]+'">'+esc(projs[ids[i]].name)+'</option>';
 }
 
 // SETTINGS

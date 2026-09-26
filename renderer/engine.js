@@ -37,7 +37,14 @@ function detectComplexity(msg) {
 var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true, ollama: true };
 function checkProvidersHealth() {
     if (!window.etherDesktop || !window.etherDesktop.testAllProviders) return;
-    window.etherDesktop.testAllProviders().then(function(results) {
+    // Dans un navigateur, Ollama (serveur local) est hors de portee.
+    if (window.etherDesktop.isWeb) {
+        providerHealth.ollama = false;
+        if (typeof providerStatus !== 'undefined') providerStatus.ollama = false;
+    }
+    window.etherDesktop.testAllProviders().then(function(res) {
+        // Desktop : tableau. Web : { ok, providers: [...] }.
+        var results = Array.isArray(res) ? res : ((res && res.providers) || []);
         for (var i = 0; i < results.length; i++) {
             var r = results[i];
             providerHealth[r.provider] = r.ok;
