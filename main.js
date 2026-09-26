@@ -206,6 +206,20 @@ function httpGet(url) {
     });
 }
 
+// Verifie rapidement si le serveur Ollama local repond avant de lui envoyer une requete
+// de chat (qui peut prendre des minutes) — evite d'attendre un timeout long juste pour
+// decouvrir qu'Ollama n'est pas lance.
+function isOllamaUp() {
+    return new Promise(function(resolve) {
+        var req = http.get(OLLAMA_URL + '/api/tags', function(res) {
+            res.resume();
+            resolve(res.statusCode < 500);
+        });
+        req.on('error', function() { resolve(false); });
+        req.setTimeout(1500, function() { req.destroy(); resolve(false); });
+    });
+}
+
 // === DuckDuckGo HTML Search (pas de cle API requise) ===
 function httpGetRaw(url, headers) {
     return new Promise(function(resolve, reject) {
@@ -856,22 +870,28 @@ ipcMain.handle('ollama-chat', function(event, data) {
     // Inference locale lente sur machine modeste — timeout proportionnel a la longueur demandee
     // (~10 tok/s en pratique sur M1 8Go), avec un plancher et un plafond raisonnables.
     var ollamaTimeoutMs = Math.min(360000, Math.max(60000, maxTokens * 200));
-    return httpRequest({
-        hostname: _ollamaUrlParsed.hostname,
-        port: _ollamaUrlParsed.port || 11434,
-        path: '/v1/chat/completions',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
-    }, postData, ollamaTimeoutMs).then(function(res) {
-        if (res.status === 200) {
-            var d = JSON.parse(res.body);
-            return { ok: true, text: d.choices[0].message.content, model: data.model || OLLAMA_MODELS.main, provider: 'ollama' };
+    return isOllamaUp().then(function(up) {
+        if (!up) {
+            console.log('[OLLAMA] Fallback local indisponible: aucun serveur Ollama ne repond sur ' + OLLAMA_URL);
+            return { ok: false, error: 'Ollama n\'est pas demarre (aucune reponse sur ' + OLLAMA_URL + ')', provider: 'ollama' };
         }
-        console.log('[OLLAMA] Error:', res.status, res.body.substring(0, 200));
-        return { ok: false, error: 'Status ' + res.status, provider: 'ollama' };
-    })['catch'](function(e) {
-        console.log('[OLLAMA] Exception (Ollama non demarre?):', e.message);
-        return { ok: false, error: e.message, provider: 'ollama' };
+        return httpRequest({
+            hostname: _ollamaUrlParsed.hostname,
+            port: _ollamaUrlParsed.port || 11434,
+            path: '/v1/chat/completions',
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
+        }, postData, ollamaTimeoutMs).then(function(res) {
+            if (res.status === 200) {
+                var d = JSON.parse(res.body);
+                return { ok: true, text: d.choices[0].message.content, model: data.model || OLLAMA_MODELS.main, provider: 'ollama' };
+            }
+            console.log('[OLLAMA] Error:', res.status, res.body.substring(0, 200));
+            return { ok: false, error: 'Status ' + res.status, provider: 'ollama' };
+        })['catch'](function(e) {
+            console.log('[OLLAMA] Exception (Ollama non demarre?):', e.message);
+            return { ok: false, error: e.message, provider: 'ollama' };
+        });
     });
 });
 
@@ -885,7 +905,12 @@ ipcMain.handle('ollama-stream', function(event, data) {
         stream: true
     });
 
-    return new Promise(function(resolve) {
+    return isOllamaUp().then(function(up) {
+        if (!up) {
+            console.log('[OLLAMA] Fallback local indisponible: aucun serveur Ollama ne repond sur ' + OLLAMA_URL);
+            return { ok: false, error: 'Ollama n\'est pas demarre (aucune reponse sur ' + OLLAMA_URL + ')', provider: 'ollama' };
+        }
+        return new Promise(function(resolve) {
         var req = http.request({
             hostname: _ollamaUrlParsed.hostname,
             port: _ollamaUrlParsed.port || 11434,
@@ -940,6 +965,7 @@ ipcMain.handle('ollama-stream', function(event, data) {
         req.setTimeout(120000, function() { req.destroy(); resolve({ ok: false, error: 'Timeout', provider: 'ollama' }); });
         req.write(postData);
         req.end();
+        });
     });
 });
 
