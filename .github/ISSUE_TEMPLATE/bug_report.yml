@@ -1,0 +1,44 @@
+name: Signaler un bug
+description: Quelque chose ne marche pas comme prévu
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Ce qui se passe
+      description: Décris le problème. Une capture d'écran aide beaucoup.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Ouvrir ...
+        2. Cliquer sur ...
+        3. Voir l'erreur
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ce qui devrait se passer
+  - type: input
+    id: browser
+    attributes:
+      label: Navigateur et système
+      placeholder: Chrome 140 / macOS 26
+  - type: dropdown
+    id: instance
+    attributes:
+      label: Instance
+      options:
+        - Instance publique d'origine
+        - Instance auto-hébergée
+        - En local (npm run dev)
+  - type: textarea
+    id: console
+    attributes:
+      label: Erreurs de la console (facultatif)
+      description: Outils de développement → Console. Retire toute information personnelle.
+      render: text
