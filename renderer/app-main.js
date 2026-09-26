@@ -1280,14 +1280,12 @@ function updProviderStatuses() {
             opEl.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Non configure';
         }
     }
-    // Ollama (local — pas de cle, statut = sait juste si le serveur repond)
-    var ollamaStatusEl = G('PROV-OLLAMA-STATUS');
-    if (ollamaStatusEl) {
-        if (providerStatus.ollama) {
-            ollamaStatusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif';
-        } else {
-            ollamaStatusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre';
-        }
+    // OpenRouter (cle cote serveur, routeur gratuit)
+    var orStatusEl = G('PROV-OPENROUTER-STATUS');
+    if (orStatusEl) {
+        orStatusEl.innerHTML = providerStatus.openrouter
+            ? '<span class="prov-dot prov-dot-green"></span>Actif'
+            : '<span class="prov-dot prov-dot-red"></span>Indisponible';
     }
     // Fournisseurs personnalises : compte issu du coffre, pas du localStorage.
     var custStatus = G('PROV-CUSTOM-STATUS');
@@ -1333,12 +1331,11 @@ function testProvider(provider) {
             xhrM.onerror = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; };
             xhrM.send(JSON.stringify({ model: 'mistral-small-latest', messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }));
         }
-    } else if (provider === 'ollama') {
-        if (!window.etherDesktop || !window.etherDesktop.ollamaChat) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; return; }
-        window.etherDesktop.ollamaChat({ model: 'llama3.2:3b', messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }).then(function(r) {
-            if (r.ok) { statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif'; providerStatus.ollama = true; }
-            else { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; }
-        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; });
+    } else if (provider === 'openrouter') {
+        window.etherDesktop.providerKeysTest('openrouter').then(function(r) {
+            providerStatus.openrouter = !!r.ok;
+            statusEl.innerHTML = r.ok ? '<span class="prov-dot prov-dot-green"></span>Actif' : '<span class="prov-dot prov-dot-red"></span>Indisponible';
+        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; providerStatus.openrouter = false; });
     } else if (provider === 'custom') {
         // Les fournisseurs personnalises se testent un par un depuis leur ligne dans la liste.
         var n = customProviders.length;
@@ -1903,7 +1900,7 @@ var modelNames = {
     'mistral-large-latest': 'Mistral Large',
     'mistral-small-latest': 'Mistral Small',
     'qwen-3-235b-a22b-instruct-2507': 'Qwen 235B (Cerebras)',
-    'llama3.2:3b': 'Llama 3.2 3B (Ollama)'
+    'openrouter/free': 'OpenRouter (gratuit)'
 };
 
 G('MODEL-SEL-BTN').onclick = function(e) {
@@ -1955,7 +1952,7 @@ function builtinPickerEntries() {
         { provider: 'gemini',   label: 'Gemini',   model: GEMINI_MODELS.main,   note: 'Long contexte, creatif' },
         { provider: 'mistral',  label: 'Mistral',  model: MISTRAL_MODELS.main,  note: 'Raisonnement' },
         { provider: 'cerebras', label: 'Cerebras', model: CEREBRAS_MODELS.main, note: 'Tres gros modele' },
-        { provider: 'ollama',   label: 'Ollama',   model: OLLAMA_MODELS.main,   note: 'Local, sans quota' }
+        { provider: 'openrouter', label: 'OpenRouter', model: OPENROUTER_MODELS.main, note: 'Gratuit, dernier recours' }
     ];
 }
 

@@ -34,17 +34,11 @@ function detectComplexity(msg) {
 }
 
 // === HEALTH CHECK DES PROVIDERS ===
-var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true, ollama: true };
+var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true, openrouter: true };
 function checkProvidersHealth() {
     if (!window.etherDesktop || !window.etherDesktop.testAllProviders) return;
-    // Dans un navigateur, Ollama (serveur local) est hors de portee.
-    if (window.etherDesktop.isWeb) {
-        providerHealth.ollama = false;
-        if (typeof providerStatus !== 'undefined') providerStatus.ollama = false;
-    }
     window.etherDesktop.testAllProviders().then(function(res) {
-        // Desktop : tableau. Web : { ok, providers: [...] }.
-        var results = Array.isArray(res) ? res : ((res && res.providers) || []);
+        var results = (res && res.providers) || [];
         for (var i = 0; i < results.length; i++) {
             var r = results[i];
             providerHealth[r.provider] = r.ok;
@@ -153,7 +147,7 @@ function testApiKey() {
 // pour les taches plus exigeantes. Chaque fournisseur y repond avec ce qu'il a.
 var CALLAI_MODELS = {
     groq: GROQ_MODELS, mistral: MISTRAL_MODELS, gemini: GEMINI_MODELS,
-    cerebras: CEREBRAS_MODELS, ollama: OLLAMA_MODELS,
+    cerebras: CEREBRAS_MODELS, openrouter: OPENROUTER_MODELS,
     openai: { main: 'gpt-4o', fast: 'gpt-4o-mini' },
     anthropic: { main: 'claude-opus-5', fast: 'claude-haiku-4-5' }
 };
@@ -297,10 +291,10 @@ var ETHER_ENGINE = {
                 });
             }
             return self.callGroq(userMessage, null, false)['catch'](function() {
-                // Fallback ultime: appel NON-streaming a Ollama en local (ne depend d'aucun quota, ne fail jamais)
-                console.log('[ENGINE] Streaming failed — fallback non-streaming Ollama (local)');
-                return window.etherDesktop.ollamaChat({
-                    model: OLLAMA_MODELS.main,
+                // Dernier recours : OpenRouter (routeur gratuit, quota independant des autres)
+                console.log('[ENGINE] Streaming failed — fallback non-streaming OpenRouter');
+                return window.etherDesktop.openrouterChat({
+                    model: OPENROUTER_MODELS.main,
                     messages: [{ role: 'system', content: self.getSystemPrompt(false) }].concat(
                         self.conversationHistory.slice(-10).map(function(h) { return { role: h.role === 'user' ? 'user' : 'assistant', content: h.content }; })
                     ).concat([{ role: 'user', content: userMessage }]),
@@ -439,15 +433,15 @@ var ETHER_ENGINE = {
             temperature: 0.6, max_tokens: 3000
         })['catch'](function() { return { ok: false }; });
 
-        // 4. Ollama en local (voix independante, jamais indisponible)
-        var ollamaP = providerStatus.ollama ? window.etherDesktop.ollamaChat({
-            model: OLLAMA_MODELS.main,
+        // 4. OpenRouter (voix independante, quota separe)
+        var openrouterP = providerStatus.openrouter ? window.etherDesktop.openrouterChat({
+            model: OPENROUTER_MODELS.main,
             messages: collabMsgs,
             temperature: 0.6, max_tokens: 3000
         })['catch'](function() { return { ok: false }; }) : Promise.resolve({ ok: false });
 
         var received = 0;
-        var totalExpected = 1 + (providerStatus.gemini ? 1 : 0) + (providerStatus.mistral ? 1 : 0) + (providerStatus.ollama ? 1 : 0);
+        var totalExpected = 1 + (providerStatus.gemini ? 1 : 0) + (providerStatus.mistral ? 1 : 0) + (providerStatus.openrouter ? 1 : 0);
 
         function updateProgress(name) {
             received++;
@@ -464,11 +458,11 @@ var ETHER_ENGINE = {
         geminiP = geminiP.then(function(r) { if (r.ok) updateProgress('Gemini'); return r; });
         mistralP = mistralP.then(function(r) { if (r.ok) updateProgress('Mistral'); return r; });
         groqP = groqP.then(function(r) { if (r.ok) updateProgress('Groq'); return r; });
-        ollamaP = ollamaP.then(function(r) { if (r.ok) updateProgress('Ollama'); return r; });
+        openrouterP = openrouterP.then(function(r) { if (r.ok) updateProgress('OpenRouter'); return r; });
 
-        return Promise.all([geminiP, mistralP, groqP, ollamaP]).then(function(results) {
+        return Promise.all([geminiP, mistralP, groqP, openrouterP]).then(function(results) {
             var responses = [];
-            var providerNames = ['Gemini 2.5 Flash', 'Mistral Large', 'Llama 3.3 70B (Groq)', 'Llama 3.2 (Ollama local)'];
+            var providerNames = ['Gemini 2.5 Flash', 'Mistral Large', 'Llama 3.3 70B (Groq)', 'OpenRouter (gratuit)'];
             for (var r = 0; r < results.length; r++) {
                 if (results[r].ok && results[r].text) {
                     var cleanText = (results[r].text || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
@@ -617,8 +611,8 @@ var ETHER_ENGINE = {
             { provider: 'gemini',   model: GEMINI_MODELS.main,   stream: window.etherDesktop.geminiStream },
             { provider: 'groq',     model: GROQ_MODELS.main,     stream: window.etherDesktop.groqStream },
             { provider: 'cerebras', model: CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream },
-            // Ollama en dernier: local, plus lent, mais ne depend d'aucun quota/cle/reseau
-            { provider: 'ollama',   model: (self.currentMode === 'teacher' || self.currentMode === 'debate') ? OLLAMA_MODELS.reasoning : OLLAMA_MODELS.main,   stream: window.etherDesktop.ollamaStream }
+            // OpenRouter en dernier : routeur gratuit, quota independant des autres
+            { provider: 'openrouter', model: OPENROUTER_MODELS.main, stream: window.etherDesktop.openrouterStream }
         ];
 
         // Les fournisseurs personnalises ne sont JAMAIS dans le routage automatique.
@@ -669,10 +663,10 @@ var ETHER_ENGINE = {
                 return Promise.resolve(res);
             }
             if (idx >= cascade.length) {
-                // Fallback ultime: Ollama en local non-streaming (ne depend d'aucun quota, ne fail jamais)
-                console.log('[ENGINE] All streams failed — fallback non-streaming Ollama (local)');
-                return window.etherDesktop.ollamaChat({
-                    model: OLLAMA_MODELS.main,
+                // Dernier recours : OpenRouter en non-streaming
+                console.log('[ENGINE] All streams failed — fallback non-streaming OpenRouter');
+                return window.etherDesktop.openrouterChat({
+                    model: OPENROUTER_MODELS.main,
                     messages: requestData.messages,
                     temperature: requestData.temperature,
                     max_tokens: Math.min(requestData.max_tokens || 3000, 2500)
@@ -682,8 +676,8 @@ var ETHER_ENGINE = {
                         self.conversationHistory.push({ role: 'user', content: requestData.messages[requestData.messages.length - 1].content });
                         self.conversationHistory.push({ role: 'assistant', content: ct });
                         var result = self.parseResponse(ct);
-                        result._provider = 'Ollama-Local';
-                        result._model = OLLAMA_MODELS.main;
+                        result._provider = 'OpenRouter';
+                        result._model = OPENROUTER_MODELS.main;
                         return result;
                     }
                     return self.getSimulatedResponse(requestData.messages[requestData.messages.length - 1].content);
@@ -1383,10 +1377,10 @@ var ETHER_ENGINE = {
             ];
             var analyseOpts = { messages: analyseMsgs, temperature: 0.5, max_tokens: 6000 };
 
-            // Essayer Gemini d'abord, puis Groq, puis Cerebras, puis Ollama en dernier recours (jamais de quota)
-            function tryOllamaAnalyse() {
+            // Essayer Gemini d'abord, puis Groq, puis Cerebras, puis OpenRouter en dernier recours
+            function tryOpenRouterAnalyse() {
                 // max_tokens reduit: inference locale lente (~10 tok/s), 6000 tokens prendrait ~10 minutes
-                return window.etherDesktop.ollamaChat(Object.assign({}, analyseOpts, { model: OLLAMA_MODELS.reasoning, max_tokens: 2000 }))['catch'](function() { return { ok: false }; });
+                return window.etherDesktop.openrouterChat(Object.assign({}, analyseOpts, { model: OPENROUTER_MODELS.reasoning, max_tokens: 2000 }))['catch'](function() { return { ok: false }; });
             }
             function tryAnalyse() {
                 if (providerStatus.gemini) {
@@ -1397,14 +1391,14 @@ var ETHER_ENGINE = {
                         analyseOpts.model = GROQ_MODELS.main;
                         return window.etherDesktop.groqChat(analyseOpts).then(function(r2) {
                             if (r2.ok && r2.text) return r2;
-                            return tryOllamaAnalyse();
-                        })['catch'](tryOllamaAnalyse);
+                            return tryOpenRouterAnalyse();
+                        })['catch'](tryOpenRouterAnalyse);
                     })['catch'](function() {
                         analyseOpts.model = GROQ_MODELS.main;
                         return window.etherDesktop.groqChat(analyseOpts).then(function(r2) {
                             if (r2.ok && r2.text) return r2;
-                            return tryOllamaAnalyse();
-                        })['catch'](tryOllamaAnalyse);
+                            return tryOpenRouterAnalyse();
+                        })['catch'](tryOpenRouterAnalyse);
                     });
                 }
                 analyseOpts.model = GROQ_MODELS.main;
@@ -1414,16 +1408,16 @@ var ETHER_ENGINE = {
                         analyseOpts.model = CEREBRAS_MODELS.main;
                         return window.etherDesktop.cerebrasChat(analyseOpts).then(function(r2) {
                             if (r2.ok && r2.text) return r2;
-                            return tryOllamaAnalyse();
-                        })['catch'](tryOllamaAnalyse);
+                            return tryOpenRouterAnalyse();
+                        })['catch'](tryOpenRouterAnalyse);
                     }
-                    return tryOllamaAnalyse();
+                    return tryOpenRouterAnalyse();
                 })['catch'](function() {
                     if (providerStatus.cerebras) {
                         analyseOpts.model = CEREBRAS_MODELS.main;
-                        return window.etherDesktop.cerebrasChat(analyseOpts)['catch'](tryOllamaAnalyse);
+                        return window.etherDesktop.cerebrasChat(analyseOpts)['catch'](tryOpenRouterAnalyse);
                     }
-                    return tryOllamaAnalyse();
+                    return tryOpenRouterAnalyse();
                 });
             }
             return deepStep(analyseOpts, 'main', tryAnalyse);
@@ -1433,15 +1427,15 @@ var ETHER_ENGINE = {
             if (analyseRes.disabled) markSkipped(3, 'Analyse');
             else setStep(3, 'done', mainAnalysis ? 'Analyse generee (' + mainAnalysis.length + ' car.)' : 'Analyse partielle');
 
-            // ETAPE 4: Critique (Groq Qwen3 32B, fallback Ollama en local)
+            // ETAPE 4: Critique (Groq Qwen3 32B, fallback OpenRouter)
             setStep(4, 'active', 'Verification des biais et erreurs...');
             var critiqueContent = mainAnalysis || userMessage; // Si pas d'analyse, critiquer la question directement
             var critiqueMsgs = [
                 { role: 'system', content: 'Tu es un critique rigoureux. On te donne une analyse. Trouve les failles, biais, manques, erreurs factuelles ou logiques. Sois precis et constructif. Si l\'analyse est bonne, dis-le mais suggere des ameliorations. 3-5 points maximum. ' + langName + '.' },
                 { role: 'user', content: 'Question: ' + userMessage + '\n\nAnalyse a critiquer:\n' + critiqueContent.substring(0, 3000) }
             ];
-            function ollamaCritiqueFallback() {
-                return window.etherDesktop.ollamaChat({ model: OLLAMA_MODELS.reasoning, messages: critiqueMsgs, temperature: 0.4, max_tokens: 1000 })['catch'](function() {
+            function openrouterCritiqueFallback() {
+                return window.etherDesktop.openrouterChat({ model: OPENROUTER_MODELS.reasoning, messages: critiqueMsgs, temperature: 0.4, max_tokens: 1000 })['catch'](function() {
                     // Fallback: pas de critique, on passe direct a la synthese
                     return { ok: false, text: '' };
                 });
@@ -1450,8 +1444,8 @@ var ETHER_ENGINE = {
             return deepStep(critiqueOpts, 'reasoning', function() {
                 return window.etherDesktop.groqChat(critiqueOpts).then(function(r) {
                     if (r.ok && r.text) return r;
-                    return ollamaCritiqueFallback();
-                })['catch'](ollamaCritiqueFallback);
+                    return openrouterCritiqueFallback();
+                })['catch'](openrouterCritiqueFallback);
             });
 
         }).then(function(critiqueRes) {
@@ -1467,26 +1461,26 @@ var ETHER_ENGINE = {
             ];
             var synthOpts = { messages: synthMsgs, temperature: 0.5, max_tokens: 8000 };
 
-            function tryOllamaSynth() {
+            function tryOpenRouterSynth() {
                 // max_tokens reduit: inference locale lente (~10 tok/s), 8000 tokens prendrait ~13 minutes
-                return window.etherDesktop.ollamaChat(Object.assign({}, synthOpts, { model: OLLAMA_MODELS.main, max_tokens: 2500 }))['catch'](function() { return { ok: false }; });
+                return window.etherDesktop.openrouterChat(Object.assign({}, synthOpts, { model: OPENROUTER_MODELS.main, max_tokens: 2500 }))['catch'](function() { return { ok: false }; });
             }
-            function tryGroqThenOllamaSynth() {
+            function tryGroqThenOpenRouterSynth() {
                 synthOpts.model = GROQ_MODELS.main;
                 return window.etherDesktop.groqChat(synthOpts).then(function(r) {
                     if (r.ok && r.text) return r;
-                    return tryOllamaSynth();
-                })['catch'](tryOllamaSynth);
+                    return tryOpenRouterSynth();
+                })['catch'](tryOpenRouterSynth);
             }
             function trySynth() {
                 if (providerStatus.gemini) {
                     synthOpts.model = GEMINI_MODELS.main;
                     return window.etherDesktop.geminiChat(synthOpts).then(function(r) {
                         if (r.ok && r.text) return r;
-                        return tryGroqThenOllamaSynth();
-                    })['catch'](tryGroqThenOllamaSynth);
+                        return tryGroqThenOpenRouterSynth();
+                    })['catch'](tryGroqThenOpenRouterSynth);
                 }
-                return tryGroqThenOllamaSynth();
+                return tryGroqThenOpenRouterSynth();
             }
             return deepStep(synthOpts, 'main', trySynth);
 

@@ -16,7 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       # Les memes commandes que celles documentees dans le README
-      - name: Lint (syntaxe main, preload, renderer)
+      - name: Lint (syntaxe renderer + worker)
         run: npm run lint
-      - name: Smoke tests (structure, securite, CSP, contextBridge)
+      - name: Smoke tests (structure, securite, CSP, non-regression)
         run: npm test
