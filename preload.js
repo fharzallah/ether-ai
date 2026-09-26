@@ -11,21 +11,29 @@ var ALLOWED_CHANNELS = [
     'gemini-chat', 'gemini-stream', 'mistral-chat', 'mistral-stream', 'cerebras-chat', 'cerebras-stream',
     'ollama-chat', 'ollama-stream',
     'custom-chat', 'custom-stream',
+    'openai-chat', 'openai-stream', 'anthropic-chat', 'anthropic-stream',
     'test-all-providers', 'transcribe-audio', 'pollinations-chat', 'fetch-image', 'fetch-url-content', 'gemini-vision',
     'web-search', 'get-models', 'open-file', 'save-file', 'browse-folder',
     'read-file', 'install-update', 'set-groq-key', 'set-mistral-key', 'get-groq-key-status',
     'quota-check', 'quota-use', 'quota-ad-bonus', 'quota-verify-pro',
     'persist-read', 'persist-write', 'persist-get', 'persist-set',
     'modes-list', 'mode-save', 'mode-delete',
+    'mode-resource-add', 'mode-resource-list', 'mode-resource-delete',
     'get-user-data-path', 'get-system-theme', 'open-external',
-    'send-email', 'set-api-key', 'get-api-port', 'get-local-ip', 'set-network-mode'
+    'send-email', 'set-api-key', 'get-api-port', 'get-local-ip', 'set-network-mode',
+    'custom-providers-list', 'custom-providers-save', 'custom-providers-delete', 'custom-providers-test',
+    'provider-keys-status', 'provider-keys-set', 'provider-keys-clear', 'provider-keys-test',
+    'secure-storage-available'
 ];
 
-function safeInvoke(channel, data) {
+function safeInvoke(channel) {
     if (ALLOWED_CHANNELS.indexOf(channel) === -1) {
         return Promise.reject(new Error('IPC channel not allowed: ' + channel));
     }
-    return ipcRenderer.invoke(channel, data);
+    // Transmettre TOUS les arguments : certains handlers en prennent deux
+    // (provider-keys-set recoit le fournisseur puis la cle).
+    var args = Array.prototype.slice.call(arguments, 1);
+    return ipcRenderer.invoke.apply(ipcRenderer, [channel].concat(args));
 }
 
 contextBridge.exposeInMainWorld('etherDesktop', {
@@ -42,7 +50,20 @@ contextBridge.exposeInMainWorld('etherDesktop', {
     cerebrasStream: function(data) { return safeInvoke('cerebras-stream', data); },
     ollamaChat: function(data) { return safeInvoke('ollama-chat', data); },
     ollamaStream: function(data) { return safeInvoke('ollama-stream', data); },
+    openaiChat: function(data) { return safeInvoke('openai-chat', data); },
+    openaiStream: function(data) { return safeInvoke('openai-stream', data); },
+    anthropicChat: function(data) { return safeInvoke('anthropic-chat', data); },
+    anthropicStream: function(data) { return safeInvoke('anthropic-stream', data); },
     customChat: function(data) { return safeInvoke('custom-chat', data); },
+    providerKeysStatus: function() { return safeInvoke('provider-keys-status'); },
+    providerKeysSet: function(provider, key) { return safeInvoke('provider-keys-set', provider, key); },
+    providerKeysClear: function(provider) { return safeInvoke('provider-keys-clear', provider); },
+    providerKeysTest: function(provider) { return safeInvoke('provider-keys-test', provider); },
+    customProvidersList: function() { return safeInvoke('custom-providers-list'); },
+    customProvidersSave: function(data) { return safeInvoke('custom-providers-save', data); },
+    customProvidersDelete: function(id) { return safeInvoke('custom-providers-delete', id); },
+    customProvidersTest: function(id) { return safeInvoke('custom-providers-test', id); },
+    secureStorageAvailable: function() { return safeInvoke('secure-storage-available'); },
     customStream: function(data) { return safeInvoke('custom-stream', data); },
     testAllProviders: function() { return safeInvoke('test-all-providers'); },
     transcribeAudio: function(buffer) { return safeInvoke('transcribe-audio', buffer); },
@@ -109,6 +130,9 @@ contextBridge.exposeInMainWorld('etherDesktop', {
     modesList: function() { return safeInvoke('modes-list'); },
     modeSave: function(mode) { return safeInvoke('mode-save', mode); },
     modeDelete: function(id) { return safeInvoke('mode-delete', id); },
+    modeResourceAdd: function(id, filePath) { return safeInvoke('mode-resource-add', id, filePath); },
+    modeResourceList: function(id, withText) { return safeInvoke('mode-resource-list', id, withText); },
+    modeResourceDelete: function(id, resId) { return safeInvoke('mode-resource-delete', id, resId); },
 
     // === Theme systeme ===
     getSystemTheme: function() { return safeInvoke('get-system-theme'); },

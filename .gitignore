@@ -29,3 +29,13 @@ npm-debug.log*
 
 # Cloudflare Workers local dev
 worker/.wrangler/
+
+# Build web (genere)
+web-dist/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
+worker/public/

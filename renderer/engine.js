@@ -37,7 +37,14 @@ function detectComplexity(msg) {
 var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true, ollama: true };
 function checkProvidersHealth() {
     if (!window.etherDesktop || !window.etherDesktop.testAllProviders) return;
-    window.etherDesktop.testAllProviders().then(function(results) {
+    // Dans un navigateur, Ollama (serveur local) est hors de portee.
+    if (window.etherDesktop.isWeb) {
+        providerHealth.ollama = false;
+        if (typeof providerStatus !== 'undefined') providerStatus.ollama = false;
+    }
+    window.etherDesktop.testAllProviders().then(function(res) {
+        // Desktop : tableau. Web : { ok, providers: [...] }.
+        var results = Array.isArray(res) ? res : ((res && res.providers) || []);
         for (var i = 0; i < results.length; i++) {
             var r = results[i];
             providerHealth[r.provider] = r.ok;
@@ -133,6 +140,91 @@ function testApiKey() {
 
 // (ancien code de recherche web supprime — maintenant gere par main.js IPC)
 
+// === APPEL NON-STREAMING POUR LES TACHES INTERNES ===
+// (extraction memoire, suggestions de suivi, resume, calibration Teacher...)
+//
+// Ces taches envoient le contenu de la conversation a un modele. Elles doivent donc
+// partir chez le fournisseur que l'utilisateur a choisi, pas chez un autre : quelqu'un
+// qui selectionne son propre endpoint le fait souvent pour que ses donnees n'aillent
+// pas ailleurs. En selection manuelle il n'y a donc aucun repli — si le fournisseur
+// echoue, la tache est desactivee et l'appelant l'ignore proprement.
+// En mode Auto, la cascade habituelle s'applique.
+// Niveau de modele demande par la tache : 'fast' par defaut, 'main' ou 'reasoning'
+// pour les taches plus exigeantes. Chaque fournisseur y repond avec ce qu'il a.
+var CALLAI_MODELS = {
+    groq: GROQ_MODELS, mistral: MISTRAL_MODELS, gemini: GEMINI_MODELS,
+    cerebras: CEREBRAS_MODELS, ollama: OLLAMA_MODELS,
+    openai: { main: 'gpt-4o', fast: 'gpt-4o-mini' },
+    anthropic: { main: 'claude-opus-5', fast: 'claude-haiku-4-5' }
+};
+function callAIModel(provider, tier) {
+    var m = CALLAI_MODELS[provider];
+    if (!m) return null;
+    return m[tier || 'fast'] || m.fast || m.main;
+}
+
+function callAI(requestData) {
+    var override = (typeof selectedModelOverride !== 'undefined') ? selectedModelOverride : null;
+
+    // --- Selection manuelle : un seul fournisseur, aucun repli ---
+    if (override && override.provider) {
+        if (override.provider === 'custom') {
+            var fnC = window.etherDesktop.customChat;
+            if (!fnC || !override.customId) return disabledTask('custom', 'canal indisponible');
+            var dataC = Object.assign({}, requestData, { providerId: override.customId, model: override.model });
+            delete dataC._tier;
+            return fnC(dataC).then(function(res) {
+                if (res && res.ok === true) return res;
+                return disabledTask('custom', (res && res.error) || 'echec');
+            })['catch'](function(e) { return disabledTask('custom', e && e.message); });
+        }
+        var fnB = window.etherDesktop[override.provider + 'Chat'];
+        if (!fnB) return disabledTask(override.provider, 'canal indisponible');
+        var pickB = callAIModel(override.provider, requestData._tier);
+        var dataB = Object.assign({}, requestData, { model: pickB || override.model });
+        delete dataB._tier;
+        return fnB(dataB).then(function(res) {
+            if (res && res.ok === true) return res;
+            return disabledTask(override.provider, (res && res.error) || 'echec');
+        })['catch'](function(e) { return disabledTask(override.provider, e && e.message); });
+    }
+
+    // --- Mode Auto : cascade sur les fournisseurs integres ---
+    var order = ['groq', 'mistral', 'gemini', 'cerebras'];
+    var providers = order.filter(function(p) { return providerHealth[p]; });
+    if (!providers.length) providers = ['groq'];
+
+    function tryProvider(idx) {
+        if (idx >= providers.length) return Promise.resolve({ ok: false, error: 'all providers failed' });
+        var name = providers[idx];
+        var fn = window.etherDesktop[name + 'Chat'];
+        if (!fn) return tryProvider(idx + 1);
+        var pick = callAIModel(name, requestData._tier);
+        var data = Object.assign({}, requestData, pick ? { model: pick } : {});
+        delete data._tier;
+        return fn(data).then(function(res) {
+            if (res && res.ok === true) return res;
+            return tryProvider(idx + 1);
+        })['catch'](function() {
+            return tryProvider(idx + 1);
+        });
+    }
+
+    return tryProvider(0);
+}
+
+// Tache interne desactivee : les appelants testent res.ok et s'arretent la.
+// On previent l'utilisateur une fois par fournisseur plutot que de rerouter en silence.
+var _taskNoticeShown = {}; // reinitialise par selectModel()
+function disabledTask(provider, reason) {
+    console.log('[TASK] Tache interne desactivee — fournisseur ' + provider + ' : ' + (reason || 'echec'));
+    if (!_taskNoticeShown[provider]) {
+        _taskNoticeShown[provider] = true;
+        if (typeof showTaskNotice === 'function') showTaskNotice(provider);
+    }
+    return Promise.resolve({ ok: false, error: 'task disabled', disabled: true, provider: provider });
+}
+
 var ETHER_ENGINE = {
     currentMode: 'base',
     teacherLevel: 'lycee',
@@ -166,7 +258,9 @@ var ETHER_ENGINE = {
             summaryText += (m.role === 'user' ? 'User' : 'ETHER') + ': ' + m.content.substring(0, 200) + '\n';
         }
         if (!window.etherDesktop) { self.conversationHistory = kept; return Promise.resolve(); }
-        return window.etherDesktop.groqChat({
+        // Tache interne : passe par callAI pour respecter le fournisseur choisi.
+        // Si elle est desactivee, l'historique est simplement tronque sans resume.
+        return callAI({
             model: GROQ_MODELS.fast,
             messages: [
                 { role: 'system', content: 'Resume cette conversation en 2-3 phrases. Garde les faits importants, le contexte et les preferences. Francais. Resume UNIQUEMENT, rien d\'autre.' },
@@ -175,7 +269,7 @@ var ETHER_ENGINE = {
             temperature: 0.2,
             max_tokens: 200
         }).then(function(res) {
-            if (res.ok) self.conversationSummary = res.text.trim();
+            if (res.ok && res.text) self.conversationSummary = res.text.trim();
             self.conversationHistory = kept;
         })['catch'](function() {
             self.conversationHistory = kept;
@@ -527,30 +621,53 @@ var ETHER_ENGINE = {
             { provider: 'ollama',   model: (self.currentMode === 'teacher' || self.currentMode === 'debate') ? OLLAMA_MODELS.reasoning : OLLAMA_MODELS.main,   stream: window.etherDesktop.ollamaStream }
         ];
 
-        // Fournisseur personnalise (n'importe quel endpoint compatible OpenAI) si configure
-        var _cust = (typeof sGet === 'function') ? sGet('custom_provider', {}) : {};
-        if (_cust.url && _cust.model) {
-            if (providerHealth.custom === undefined) providerHealth.custom = true;
-            allProviders.push({
-                provider: 'custom',
-                model: _cust.model,
+        // Les fournisseurs personnalises ne sont JAMAIS dans le routage automatique.
+        // Ils ne sont utilises que sur selection manuelle explicite, et sans repli :
+        // basculer en silence vers un provider cloud enverrait la conversation ailleurs
+        // que sur l'endpoint choisi par l'utilisateur.
+        var noFallback = false;
+        var cascade;
+        // Un fournisseur hors cascade automatique (personnalise, OpenAI, Anthropic)
+        // ne peut venir que d'une selection manuelle. Sans ce cas dedie, la
+        // recherche plus bas ne le trouverait pas et repartirait sur le premier
+        // de la liste, c'est-a-dire ailleurs que la ou l'utilisateur a demande.
+        var offCascade = ['custom', 'openai', 'anthropic'];
+        if (offCascade.indexOf(route.provider) !== -1) {
+            noFallback = true;
+            var _customId = route.customId;
+            var _prov = route.provider;
+            cascade = [{
+                provider: _prov,
+                model: route.model,
                 stream: function(data) {
-                    return window.etherDesktop.customStream(Object.assign({}, data, { baseUrl: _cust.url, apiKey: _cust.key }));
+                    if (_prov === 'custom') {
+                        return window.etherDesktop.customStream(Object.assign({}, data, { providerId: _customId }));
+                    }
+                    return window.etherDesktop[_prov + 'Stream'](data);
                 }
-            });
+            }];
+        } else {
+            // Reordonner: provider recommande en premier
+            var startIdx = 0;
+            for (var i = 0; i < allProviders.length; i++) {
+                if (allProviders[i].provider === route.provider) { startIdx = i; break; }
+            }
+            cascade = allProviders.slice(startIdx).concat(allProviders.slice(0, startIdx));
+            // Utiliser le modele exact recommande par le router pour le premier provider
+            if (cascade[0]) cascade[0].model = route.model;
         }
-
-        // Reordonner: provider recommande en premier
-        var startIdx = 0;
-        for (var i = 0; i < allProviders.length; i++) {
-            if (allProviders[i].provider === route.provider) { startIdx = i; break; }
-        }
-        var cascade = allProviders.slice(startIdx).concat(allProviders.slice(0, startIdx));
-
-        // Utiliser le modele exact recommande par le router pour le premier provider
-        if (cascade[0]) cascade[0].model = route.model;
 
         function tryStream(idx) {
+            if (idx >= cascade.length && noFallback) {
+                // Selection manuelle : on remonte l'echec au lieu de rerouter ailleurs.
+                console.log('[ENGINE] Custom provider failed — aucun repli (selection manuelle)');
+                var res = self.parseResponse('Le fournisseur selectionne n\'a pas repondu. '
+                    + 'Verifie son URL, sa cle et son modele dans les reglages, ou repasse en mode Auto.');
+                res._provider = 'custom';
+                res._model = route.model;
+                res._error = true;
+                return Promise.resolve(res);
+            }
             if (idx >= cascade.length) {
                 // Fallback ultime: Ollama en local non-streaming (ne depend d'aucun quota, ne fail jamais)
                 console.log('[ENGINE] All streams failed — fallback non-streaming Ollama (local)');
@@ -577,8 +694,8 @@ var ETHER_ENGINE = {
 
             var step = cascade[idx];
 
-            // Skip si provider connu down
-            if (!providerHealth[step.provider]) {
+            // Skip si provider connu down (le custom n'est jamais dans le suivi de sante)
+            if (offCascade.indexOf(step.provider) === -1 && !providerHealth[step.provider]) {
                 console.log('[ENGINE] Skipping unhealthy provider:', step.provider);
                 return tryStream(idx + 1);
             }
@@ -588,6 +705,7 @@ var ETHER_ENGINE = {
 
             return self._streamWithProvider(step.stream, reqData, forcedSources, step.model, useJson, step.provider)['catch'](function(err) {
                 console.log('[ENGINE] ' + step.provider + ' failed:', err && err.message);
+                if (offCascade.indexOf(step.provider) !== -1) return tryStream(idx + 1);
                 providerHealth[step.provider] = false;
                 if (typeof providerStatus !== 'undefined') providerStatus[step.provider] = false;
                 setTimeout(function() {
@@ -620,6 +738,16 @@ var ETHER_ENGINE = {
                 var cleanText = (fullText || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
                 if (!cleanText) cleanText = fullText || '';
 
+                // Un mode personnalise s'est-il active de lui-meme ? Le marqueur est
+                // retire du texte et affiche comme badge : une reponse dont le ton
+                // change sans explication est deroutante.
+                var autoMode = null;
+                var mMatch = cleanText.match(/^\s*\[MODE:\s*([^\]\n]{1,60})\]\s*\n?/);
+                if (mMatch) {
+                    autoMode = mMatch[1].trim();
+                    cleanText = cleanText.slice(mMatch[0].length).trim();
+                }
+
                 self.conversationHistory.push({ role: 'user', content: requestData.messages[requestData.messages.length - 1].content });
                 self.conversationHistory.push({ role: 'assistant', content: cleanText });
 
@@ -634,89 +762,14 @@ var ETHER_ENGINE = {
                 result._provider = providerName || 'groq';
                 result._streamed = true;
                 result._showBadge = false;
+                if (autoMode) result._autoMode = autoMode;
 
-                // === MoA ADAPTATIF (Mixture-of-Agents) ===
-                var userMsg = requestData.messages[requestData.messages.length - 1].content;
-                var plainAnswer = cleanText.replace(/<[^>]+>/g, '');
-                var isSubstantial = userMsg.length > 20
-                    && !/^(salut|bonjour|bonsoir|hello|hi|hey|merci|ok|oui|non|ca va|super|cool)/i.test(userMsg.trim());
-                var isComplex = userMsg.length > 100
-                    || /\b(compare|analyse|explique|avantages|inconvenients|difference|impact|consequence|enjeux|pourquoi|comment)\b/i.test(userMsg.toLowerCase())
-                    || userMsg.split('?').length > 2;
-
-                if (!isSubstantial || !window.etherDesktop) {
-                    // Pas de collaboration pour les messages courts/salutations
-                    self._finalizeStreamElement(streamEl, result);
-                } else if (isComplex) {
-                    // === MoA COMPLET: Critique + Reecriture (questions complexes) ===
-                    // Couche 2: Critique — Qwen3 32B cherche les failles et manques
-                    console.log('[MoA] Complex question detected — launching critique + rewrite');
-                    window.etherDesktop.groqChat({
-                        model: GROQ_MODELS.reasoning,
-                        messages: [
-                            { role: 'system', content: 'Tu es un CRITIQUE. Analyse cette reponse et liste:\n1. Les erreurs ou approximations a corriger\n2. Les infos manquantes (chiffres, exemples, perspectives)\n3. Les ameliorations de style possibles\nSois CONCIS. Max 5 points.' },
-                            { role: 'user', content: 'Question: ' + userMsg + '\n\nReponse:\n' + plainAnswer.substring(0, 2500) }
-                        ],
-                        temperature: 0.3, max_tokens: 600
-                    }).then(function(critiqueRes) {
-                        var critique = (critiqueRes.ok && critiqueRes.text) ? critiqueRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : 'Ameliorer le style et ajouter des exemples concrets.';
-
-                        // Couche 3: TOUJOURS reecrire — Gemini reecrit avec un style journalistique
-                        console.log('[MoA] Critique done (' + critique.length + ' chars) — launching rewrite');
-                        var synthFn = providerStatus.gemini ? window.etherDesktop.geminiChat : window.etherDesktop.groqChat;
-                        var synthModel = providerStatus.gemini ? GEMINI_MODELS.main : GROQ_MODELS.main;
-                        synthFn({
-                            model: synthModel,
-                            messages: [
-                                { role: 'system', content: 'Tu es un REECRIVAIN expert. On te donne un brouillon et des corrections a integrer.\n\nTon travail: REECRIS le contenu de ZERO avec un style JOURNALISTIQUE et ENGAGEANT.\n\nREGLES DE STYLE OBLIGATOIRES:\n- Commence par un fait marquant ou un chiffre percutant (pas par "Introduction" ou "L\'IA est en train de...")\n- INTERDICTION de faire des listes a puces de plus de 4 elements — utilise des paragraphes narratifs\n- INTERDICTION de repeter "l\'IA peut aider a" ou "selon [source]" plus de 2 fois\n- Utilise des exemples CONCRETS (pays, ecoles, chiffres reels)\n- Alterne entre paragraphes courts (2-3 lignes) et sous-titres en ## (pas de "Enjeux de...")\n- Ton direct, comme un article de journal, pas un devoir scolaire\n- Integre les corrections de la critique SANS mentionner la critique\n- Garde TOUTES les informations factuelles du brouillon' },
-                                { role: 'user', content: 'BROUILLON A RECRIRE:\n' + plainAnswer.substring(0, 2500) + '\n\nCORRECTIONS A INTEGRER:\n' + critique.substring(0, 1000) + '\n\nReecris maintenant:' }
-                            ],
-                            temperature: 0.5, max_tokens: 4000
-                        }).then(function(synthRes) {
-                            if (synthRes.ok && synthRes.text && synthRes.text.length > 100) {
-                                var improved = synthRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
-                                result = self.parseResponse(improved);
-                                result._provider = 'moa';
-                                result._model = model;
-                                result._streamed = true;
-                                result._showBadge = false;
-                                self.conversationHistory[self.conversationHistory.length - 1].content = improved;
-                            }
-                            self._finalizeStreamElement(streamEl, result);
-                        })['catch'](function() {
-                            self._finalizeStreamElement(streamEl, result);
-                        });
-                    })['catch'](function() {
-                        self._finalizeStreamElement(streamEl, result);
-                    });
-                } else {
-                    // === ENRICHISSEMENT SIMPLE (questions normales) ===
-                    // Un seul appel rapide pour ajouter ce qui manque
-                    window.etherDesktop.groqChat({
-                        model: GROQ_MODELS.fast, // Llama 8B = ultra-rapide
-                        messages: [
-                            { role: 'system', content: 'On te donne une reponse. Ajoute UNIQUEMENT les infos manquantes (chiffres, dates, noms, exemples). NE REPETE RIEN. Si complet, reponds: COMPLET. Max 3 points.' },
-                            { role: 'user', content: 'Q: ' + userMsg + '\nR: ' + plainAnswer.substring(0, 1500) + '\nManque:' }
-                        ],
-                        temperature: 0.2, max_tokens: 400
-                    }).then(function(enrichRes) {
-                        if (enrichRes.ok && enrichRes.text && enrichRes.text.length > 30 && !/^COMPLET/i.test(enrichRes.text)) {
-                            var extra = enrichRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
-                            if (extra.length > 30 && extra.length < plainAnswer.length) {
-                                var combined = cleanText + '\n\n' + extra;
-                                result = self.parseResponse(combined);
-                                result._provider = 'moa-light';
-                                result._model = model;
-                                result._streamed = true;
-                                result._showBadge = false;
-                                self.conversationHistory[self.conversationHistory.length - 1].content = combined;
-                            }
-                        }
-                        self._finalizeStreamElement(streamEl, result);
-                    })['catch'](function() {
-                        self._finalizeStreamElement(streamEl, result);
-                    });
-                }
+                // La reponse affichee est la reponse definitive. Aucune passe de
+                // critique ou de reecriture derriere : elles remplaçaient le texte
+                // sous les yeux de l'utilisateur, changeaient son style en cours de
+                // route, et coutaient deux appels de plus. La qualite se joue dans
+                // le prompt systeme, pas dans un rattrapage apres coup.
+                self._finalizeStreamElement(streamEl, result);
 
                 // Notification si fenetre pas au focus
                 var notifText = (result.answer || '').replace(/<[^>]+>/g, '').substring(0, 100);
@@ -810,7 +863,11 @@ var ETHER_ENGINE = {
         if (result.reasoning) { var keys = ['analyste','critique','synthese']; var ah = ''; for (var i = 0; i < keys.length; i++) { var k = keys[i]; ah += '<div class="ra"><div class="an">' + ETHER_ENGINE.agents[k].name + '</div><div>' + (result.reasoning[k] || '') + '</div></div>'; } rh = '<button class="rt" onclick="togR(this)"><span class="ar">&#9654;</span> '+t('reasoning')+'</button><div class="rc">' + ah + '</div>'; }
         var pt = (result.answer || '').replace(/<[^>]+>/g, '');
         var mbd = msgDiv.querySelector('.mbd');
-        mbd.innerHTML = rh + '<div class="mt">' + (result.answer || '') + '</div><div class="ma"><button class="regen-btn" onclick="regenResponse(this)" title="Regenerer"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg>'+t('btn_regen')+'</button><button class="mab" onclick="vote(this)" title="Bien"><svg viewBox="0 0 24 24"><path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66a4.8 4.8 0 00-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84A2.33 2.33 0 009.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" fill="currentColor"/></svg></button><button class="mab" onclick="vote(this)" title="Pas bien"><svg viewBox="0 0 24 24"><path d="M22 4h-2c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1h2V4zM2.17 11.12c-.11.25-.17.52-.17.8V13c0 1.1.9 2 2 2h5.5l-.92 4.65c-.05.22-.02.46.08.66.23.45.52.86.88 1.22L10 22l6.41-6.41c.38-.38.59-.89.59-1.42V6.34A2.33 2.33 0 0014.66 4H6.56c-.71 0-1.37.37-1.73.97L2.17 11.12z" fill="currentColor"/></svg></button><button class="mab" data-t="' + esc(pt) + '" onclick="cpTxt(this)" title="Copier"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg></button></div>';
+        // Badge de mode auto-active : sans lui, le ton change sans explication.
+        var modeBadge = result._autoMode
+            ? '<div class="auto-mode-badge">Mode ' + esc(result._autoMode) + '</div>'
+            : '';
+        mbd.innerHTML = rh + modeBadge + '<div class="mt">' + (result.answer || '') + '</div><div class="ma"><button class="regen-btn" onclick="regenResponse(this)" title="Regenerer"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg>'+t('btn_regen')+'</button><button class="mab" onclick="vote(this)" title="Bien"><svg viewBox="0 0 24 24"><path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66a4.8 4.8 0 00-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84A2.33 2.33 0 009.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" fill="currentColor"/></svg></button><button class="mab" onclick="vote(this)" title="Pas bien"><svg viewBox="0 0 24 24"><path d="M22 4h-2c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1h2V4zM2.17 11.12c-.11.25-.17.52-.17.8V13c0 1.1.9 2 2 2h5.5l-.92 4.65c-.05.22-.02.46.08.66.23.45.52.86.88 1.22L10 22l6.41-6.41c.38-.38.59-.89.59-1.42V6.34A2.33 2.33 0 0014.66 4H6.56c-.71 0-1.37.37-1.73.97L2.17 11.12z" fill="currentColor"/></svg></button><button class="mab" data-t="' + esc(pt) + '" onclick="cpTxt(this)" title="Copier"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg></button></div>';
         msgDiv._etherData = result;
         processCodeBlocks(msgDiv);
     },
@@ -873,6 +930,10 @@ var ETHER_ENGINE = {
 + 'Tu utilises la voix active. Tu n\'utilises JAMAIS d\'emojis.\n'
  + 'Tu vas droit au but. Donne des exemples concrets. Si la demande est floue, pose une question precise.\n'
 + 'Tu adaptes la longueur automatiquement : synthetique pour un resume, detaille avec des exemples concrets pour un travail important.\n'
++ 'Tu ecris en paragraphes. Une liste a puces seulement quand le contenu est vraiment une liste, et jamais plus de quatre points : au-dela, redige.\n'
++ 'Tu ancres tes reponses dans du concret : chiffres, dates, noms, cas reels plutot que des generalites.\n'
++ 'Tu entres dans le sujet des la premiere phrase. Pas de preambule, pas de reformulation de la question, pas de "Introduction".\n'
++ 'Tu donnes ta meilleure reponse du premier coup : complete, verifiee, bien ecrite. Personne ne repassera derriere toi.\n'
 + 'Tu es un mentor impitoyable : tu passes tout au crible. Si une idee ne vaut rien, dis-le et explique pourquoi pour la rendre a toute epreuve.\n'
 + 'Tu assumes tes positions. Tu ne dis pas "cela depend" quand tu as un avis — tu donnes ton avis et tu l\'argumentes.\n'
 + 'Quand tu n\'es pas sur, tu le dis franchement au lieu de broder.\n\n'
@@ -1007,6 +1068,61 @@ var ETHER_ENGINE = {
 + '- Si l\'utilisateur demande une reecriture ou correction, montre clairement les changements\n'
 + '- Pour les contenus longs, utilise des sous-titres et une structure visible',
         };
+        // Ressources chargees a l'avance par le renderer (voir loadModeResources).
+        // getSystemPrompt est synchrone, on ne peut pas aller les chercher ici.
+        function modeResourceText(modeId) {
+            var cache = (typeof modeResources !== 'undefined') ? modeResources[modeId] : null;
+            if (!cache || !cache.length) return '';
+            var out = '=== DOCUMENTS DE REFERENCE DE CE MODE ===\n'
+                + 'Appuie-toi sur ces documents. Ils font autorite sur tes connaissances generales.\n\n';
+            for (var i = 0; i < cache.length; i++) {
+                out += '--- ' + cache[i].name + ' ---\n' + cache[i].text + '\n'
+                     + (cache[i].truncated ? '[document tronque]\n' : '') + '\n';
+            }
+            return out;
+        }
+
+        // === MODES A ACTIVATION AUTOMATIQUE ===
+        // Inspire des skills Claude : la description d'un mode dit QUAND l'utiliser,
+        // pas seulement ce qu'il fait. On presente le catalogue au modele, qui
+        // reconnait lui-meme le mode pertinent. Aucun appel supplementaire : le
+        // choix se fait pendant la generation, pas avant.
+        function autoModeCatalog() {
+            var list = (typeof customModes !== 'undefined' && customModes.length)
+                ? customModes
+                : (function() { try { return JSON.parse(localStorage.getItem('ether_custom_modes') || '[]'); } catch(e) { return []; } })();
+            var usable = [];
+            for (var i = 0; i < list.length; i++) {
+                var m = list[i];
+                var when = (m.description || '').trim();
+                var instr = (m.systemPrompt || m.instructions || '').trim();
+                if (!when || !instr) continue;   // sans description, pas de declenchement possible
+                if (m.autoActivate === false) continue;
+                usable.push(m);
+            }
+            if (!usable.length) return '';
+
+            // Garde-fou : le catalogue vit dans chaque requete, on plafonne sa taille
+            // plutot que de laisser le prompt enfler avec le nombre de modes.
+            var BUDGET = 6000;
+            var out = '=== TES MODES PERSONNALISES ===\n'
+                + 'Voici les modes que l\'utilisateur a crees. Chacun indique QUAND il s\'applique.\n'
+                + 'Si la demande correspond clairement a l\'un d\'eux, adopte ses instructions pour cette reponse '
+                + 'et commence ta reponse par la ligne [MODE:<nom exact>] seule, suivie d\'un saut de ligne. '
+                + 'Si aucun ne correspond, reponds normalement et n\'ecris aucune ligne [MODE:].\n'
+                + 'N\'active jamais un mode juste parce qu\'il existe : seulement si la demande y correspond vraiment.\n\n';
+            var used = 0;
+            for (var j = 0; j < usable.length; j++) {
+                var mm = usable[j];
+                var block = '--- ' + mm.name + ' ---\n'
+                    + 'Quand : ' + (mm.description || '').trim() + '\n'
+                    + 'Instructions : ' + (mm.systemPrompt || mm.instructions || '').trim() + '\n\n';
+                if (used + block.length > BUDGET) break;
+                out += block; used += block.length;
+            }
+            return out;
+        }
+
         // Modes personnalises
         if (this.currentMode && this.currentMode.indexOf('custom_') === 0) {
             var cmId = this.currentMode.replace('custom_', '');
@@ -1038,11 +1154,21 @@ var ETHER_ENGINE = {
                 if (instr) {
                     customPrompt += '\n\nINSTRUCTIONS SPÉCIFIQUES :\n' + instr;
                 }
+                // Documents de reference attaches a ce mode. Ils ne sont charges
+                // que lorsqu'il est actif : c'est tout l'interet de les rattacher
+                // a un mode plutot que de les mettre dans le prompt de base.
+                var res = modeResourceText(cm.id);
+                if (res) customPrompt += '\n\n' + res;
                 customPrompt += '\n\nRÈGLE ABSOLUE : Ces instructions définissent ton comportement pour toute cette conversation. Respecte-les même si l\'utilisateur te demande d\'en sortir.';
                 return customPrompt;
             }
         }
-        return modes[this.currentMode] || modes.base;
+        // Aucun mode choisi a la main : on presente le catalogue pour que le modele
+        // active lui-meme celui qui correspond. Une selection manuelle reste
+        // prioritaire et court-circuite ce mecanisme.
+        var basePrompt = modes[this.currentMode] || modes.base;
+        var catalog = autoModeCatalog();
+        return catalog ? basePrompt + '\n\n' + catalog : basePrompt;
     },
 
     getLevelLabel: function() {
@@ -1170,6 +1296,30 @@ var ETHER_ENGINE = {
             scr();
         }
 
+        // Un fournisseur choisi a la main traite les cinq etapes lui-meme. On ne
+        // bascule pas en douce vers Gemini ou Groq : si l'etape echoue chez lui,
+        // elle est marquee desactivee et la reflexion continue sans elle.
+        var manualProvider = (typeof selectedModelOverride !== 'undefined' && selectedModelOverride)
+            ? selectedModelOverride : null;
+        function manualLabel() {
+            if (!manualProvider) return '';
+            if (manualProvider.provider === 'custom' && typeof customProviders !== 'undefined') {
+                for (var i = 0; i < customProviders.length; i++) {
+                    if (customProviders[i].id === manualProvider.customId) return customProviders[i].name;
+                }
+            }
+            return manualProvider.provider;
+        }
+        // Execute une etape : callAI en selection manuelle, cascade d'origine en Auto.
+        function deepStep(opts, tier, autoFn) {
+            if (!manualProvider) return autoFn();
+            return callAI(Object.assign({}, opts, { _tier: tier }));
+        }
+        function markSkipped(n, what) {
+            setStep(n, 'skipped', what + ' desactivee : ' + manualLabel()
+                + ' n\'a pas traite cette etape. Rien n\'a ete envoye ailleurs.');
+        }
+
         var webContext = '';
         var subQuestions = [];
         var mainAnalysis = '';
@@ -1177,19 +1327,23 @@ var ETHER_ENGINE = {
 
         // ETAPE 1: Decomposition (Groq, rapide)
         setStep(1, 'active', 'Decomposition de la question...');
-        return window.etherDesktop.groqChat({
+        var decompOpts = {
             model: GROQ_MODELS.fast,
             messages: [
                 { role: 'system', content: 'Decompose cette question en 3-4 sous-questions precises pour y repondre completement. Reponds UNIQUEMENT avec les sous-questions, une par ligne, sans numerotation. ' + langName + '.' },
                 { role: 'user', content: userMessage }
             ],
             temperature: 0.3, max_tokens: 300
+        };
+        return deepStep(decompOpts, 'fast', function() {
+            return window.etherDesktop.groqChat(decompOpts);
         }).then(function(res) {
             if (res.ok && res.text) {
                 subQuestions = res.text.trim().split('\n').filter(function(q) { return q.trim().length > 5; }).slice(0, 4);
             }
             if (!subQuestions.length) subQuestions = [userMessage];
-            setStep(1, 'done', subQuestions.length + ' sous-questions identifiees');
+            if (res.disabled) markSkipped(1, 'Decomposition');
+            else setStep(1, 'done', subQuestions.length + ' sous-questions identifiees');
 
             // ETAPE 2: Recherche web (en parallele sur chaque sous-question)
             setStep(2, 'active', 'Recherche en cours sur ' + subQuestions.length + ' axes...');
@@ -1272,11 +1426,12 @@ var ETHER_ENGINE = {
                     return tryOllamaAnalyse();
                 });
             }
-            return tryAnalyse();
+            return deepStep(analyseOpts, 'main', tryAnalyse);
 
         }).then(function(analyseRes) {
             mainAnalysis = (analyseRes.ok && analyseRes.text) ? analyseRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : '';
-            setStep(3, 'done', mainAnalysis ? 'Analyse generee (' + mainAnalysis.length + ' car.)' : 'Analyse partielle');
+            if (analyseRes.disabled) markSkipped(3, 'Analyse');
+            else setStep(3, 'done', mainAnalysis ? 'Analyse generee (' + mainAnalysis.length + ' car.)' : 'Analyse partielle');
 
             // ETAPE 4: Critique (Groq Qwen3 32B, fallback Ollama en local)
             setStep(4, 'active', 'Verification des biais et erreurs...');
@@ -1291,18 +1446,18 @@ var ETHER_ENGINE = {
                     return { ok: false, text: '' };
                 });
             }
-            return window.etherDesktop.groqChat({
-                model: GROQ_MODELS.reasoning,
-                messages: critiqueMsgs,
-                temperature: 0.4, max_tokens: 1000
-            }).then(function(r) {
-                if (r.ok && r.text) return r;
-                return ollamaCritiqueFallback();
-            })['catch'](ollamaCritiqueFallback);
+            var critiqueOpts = { model: GROQ_MODELS.reasoning, messages: critiqueMsgs, temperature: 0.4, max_tokens: 1000 };
+            return deepStep(critiqueOpts, 'reasoning', function() {
+                return window.etherDesktop.groqChat(critiqueOpts).then(function(r) {
+                    if (r.ok && r.text) return r;
+                    return ollamaCritiqueFallback();
+                })['catch'](ollamaCritiqueFallback);
+            });
 
         }).then(function(critiqueRes) {
             critique = (critiqueRes.ok && critiqueRes.text) ? critiqueRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : '';
-            setStep(4, 'done', critique ? 'Critique terminee' : 'Pas de critique majeure');
+            if (critiqueRes.disabled) markSkipped(4, 'Critique');
+            else setStep(4, 'done', critique ? 'Critique terminee' : 'Pas de critique majeure');
 
             // ETAPE 5: Synthese finale — cascade: Gemini → Groq → Cerebras
             setStep(5, 'active', 'Redaction de la reponse definitive...');
@@ -1333,12 +1488,17 @@ var ETHER_ENGINE = {
                 }
                 return tryGroqThenOllamaSynth();
             }
-            return trySynth();
+            return deepStep(synthOpts, 'main', trySynth);
 
         }).then(function(finalRes) {
             // Utiliser la synthese, ou l'analyse brute si la synthese a echoue, ou un message d'erreur
-            var finalText = (finalRes.ok && finalRes.text) ? finalRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : (mainAnalysis || 'La reflexion n\'a pas pu aboutir. Reessaie ou pose ta question en mode normal.');
-            setStep(5, 'done', 'Reflexion terminee');
+            var fallbackText = mainAnalysis || (finalRes.disabled
+                ? 'La reflexion approfondie n\'a pas abouti : ' + manualLabel() + ' n\'a traite aucune etape. '
+                  + 'Rien n\'a ete envoye a un autre fournisseur. Verifie sa configuration ou repasse en mode Auto.'
+                : 'La reflexion n\'a pas pu aboutir. Reessaie ou pose ta question en mode normal.');
+            var finalText = (finalRes.ok && finalRes.text) ? finalRes.text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim() : fallbackText;
+            if (finalRes.disabled) markSkipped(5, 'Synthese');
+            else setStep(5, 'done', 'Reflexion terminee');
 
             // Remplacer le panneau de progression par la reponse finale
             var result = self.parseResponse(finalText);

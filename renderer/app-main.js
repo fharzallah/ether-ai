@@ -8,7 +8,7 @@ G('logo-wv').parentNode.parentNode.style.cursor='pointer';
 G('logo-wv').parentNode.parentNode.onclick=function(){newChat();};
 function newChat(pid){
     curConv=null;curProj=pid||null;isEphemeral=false;ETHER_ENGINE.resetHistory();
-    G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');
+    G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');G('TASK-BAR').classList.add('hidden');
     G('ECB').style.background='var(--b2)';G('ECB').style.color='var(--t3)';G('ECB').style.borderColor='var(--bd)';
     var mg=G('MG');mg.innerHTML='';
     var w=document.createElement('div');w.className='welc';w.id='WS';
@@ -102,7 +102,7 @@ document.addEventListener('click',function(e){if(!e.target.closest('.dots-menu')
 function renConv(id){if(!convs[id])return;var name=prompt('Nouveau nom:',convs[id].title);if(name&&name.trim()){convs[id].title=name.trim();sSet('convs',convs);updHist();}}
 function addToProj(cid,pid){if(!convs[cid])return;convs[cid].projectId=pid;sSet('convs',convs);updHist();var d=document.querySelectorAll('.dots-drop');for(var i=0;i<d.length;i++)d[i].classList.remove('vis');}
 function trashConv(id){if(!convs[id])return;trash[id]={title:convs[id].title,data:convs[id],deletedAt:Date.now()};sSet('trash',trash);delete convs[id];sSet('convs',convs);if(curConv===id)newChat();else updHist();updTrash();}
-function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_ENGINE.resetHistory();G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');G('MG').innerHTML='';
+function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_ENGINE.resetHistory();G('EPH-BAR').classList.add('hidden');G('SAVE-BAR').classList.add('hidden');G('TASK-BAR').classList.add('hidden');G('MG').innerHTML='';
     // Logo en haut de la conversation
     var hdr=document.createElement('div');
     hdr.style.cssText='text-align:center;padding:20px 0 10px';
@@ -113,7 +113,8 @@ function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_EN
 
 // TRASH
 function cleanTrash(){var now=Date.now();for(var id in trash){if(now-trash[id].deletedAt>30*24*60*60*1000){delete trash[id];}}sSet('trash',trash);}
-cleanTrash();
+// NB: pas d'appel ici — 'trash' n'est assigne qu'en fin de fichier. La purge des
+// entrees de plus de 30 jours se fait via updTrash(), a l'ouverture de la corbeille.
 function updTrash(){cleanTrash();var ids=Object.keys(trash).sort(function(a,b){return trash[b].deletedAt-trash[a].deletedAt;});var tl=G('TL');var etb=G('ETB');if(!ids.length){tl.innerHTML='<div class="il-e" data-i18n="sb_trash_empty">'+t('sb_trash_empty')+'</div>';etb.style.display='none';return;}etb.style.display='block';var h='';for(var i=0;i<ids.length;i++){var id=ids[i];var ti=trash[id];var dl=30-Math.floor((Date.now()-ti.deletedAt)/(24*60*60*1000));h+='<div class="trash-item"><div class="tr-info"><div class="tr-title">'+esc(ti.title)+'</div><div class="tr-date">'+dl+' d</div></div><div class="trash-actions"><button class="tr-restore" onclick="restoreConv(\''+id+'\')">'+t('btn_save')+'</button><button class="tr-del" onclick="permDelConv(\''+id+'\')">'+t('btn_delete')+'</button></div></div>';}tl.innerHTML=h;}
 function restoreConv(id){if(!trash[id])return;convs[id]=trash[id].data;sSet('convs',convs);delete trash[id];sSet('trash',trash);updHist();updTrash();}
 function permDelConv(id){delete trash[id];sSet('trash',trash);updTrash();}
@@ -131,7 +132,9 @@ function updProjs(){
     pl.innerHTML=h;
     var items=pl.querySelectorAll('.pi');for(var i=0;i<items.length;i++){items[i].onclick=(function(el){return function(e){if(e.target.classList.contains('idel'))return;curProj=el.getAttribute('data-id');updProjs();updHist();newChat(curProj);};})(items[i]);}
     var dels=pl.querySelectorAll('.idel');for(var i=0;i<dels.length;i++){dels[i].onclick=(function(b){return function(e){e.stopPropagation();var bid=b.getAttribute('data-id');delete projs[bid];sSet('projs',projs);if(curProj===bid){curProj=null;newChat();}updProjs();};})(dels[i]);}
-    var sel=G('CFP');sel.innerHTML='<option value="all">Tous</option>';for(var i=0;i<ids.length;i++)sel.innerHTML+='<option value="'+ids[i]+'">'+esc(projs[ids[i]].name)+'</option>';
+    // CFP (filtre par projet) n'existe pas dans index.html : sans ce garde, showApp()
+    // plantait au rechargement et tout le reste du fichier (envoi, Entree...) n'etait jamais branche.
+    var sel=G('CFP');if(!sel)return;sel.innerHTML='<option value="all">Tous</option>';for(var i=0;i<ids.length;i++)sel.innerHTML+='<option value="'+ids[i]+'">'+esc(projs[ids[i]].name)+'</option>';
 }
 
 // SETTINGS
@@ -998,22 +1001,208 @@ function toggleApiKeyVis() {
     else { input.type = 'password'; btn.textContent = 'Voir'; }
 }
 
+// Previent une fois que les taches internes (memoire, suggestions, resume) sont
+// desactivees parce que le fournisseur choisi ne les traite pas. On ne les redirige
+// pas vers un autre fournisseur : ce serait envoyer la conversation ailleurs que la
+// ou l'utilisateur l'a demande.
+function showTaskNotice(provider) {
+    var bar = G('TASK-BAR'), txt = G('TASK-BAR-TXT');
+    if (!bar || !txt) return;
+    var label = provider;
+    if (provider === 'custom' && typeof customProviders !== 'undefined') {
+        var sel = (typeof selectedModelOverride !== 'undefined' && selectedModelOverride) ? selectedModelOverride.customId : null;
+        for (var i = 0; i < customProviders.length; i++) {
+            if (customProviders[i].id === sel) { label = customProviders[i].name; break; }
+        }
+    }
+    txt.textContent = 'Memoire, suggestions et resume sont desactives : ' + label
+        + ' n\'a pas traite ces taches. Rien n\'a ete envoye a un autre fournisseur.';
+    bar.classList.remove('hidden');
+}
+
+// === FOURNISSEURS PERSONNALISES ===
+// Le renderer ne detient jamais les cles : il ne manipule que des identifiants et
+// des metadonnees renvoyees par le process principal.
+var customProviders = [];
+
+function loadCustomProviders() {
+    if (!window.etherDesktop || !window.etherDesktop.customProvidersList) return;
+    window.etherDesktop.secureStorageAvailable().then(function(available) {
+        var warn = G('CUST-WARN');
+        if (warn) {
+            if (available) { warn.classList.add('hidden'); }
+            else {
+                warn.textContent = "Le chiffrement systeme n'est pas disponible sur cette machine. "
+                    + "Les cles API ne peuvent pas etre enregistrees tant qu'il ne l'est pas.";
+                warn.classList.remove('hidden');
+            }
+        }
+    })['catch'](function() {});
+    return window.etherDesktop.customProvidersList().then(function(list) {
+        customProviders = list || [];
+        renderCustomProviders();
+        renderModelOptions();
+    })['catch'](function(e) { console.warn('[CUSTOM-PROV] Chargement echoue:', e); });
+}
+
+function renderCustomProviders() {
+    var box = G('CUST-LIST');
+    if (!box) return;
+    if (!customProviders.length) {
+        box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Aucun fournisseur personnalise.</div>';
+        return;
+    }
+    var h = '';
+    for (var i = 0; i < customProviders.length; i++) {
+        var p = customProviders[i];
+        h += '<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;background:var(--b3)">'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-size:.8rem;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</div>'
+          + '<div style="font-size:.68rem;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.model) + ' — ' + esc(p.baseUrl) + '</div>'
+          + '<div style="font-size:.66rem;color:var(--t3)">' + (p.hasKey ? 'Cle enregistree (chiffree)' : 'Sans cle') + '</div>'
+          + '<div class="cust-test-status" data-id="' + escAttr(p.id) + '" style="font-size:.68rem;margin-top:2px"></div>'
+          + '</div>'
+          + '<button type="button" class="btn-s" onclick="testCustomProvider(\'' + escAttr(p.id) + '\')">Tester</button>'
+          + '<button type="button" class="btn-s" onclick="editCustomProvider(\'' + escAttr(p.id) + '\')">Modifier</button>'
+          + '<button type="button" class="btn-s" onclick="deleteCustomProvider(\'' + escAttr(p.id) + '\')">Supprimer</button>'
+          + '</div>';
+    }
+    box.innerHTML = h;
+}
+
+function customStatusEl(id) {
+    var all = document.querySelectorAll('.cust-test-status');
+    for (var i = 0; i < all.length; i++) if (all[i].getAttribute('data-id') === id) return all[i];
+    return null;
+}
+
+function testCustomProvider(id) {
+    var el = customStatusEl(id);
+    if (el) { el.style.color = 'var(--t3)'; el.textContent = 'Test en cours...'; }
+    window.etherDesktop.customProvidersTest(id).then(function(r) {
+        if (!el) return;
+        if (r && r.ok) { el.style.color = 'var(--color-success)'; el.textContent = 'Connexion reussie'; }
+        else { el.style.color = 'var(--color-danger)'; el.textContent = 'Echec : ' + esc((r && r.error) || 'inconnu'); }
+    })['catch'](function() {
+        if (el) { el.style.color = 'var(--color-danger)'; el.textContent = 'Echec du test'; }
+    });
+}
+
+function openCustomForm(p) {
+    G('CUST-ID').value = p ? p.id : '';
+    G('CUST-NAME').value = p ? p.name : '';
+    G('CUST-URL').value = p ? p.baseUrl : '';
+    G('CUST-MODEL').value = p ? p.model : '';
+    G('KEY-CUSTOM').value = '';
+    G('KEY-CUSTOM').type = 'password';
+    var hint = G('CUST-KEY-HINT');
+    if (hint) {
+        if (p && p.hasKey) {
+            hint.textContent = 'Une cle est deja enregistree. Laisse vide pour la conserver.';
+            hint.classList.remove('hidden');
+        } else { hint.classList.add('hidden'); }
+    }
+    G('CUST-FORM-ERR').classList.add('hidden');
+    G('CUST-FORM').classList.remove('hidden');
+    G('CUST-NAME').focus();
+}
+
+function editCustomProvider(id) {
+    for (var i = 0; i < customProviders.length; i++) {
+        if (customProviders[i].id === id) return openCustomForm(customProviders[i]);
+    }
+}
+
+function deleteCustomProvider(id) {
+    if (!confirm('Supprimer ce fournisseur et sa cle ?')) return;
+    window.etherDesktop.customProvidersDelete(id).then(function(r) {
+        if (r && r.ok) {
+            customProviders = r.providers || [];
+            // Si le fournisseur supprime etait selectionne, revenir en Auto.
+            if (selectedModelOverride && selectedModelOverride.customId === id) {
+                selectedModelOverride = null;
+                G('MODEL-SEL-LABEL').textContent = 'Auto';
+            }
+            renderCustomProviders();
+            renderModelOptions();
+            updProviderStatuses();
+        }
+    });
+}
+
+G('CUST-ADD').onclick = function() { openCustomForm(null); };
+G('CUST-CANCEL').onclick = function() { G('CUST-FORM').classList.add('hidden'); };
+G('CUST-SAVE').onclick = function() {
+    var err = G('CUST-FORM-ERR');
+    var payload = {
+        id: G('CUST-ID').value || undefined,
+        name: G('CUST-NAME').value.trim(),
+        baseUrl: G('CUST-URL').value.trim(),
+        model: G('CUST-MODEL').value.trim()
+    };
+    // Champ vide en modification = conserver la cle existante, d'ou l'omission.
+    var typed = G('KEY-CUSTOM').value;
+    var editing = !!payload.id;
+    if (!editing || typed !== '') payload.apiKey = typed;
+
+    window.etherDesktop.customProvidersSave(payload).then(function(r) {
+        if (!r || !r.ok) {
+            err.textContent = (r && r.error) || 'Enregistrement impossible';
+            err.classList.remove('hidden');
+            return;
+        }
+        G('KEY-CUSTOM').value = '';
+        customProviders = r.providers || [];
+        G('CUST-FORM').classList.add('hidden');
+        renderCustomProviders();
+        renderModelOptions();
+        updProviderStatuses();
+    });
+};
+
 // Charger les cles sauvegardees
+var BUILTIN_PROVIDERS = ['groq', 'gemini', 'mistral', 'cerebras', 'openai', 'anthropic'];
+var providerKeyStatus = {}; // { groq: true, ... } — presence seulement, jamais la valeur
+
 function loadProviderKeys() {
-    var keys = sGet('provider_keys', {});
-    if (keys.groq) G('KEY-GROQ').value = keys.groq;
-    if (keys.gemini) G('KEY-GEMINI').value = keys.gemini;
-    if (keys.mistral) G('KEY-MISTRAL').value = keys.mistral;
-    if (keys.cerebras) G('KEY-CEREBRAS').value = keys.cerebras;
-    if (keys.openai) G('KEY-OPENAI').value = keys.openai;
-    if (keys.anthropic) G('KEY-ANTHROPIC').value = keys.anthropic;
-    // Custom
-    var cust = sGet('custom_provider', {});
-    if (cust.name) G('CUST-NAME').value = cust.name;
-    if (cust.url) G('CUST-URL').value = cust.url;
-    if (cust.key) G('KEY-CUSTOM').value = cust.key;
-    if (cust.model) G('CUST-MODEL').value = cust.model;
-    updProviderStatuses();
+    // Les champs restent vides : la valeur d'une cle enregistree n'est jamais
+    // renvoyee au renderer. Le placeholder indique seulement qu'elle existe.
+    migrateLegacyProviderKeys().then(function() {
+        return window.etherDesktop.providerKeysStatus();
+    }).then(function(status) {
+        providerKeyStatus = status || {};
+        for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
+            var p = BUILTIN_PROVIDERS[i];
+            var el = G('KEY-' + p.toUpperCase());
+            if (!el) continue;
+            el.value = '';
+            el.placeholder = providerKeyStatus[p] ? 'Cle enregistree (chiffree) — laisser vide pour conserver' : 'Non configuree';
+        }
+        loadCustomProviders();
+        updProviderStatuses();
+    })['catch'](function(e) { console.warn('[KEYS] Chargement echoue:', e); });
+}
+
+// Migration unique des cles laissees en clair dans localStorage par les versions
+// precedentes : on les pousse dans le coffre chiffre puis on efface l'entree locale.
+function migrateLegacyProviderKeys() {
+    var legacy = sGet('provider_keys', null);
+    if (!legacy || typeof legacy !== 'object') return Promise.resolve();
+    var chain = Promise.resolve();
+    var migrated = [];
+    BUILTIN_PROVIDERS.forEach(function(p) {
+        var v = legacy[p];
+        if (!v || typeof v !== 'string') return;
+        chain = chain.then(function() {
+            return window.etherDesktop.providerKeysSet(p, v).then(function(r) {
+                if (r && r.ok) migrated.push(p);
+            });
+        });
+    });
+    return chain.then(function() {
+        try { localStorage.removeItem('ether_provider_keys'); } catch(e) {}
+        if (migrated.length) console.log('[MIGRATION] Cles chiffrees puis retirees du stockage local :', migrated.join(', '));
+    })['catch'](function(e) { console.warn('[MIGRATION] Echec:', e); });
 }
 
 // Sauvegarder les cles
@@ -1026,26 +1215,43 @@ G('SAVE-KEYS').onclick = function() {
         openai: G('KEY-OPENAI').value.trim(),
         anthropic: G('KEY-ANTHROPIC').value.trim()
     };
-    sSet('provider_keys', keys);
-    sSet('custom_provider', {
-        name: G('CUST-NAME').value.trim(),
-        url: G('CUST-URL').value.trim(),
-        key: G('KEY-CUSTOM').value.trim(),
-        model: G('CUST-MODEL').value.trim()
-    });
-    // Mettre a jour les cles dans main.js
-    if (window.etherDesktop) {
-        if (window.etherDesktop.setGroqKey && keys.groq) window.etherDesktop.setGroqKey(keys.groq);
-        if (window.etherDesktop.setMistralKey && keys.mistral) window.etherDesktop.setMistralKey(keys.mistral);
-    }
-    if (window.etherDesktop && window.etherDesktop.setMistralKey && keys.mistral) {
-        window.etherDesktop.setMistralKey(keys.mistral);
-    }
-    updProviderStatuses();
+    // Chaque cle part chiffree dans le coffre. Un champ laisse vide conserve la cle
+    // existante : rien n'est jamais ecrit en clair cote renderer.
     var btn = G('SAVE-KEYS');
-    btn.textContent = 'Sauvegarde !';
-    btn.style.background = '#22c55e';
-    setTimeout(function() { btn.textContent = 'Sauvegarder les cles'; btn.style.background = ''; }, 1500);
+    var chain = Promise.resolve();
+    var failed = [];
+    BUILTIN_PROVIDERS.forEach(function(p) {
+        var typed = keys[p];
+        if (!typed) return;
+        chain = chain.then(function() {
+            return window.etherDesktop.providerKeysSet(p, typed).then(function(r) {
+                if (!r || !r.ok) failed.push(p + ' : ' + ((r && r.error) || 'erreur'));
+            });
+        });
+    });
+    chain.then(function() {
+        for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
+            var el = G('KEY-' + BUILTIN_PROVIDERS[i].toUpperCase());
+            if (el) el.value = '';
+        }
+        return window.etherDesktop.providerKeysStatus();
+    }).then(function(status) {
+        providerKeyStatus = status || {};
+        for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
+            var p = BUILTIN_PROVIDERS[i];
+            var el = G('KEY-' + p.toUpperCase());
+            if (el) el.placeholder = providerKeyStatus[p] ? 'Cle enregistree (chiffree) — laisser vide pour conserver' : 'Non configuree';
+        }
+        updProviderStatuses();
+        if (failed.length) {
+            btn.textContent = 'Echec : ' + failed[0];
+            btn.style.background = '#ef4444';
+        } else {
+            btn.textContent = 'Sauvegarde !';
+            btn.style.background = '#22c55e';
+        }
+        setTimeout(function() { btn.textContent = 'Sauvegarder les cles'; btn.style.background = ''; }, 2500);
+    });
 };
 
 function updProviderStatuses() {
@@ -1061,8 +1267,8 @@ function updProviderStatuses() {
             statusEl.innerHTML = '<span class="prov-dot prov-dot-orange"></span>Rate limit';
         }
     }
-    // Providers optionnels
-    var keys = sGet('provider_keys', {});
+    // Providers optionnels — presence lue dans le coffre, jamais la valeur
+    var keys = providerKeyStatus;
     var optProviders = ['openai', 'anthropic'];
     for (var j = 0; j < optProviders.length; j++) {
         var op = optProviders[j];
@@ -1083,15 +1289,13 @@ function updProviderStatuses() {
             ollamaStatusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre';
         }
     }
-    // Custom
-    var cust = sGet('custom_provider', {});
+    // Fournisseurs personnalises : compte issu du coffre, pas du localStorage.
     var custStatus = G('PROV-CUSTOM-STATUS');
     if (custStatus) {
-        if (cust.url && cust.model) {
-            custStatus.innerHTML = '<span class="prov-dot prov-dot-orange"></span>' + esc(cust.name || 'Configure');
-        } else {
-            custStatus.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Non configure';
-        }
+        var n = customProviders.length;
+        custStatus.innerHTML = n
+            ? '<span class="prov-dot prov-dot-orange"></span>' + n + ' configure' + (n > 1 ? 's' : '')
+            : '<span class="prov-dot prov-dot-gray"></span>Non configure';
     }
 }
 
@@ -1136,51 +1340,23 @@ function testProvider(provider) {
             else { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; }
         })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Non demarre'; providerStatus.ollama = false; });
     } else if (provider === 'custom') {
-        // Test fournisseur personnalise — via IPC (le renderer n'a pas le droit de sortir en reseau, CSP connect-src 'self')
-        var custUrl = G('CUST-URL').value.trim();
-        var custKey = G('KEY-CUSTOM').value.trim();
-        var custModel = G('CUST-MODEL').value.trim();
-        if (!custUrl || !custModel) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>URL et modele requis'; return; }
-        if (!window.etherDesktop || !window.etherDesktop.customChat) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; return; }
-        window.etherDesktop.customChat({ baseUrl: custUrl, apiKey: custKey, model: custModel, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }).then(function(r) {
-            if (r.ok) statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif — ' + esc(custModel);
-            else statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>' + esc(r.error || 'Erreur');
-        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; });
+        // Les fournisseurs personnalises se testent un par un depuis leur ligne dans la liste.
+        var n = customProviders.length;
+        statusEl.innerHTML = n
+            ? '<span class="prov-dot prov-dot-green"></span>' + n + ' configure' + (n > 1 ? 's' : '')
+            : '<span class="prov-dot prov-dot-gray"></span>Non configure';
     } else {
-        var keyInput = G('KEY-' + provider.toUpperCase());
-        var key = keyInput ? keyInput.value.trim() : '';
-        if (!key) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Cle manquante'; return; }
-
-        var testConfigs = {
-            openai: { url: 'https://api.openai.com/v1/models', auth: 'Bearer ' + key },
-            anthropic: { url: 'https://api.anthropic.com/v1/messages', auth: key, custom: true },
-            google: { url: 'https://generativelanguage.googleapis.com/v1beta/models?key=' + key, auth: '' }
-        };
-        var cfg = testConfigs[provider];
-        if (!cfg) return;
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', cfg.url, true);
-        if (cfg.auth && !cfg.custom) xhr.setRequestHeader('Authorization', cfg.auth);
-        if (cfg.custom) {
-            xhr.setRequestHeader('x-api-key', key);
-            xhr.setRequestHeader('anthropic-version', '2023-06-01');
+        // Test delegue au process principal : la cle reste dans le coffre chiffre,
+        // le renderer ne la voit jamais et ne sort pas en reseau lui-meme.
+        if (!window.etherDesktop || !window.etherDesktop.providerKeysTest) {
+            statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible';
+            return;
         }
-        xhr.timeout = 8000;
-        xhr.onload = function() {
-            if (xhr.status === 200 || xhr.status === 401) {
-                if (xhr.status === 200) {
-                    statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif';
-                } else {
-                    statusEl.innerHTML = '<span class="prov-dot prov-dot-orange"></span>Cle reconnue';
-                }
-            } else {
-                statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur ' + xhr.status;
-            }
-        };
-        xhr.onerror = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur reseau'; };
-        xhr.ontimeout = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Timeout'; };
-        xhr.send();
+        statusEl.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Test...';
+        window.etherDesktop.providerKeysTest(provider).then(function(r) {
+            if (r && r.ok) statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>Actif';
+            else statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>' + esc((r && r.error) || 'Erreur');
+        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; });
     }
 }
 
@@ -1747,6 +1923,10 @@ document.addEventListener('click', function(e) {
 function selectModel(btn) {
     var provider = btn.getAttribute('data-provider');
     var model = btn.getAttribute('data-model');
+    // Nouveau fournisseur : on redonne sa chance aux taches internes et on retire
+    // l'avertissement de la selection precedente.
+    if (typeof _taskNoticeShown !== 'undefined') _taskNoticeShown = {};
+    var tb = G('TASK-BAR'); if (tb) tb.classList.add('hidden');
     // Retirer .on de tous
     var opts = document.querySelectorAll('.model-opt');
     for (var i = 0; i < opts.length; i++) opts[i].classList.remove('on');
@@ -1755,11 +1935,119 @@ function selectModel(btn) {
     if (provider === 'auto') {
         selectedModelOverride = null;
         G('MODEL-SEL-LABEL').textContent = 'Auto';
+    } else if (provider === 'custom') {
+        // L'identifiant permet au process principal de retrouver l'URL et la cle chiffree.
+        var cid = btn.getAttribute('data-custom-id');
+        selectedModelOverride = { provider: 'custom', model: model, customId: cid };
+        G('MODEL-SEL-LABEL').textContent = btn.getAttribute('data-label') || model;
     } else {
         selectedModelOverride = { provider: provider, model: model };
-        G('MODEL-SEL-LABEL').textContent = modelNames[model] || model;
+        G('MODEL-SEL-LABEL').textContent = btn.getAttribute('data-label') || modelNames[model] || model;
     }
     G('MODEL-DROP').classList.add('hidden');
+}
+
+// Fournisseurs integres selectionnables a la main. Le modele est celui que le
+// routage automatique utiliserait pour ce fournisseur.
+function builtinPickerEntries() {
+    return [
+        { provider: 'groq',     label: 'Groq',     model: GROQ_MODELS.main,     note: 'Rapide, usage general' },
+        { provider: 'gemini',   label: 'Gemini',   model: GEMINI_MODELS.main,   note: 'Long contexte, creatif' },
+        { provider: 'mistral',  label: 'Mistral',  model: MISTRAL_MODELS.main,  note: 'Raisonnement' },
+        { provider: 'cerebras', label: 'Cerebras', model: CEREBRAS_MODELS.main, note: 'Tres gros modele' },
+        { provider: 'ollama',   label: 'Ollama',   model: OLLAMA_MODELS.main,   note: 'Local, sans quota' }
+    ];
+}
+
+// Fournisseurs payants dont la cle vient de l'utilisateur. Ils n'entrent jamais
+// dans le routage automatique : depenser son credit sans qu'il l'ait demande
+// serait une mauvaise surprise. Ils n'apparaissent que si une cle est enregistree.
+var OPTIONAL_MODELS = {
+    openai:    { main: 'gpt-4o',        label: 'OpenAI',    note: 'GPT-4o, cle requise' },
+    anthropic: { main: 'claude-opus-5', label: 'Anthropic', note: 'Claude Opus 5, cle requise' }
+};
+
+function optionalPickerEntries() {
+    var out = [];
+    for (var k in OPTIONAL_MODELS) {
+        if (!providerKeyStatus[k]) continue;
+        out.push({ provider: k, label: OPTIONAL_MODELS[k].label,
+                   model: OPTIONAL_MODELS[k].main, note: OPTIONAL_MODELS[k].note });
+    }
+    return out;
+}
+
+function pickerDot(color) {
+    return '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0"></span>';
+}
+
+function pickerButton(cfg) {
+    var b = document.createElement('button');
+    b.className = 'model-opt ' + cfg.cls;
+    b.setAttribute('data-provider', cfg.provider);
+    b.setAttribute('data-model', cfg.model);
+    b.setAttribute('data-label', cfg.label);
+    if (cfg.customId) b.setAttribute('data-custom-id', cfg.customId);
+    b.onclick = function() { selectModel(this); };
+    b.innerHTML = '<div style="display:flex;align-items:center;gap:8px">' + pickerDot(cfg.color)
+        + '<span style="font-weight:600;font-size:.84rem">' + esc(cfg.label) + '</span></div>'
+        + '<span style="font-size:.7rem;color:var(--t3)">' + esc(cfg.note) + '</span>';
+    return b;
+}
+
+function pickerSection(cls, title) {
+    var el = document.createElement('div');
+    el.className = cls;
+    el.setAttribute('style', 'padding:8px 10px 4px;font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--bd);margin-top:6px');
+    el.textContent = title;
+    return el;
+}
+
+// Reconstruit le menu: Auto, les fournisseurs integres, puis les personnalises.
+// Le bouton Auto est statique dans index.html, tout le reste est regenere.
+function renderModelOptions() {
+    var drop = G('MODEL-DROP');
+    if (!drop) return;
+    var stale = drop.querySelectorAll('.model-opt-custom, .model-opt-builtin, .model-opt-optional, .model-sep-custom, .model-sep-builtin, .model-sep-optional');
+    for (var i = 0; i < stale.length; i++) stale[i].remove();
+
+    // --- Fournisseurs integres ---
+    drop.appendChild(pickerSection('model-sep-builtin', 'Fournisseurs integres'));
+    var builtins = builtinPickerEntries();
+    for (var k = 0; k < builtins.length; k++) {
+        var e = builtins[k];
+        // Vert quand le fournisseur repond, gris sinon. On laisse le choix possible :
+        // en cas d'echec la selection manuelle affiche une erreur claire.
+        var up = (typeof providerStatus !== 'undefined') ? providerStatus[e.provider] !== false : true;
+        drop.appendChild(pickerButton({
+            cls: 'model-opt-builtin', provider: e.provider, model: e.model, label: e.label,
+            note: e.note, color: up ? 'var(--color-success)' : 'var(--t3)'
+        }));
+    }
+
+    // --- Fournisseurs optionnels (cle utilisateur, hors routage automatique) ---
+    var optionals = optionalPickerEntries();
+    if (optionals.length) {
+        drop.appendChild(pickerSection('model-sep-optional', 'Fournisseurs optionnels'));
+        for (var o = 0; o < optionals.length; o++) {
+            drop.appendChild(pickerButton({
+                cls: 'model-opt-optional', provider: optionals[o].provider,
+                model: optionals[o].model, label: optionals[o].label,
+                note: optionals[o].note, color: 'var(--color-info)'
+            }));
+        }
+    }
+
+    // --- Fournisseurs personnalises ---
+    if (!customProviders.length) return;
+    drop.appendChild(pickerSection('model-sep-custom', 'Fournisseurs personnalises'));
+    for (var j = 0; j < customProviders.length; j++) {
+        var p = customProviders[j];
+        drop.appendChild(pickerButton({
+            cls: 'model-opt-custom', provider: 'custom', model: p.model, label: p.name,
+            note: p.model, color: 'var(--color-purple)', customId: p.id
+        }));
+    }
 }
 
 // === MULTI-TAB CONVERSATIONS ===
@@ -2092,6 +2380,8 @@ function checkApiStatus() {
             if (r.ok) ok.push(r.provider.charAt(0).toUpperCase() + r.provider.slice(1));
             else fail.push(r.provider);
         }
+        // Les pastilles du menu de selection refletent ce nouvel etat.
+        if (typeof renderModelOptions === 'function') renderModelOptions();
         if (ok.length > 0) {
             setApiStatus('connected', ok.join(' + '));
         } else {
@@ -2433,7 +2723,7 @@ function showApp(){
     G('LS').classList.add('hidden'); G('APP').classList.remove('hidden');
     G('UNM').textContent=user.name; G('UAV').textContent=user.name.charAt(0).toUpperCase();
     var wg=G('welc-greet'); if(wg) wg.textContent=getGreeting()+', '+user.name;
-    initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI();
+    initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI(); renderModelOptions(); loadAllModeResources();
     G('uinp').focus();
     showTutorial();
     startApiMonitor();
@@ -2441,7 +2731,7 @@ function showApp(){
 
 // SIDEBAR
 G('TSB').onclick=function(){G('SB').classList.add('collapsed');G('OSB').classList.remove('hidden');};
-G('OSB').onclick=function(){G('SB').classList.remove('collapsed');G('OSB').classList.add('hidden');G('SB').classList.add('open');G('SOV').classList.add('vis');};
+G('OSB').onclick=function(){G('SB').classList.remove('collapsed');G('OSB').classList.add('hidden');if(window.innerWidth<=768){G('SB').classList.add('open');G('SOV').classList.add('vis');}};
 G('SOV').onclick=function(){G('SB').classList.remove('open');G('SOV').classList.remove('vis');};
 
 // TABS
@@ -2526,6 +2816,84 @@ for(var mi=0;mi<modes.length;mi++){
 
 
 // === MODES PERSONNALISES ===
+// Texte des ressources attachees aux modes, charge une fois et garde en memoire :
+// getSystemPrompt est synchrone et ne peut pas attendre une lecture disque.
+var modeResources = {};
+
+// Documents joints au mode en cours d'edition. Un mode pas encore enregistre n'a
+// pas d'identifiant, donc rien a joindre : on le signale plutot que d'echouer.
+function renderModeResources(modeId) {
+    var box = G('CM-RES-LIST'), btn = G('CM-RES-ADD'), err = G('CM-RES-ERR');
+    if (!box) return;
+    err.classList.add('hidden');
+    if (!modeId) {
+        box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Enregistre le mode une premiere fois pour pouvoir y joindre des documents.</div>';
+        btn.disabled = true;
+        return;
+    }
+    btn.disabled = false;
+    window.etherDesktop.modeResourceList(modeId, false).then(function(list) {
+        if (!list || !list.length) {
+            box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Aucun document joint.</div>';
+            return;
+        }
+        var h = '';
+        for (var i = 0; i < list.length; i++) {
+            var r = list[i];
+            h += '<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;background:var(--b3)">'
+              + '<div style="flex:1;min-width:0"><div style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.name) + '</div>'
+              + '<div style="font-size:.66rem;color:var(--t3)">' + r.chars + ' caracteres' + (r.truncated ? ', tronque' : '') + '</div></div>'
+              + '<button type="button" class="btn-s" onclick="removeModeResource(\'' + escAttr(modeId) + '\',\'' + escAttr(r.id) + '\')">Retirer</button></div>';
+        }
+        box.innerHTML = h;
+    })['catch'](function() { box.innerHTML = ''; });
+}
+
+function removeModeResource(modeId, resId) {
+    window.etherDesktop.modeResourceDelete(modeId, resId).then(function() {
+        renderModeResources(modeId);
+        loadModeResources(modeId);
+    });
+}
+
+if (G('CM-RES-ADD')) {
+    G('CM-RES-ADD').onclick = function() {
+        if (!editingModeId) return;
+        var err = G('CM-RES-ERR');
+        window.etherDesktop.openFile().then(function(sel) {
+            var files = sel && sel.files ? sel.files : (Array.isArray(sel) ? sel : []);
+            if (!files.length) return;
+            return window.etherDesktop.modeResourceAdd(editingModeId, files[0].path || files[0]);
+        }).then(function(r) {
+            if (!r) return;
+            if (!r.ok) {
+                err.textContent = r.error || 'Document illisible';
+                err.classList.remove('hidden');
+                return;
+            }
+            renderModeResources(editingModeId);
+            loadModeResources(editingModeId);
+        })['catch'](function(e) {
+            err.textContent = 'Echec : ' + (e && e.message ? e.message : 'inconnu');
+            err.classList.remove('hidden');
+        });
+    };
+}
+
+
+function loadModeResources(modeId) {
+    if (!window.etherDesktop || !window.etherDesktop.modeResourceList) return Promise.resolve([]);
+    return window.etherDesktop.modeResourceList(modeId, true).then(function(list) {
+        modeResources[modeId] = list || [];
+        return modeResources[modeId];
+    })['catch'](function() { modeResources[modeId] = []; return []; });
+}
+
+function loadAllModeResources() {
+    var ids = (customModes || []).map(function(m) { return m.id; });
+    return Promise.all(ids.map(loadModeResources));
+}
+
 var customModes = sGet('custom_modes', []);
 var editingModeId = null;
 var defaultCategories = [
@@ -2617,6 +2985,8 @@ function openCreateCustomMode() {
     G('CM-SPEC').value = '';
     G('CM-STYLE').value = '';
     G('CM-INSTR').value = '';
+    G('CM-WHEN').value = '';
+    renderModeResources(null);
     G('CM-EMOJI').value = 'autre';
     G('CM-SAVE').textContent = 'Creer le mode';
     G('CM-DELETE').style.display = 'none';
@@ -2633,6 +3003,8 @@ function openEditCustomMode(id) {
     G('CM-SPEC').value = m.specialty || '';
     G('CM-STYLE').value = m.style || '';
     G('CM-INSTR').value = m.instructions || '';
+    G('CM-WHEN').value = m.description || '';
+    renderModeResources(id);
     G('CM-EMOJI').value = m.emoji || '';
     G('CM-SAVE').textContent = 'Enregistrer';
     G('CM-DELETE').style.display = 'block';
@@ -2672,6 +3044,7 @@ function saveCustomMode() {
     var specialty = G('CM-SPEC').value.trim();
     var style = G('CM-STYLE').value.trim();
     var instructions = G('CM-INSTR').value.trim();
+    var description = G('CM-WHEN').value.trim();
 
     if (editingModeId) {
         // Modifier
@@ -2682,6 +3055,7 @@ function saveCustomMode() {
                 customModes[i].specialty = specialty;
                 customModes[i].style = style;
                 customModes[i].instructions = instructions;
+                customModes[i].description = description;
                 break;
             }
         }
@@ -2693,7 +3067,8 @@ function saveCustomMode() {
             emoji: emoji,
             specialty: specialty,
             style: style,
-            instructions: instructions
+            instructions: instructions,
+            description: description
         });
     }
     sSet('custom_modes', customModes);
@@ -2817,7 +3192,7 @@ function autoDetectMemory(userMessage, aiAnswer) {
     var existingContext = existingMem.length > 0 ? '\nFaits deja connus: ' + existingMem.join('; ') : '';
 
     // Utiliser Groq Llama 8B (ultra rapide) pour l'extraction
-    window.etherDesktop.groqChat({
+    callAI({
         model: GROQ_MODELS.fast,
         messages: [
             { role: 'system', content: 'Tu construis le PROFIL de l\'utilisateur a partir de ses messages. Reponds UNIQUEMENT en JSON.\n\nREGLES STRICTES:\n- Extrais UNIQUEMENT ce que l\'utilisateur dit SUR LUI-MEME (pas les questions qu\'il pose, pas les sujets de discussion)\n- Exemples valides: "Developpeur Python", "Travaille chez Altopi", "Habite a Paris", "Aime le football", "A 25 ans", "Etudie l\'informatique"\n- Exemples INVALIDES: "S\'interesse a l\'IA" (trop vague), "A pose une question sur la gravite" (c\'est un sujet, pas un profil), "Cherche des conseils" (pas un trait personnel)\n- Chaque fait = une info de profil courte (3-10 mots)\n- Maximum 2 faits\n- Si aucune info de profil: {"facts":[]}\n\nFormat: {"facts":["fait 1","fait 2"]}' },
@@ -2920,7 +3295,7 @@ function trackTeacherSessionV2(question, answer) {
         var batchText = _teacherMsgBuffer.map(function(m, i) { return (i + 1) + '. Q: ' + m.question + '\n   R: ' + m.answer; }).join('\n');
         _teacherMsgBuffer = [];
 
-        window.etherDesktop.groqChat({
+        callAI({
             model: 'llama3.1-8b',
             messages: [
                 { role: 'system', content: 'Analyze these Q&A exchanges from a learning session. Return JSON: {"topics": [{"name": "short topic", "difficulty": "beginner|intermediate|advanced", "depth": 1-5}]}. Maximum 3 topics. Respond ONLY with JSON.' },

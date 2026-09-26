@@ -1,0 +1,3465 @@
+{
+  "version": 1,
+  "timestamp": "2026-09-20T01:15:34.353Z",
+  "score": {
+    "grade": "B",
+    "numericScore": 79,
+    "breakdown": {
+      "secrets": 0,
+      "permissions": 96,
+      "hooks": 100,
+      "mcp": 100,
+      "agents": 100
+    }
+  },
+  "findings": [
+    {
+      "id": "secrets-azure-key-767",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-767::package-lock.json::sha256:1fc7a86ae72f5d11"
+    },
+    {
+      "id": "secrets-azure-key-1338",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-1338::package-lock.json::sha256:f34a7fc3cb191f81"
+    },
+    {
+      "id": "secrets-azure-key-1916",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-1916::package-lock.json::sha256:905ad297fc2346a5"
+    },
+    {
+      "id": "secrets-azure-key-2269",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-2269::package-lock.json::sha256:aa2b01024b727329"
+    },
+    {
+      "id": "secrets-azure-key-2701",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-2701::package-lock.json::sha256:e03dcc6310dd4306"
+    },
+    {
+      "id": "secrets-azure-key-3131",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-3131::package-lock.json::sha256:e33c3bd05017ee17"
+    },
+    {
+      "id": "secrets-azure-key-3645",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-3645::package-lock.json::sha256:f82dcbf1d01ff4b5"
+    },
+    {
+      "id": "secrets-azure-key-4191",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-4191::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-4673",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-4673::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-5036",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-5036::package-lock.json::sha256:9b9793df9039ae34"
+    },
+    {
+      "id": "secrets-azure-key-5719",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-5719::package-lock.json::sha256:1cc75c212f86d895"
+    },
+    {
+      "id": "secrets-azure-key-6233",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-6233::package-lock.json::sha256:f82dcbf1d01ff4b5"
+    },
+    {
+      "id": "secrets-azure-key-6782",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-6782::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-7267",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-7267::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-7645",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-7645::package-lock.json::sha256:994ff1a1a3662e5c"
+    },
+    {
+      "id": "secrets-azure-key-8400",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-8400::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-8928",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-8928::package-lock.json::sha256:684f42a876e7b9da"
+    },
+    {
+      "id": "secrets-azure-key-9402",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-9402::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-9887",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-9887::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-10262",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-10262::package-lock.json::sha256:f48612b6ca075fb5"
+    },
+    {
+      "id": "secrets-azure-key-11159",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-11159::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-11593",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-11593::package-lock.json::sha256:b52b2abdd8cbd8b5"
+    },
+    {
+      "id": "secrets-azure-key-12265",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-12265::package-lock.json::sha256:905ad297fc2346a5"
+    },
+    {
+      "id": "secrets-azure-key-12621",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-12621::package-lock.json::sha256:249a95df6aeb93a4"
+    },
+    {
+      "id": "secrets-azure-key-13026",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-13026::package-lock.json::sha256:29a175acd5bbaf83"
+    },
+    {
+      "id": "secrets-azure-key-13544",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-13544::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-14021",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-14021::package-lock.json::sha256:ecd894c691b08b4b"
+    },
+    {
+      "id": "secrets-azure-key-14582",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-14582::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-14972",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-14972::package-lock.json::sha256:a1a8177f51acc780"
+    },
+    {
+      "id": "secrets-azure-key-15700",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-15700::package-lock.json::sha256:29a175acd5bbaf83"
+    },
+    {
+      "id": "secrets-azure-key-16265",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-16265::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-16798",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-16798::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-17207",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-17207::package-lock.json::sha256:b2599dd584a4e2df"
+    },
+    {
+      "id": "secrets-azure-key-17877",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-17877::package-lock.json::sha256:45cc14d16adbebd8"
+    },
+    {
+      "id": "secrets-azure-key-18357",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-18357::package-lock.json::sha256:a2f56ddce724ed61"
+    },
+    {
+      "id": "secrets-azure-key-18838",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-18838::package-lock.json::sha256:98f3f9d716ffb1ae"
+    },
+    {
+      "id": "secrets-azure-key-19179",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-19179::package-lock.json::sha256:61e88ff07c2e1bdf"
+    },
+    {
+      "id": "secrets-azure-key-19784",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-19784::package-lock.json::sha256:af01ad09ac47f573"
+    },
+    {
+      "id": "secrets-azure-key-20322",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-20322::package-lock.json::sha256:144f3aa202c764a3"
+    },
+    {
+      "id": "secrets-azure-key-20921",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-20921::package-lock.json::sha256:91702d4d86d01003"
+    },
+    {
+      "id": "secrets-azure-key-21389",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-21389::package-lock.json::sha256:096d568fedb94503"
+    },
+    {
+      "id": "secrets-azure-key-22171",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-22171::package-lock.json::sha256:13a7829708fc26d6"
+    },
+    {
+      "id": "secrets-azure-key-22718",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-22718::package-lock.json::sha256:f82dcbf1d01ff4b5"
+    },
+    {
+      "id": "secrets-azure-key-23272",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-23272::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-23762",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-23762::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-24134",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-24134::package-lock.json::sha256:5f3ad027f64cc176"
+    },
+    {
+      "id": "secrets-azure-key-25135",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-25135::package-lock.json::sha256:2130381e269c327b"
+    },
+    {
+      "id": "secrets-azure-key-25628",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-25628::package-lock.json::sha256:5f1d2e11309af90f"
+    },
+    {
+      "id": "secrets-azure-key-26114",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-26114::package-lock.json::sha256:96f930483f7cf175"
+    },
+    {
+      "id": "secrets-azure-key-26625",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-26625::package-lock.json::sha256:a8d188db66542eac"
+    },
+    {
+      "id": "secrets-azure-key-27123",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-27123::package-lock.json::sha256:f62a57315b4861b7"
+    },
+    {
+      "id": "secrets-azure-key-27667",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-27667::package-lock.json::sha256:84c4c53177b396ed"
+    },
+    {
+      "id": "secrets-azure-key-28213",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-28213::package-lock.json::sha256:e506baa35d5db5bc"
+    },
+    {
+      "id": "secrets-azure-key-28750",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-28750::package-lock.json::sha256:6705646d14bf0463"
+    },
+    {
+      "id": "secrets-azure-key-29286",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-29286::package-lock.json::sha256:568c5076f29c57eb"
+    },
+    {
+      "id": "secrets-azure-key-29821",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-29821::package-lock.json::sha256:eb66bba7008670ed"
+    },
+    {
+      "id": "secrets-azure-key-30264",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-30264::package-lock.json::sha256:1966df54ad5defe9"
+    },
+    {
+      "id": "secrets-azure-key-30877",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-30877::package-lock.json::sha256:dbdb4e82cb59ee90"
+    },
+    {
+      "id": "secrets-azure-key-31177",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-31177::package-lock.json::sha256:c6b609a69bc393dc"
+    },
+    {
+      "id": "secrets-azure-key-31624",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-31624::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-32054",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-32054::package-lock.json::sha256:feabdb9ab4f00f2f"
+    },
+    {
+      "id": "secrets-azure-key-32441",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-32441::package-lock.json::sha256:d33a3f6380a2dfcc"
+    },
+    {
+      "id": "secrets-azure-key-32912",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-32912::package-lock.json::sha256:ab2771b4e4f3c246"
+    },
+    {
+      "id": "secrets-azure-key-33376",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-33376::package-lock.json::sha256:477be63a2bdf620d"
+    },
+    {
+      "id": "secrets-azure-key-33863",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-33863::package-lock.json::sha256:b197a21f07f9de91"
+    },
+    {
+      "id": "secrets-azure-key-34239",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-34239::package-lock.json::sha256:55779ee85ae016ae"
+    },
+    {
+      "id": "secrets-azure-key-34651",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-34651::package-lock.json::sha256:0d5734b564958dd2"
+    },
+    {
+      "id": "secrets-azure-key-34955",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-34955::package-lock.json::sha256:8acd398d82abb528"
+    },
+    {
+      "id": "secrets-azure-key-35313",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-35313::package-lock.json::sha256:9b5255e5923e46ed"
+    },
+    {
+      "id": "secrets-azure-key-35621",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-35621::package-lock.json::sha256:6ef5011b059d8b8b"
+    },
+    {
+      "id": "secrets-azure-key-35995",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-35995::package-lock.json::sha256:cb02b373da8b3587"
+    },
+    {
+      "id": "secrets-azure-key-36449",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-36449::package-lock.json::sha256:7cc7cbe98bddbfca"
+    },
+    {
+      "id": "secrets-azure-key-36853",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-36853::package-lock.json::sha256:d2cfe23727e9f0ed"
+    },
+    {
+      "id": "secrets-azure-key-37227",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-37227::package-lock.json::sha256:1a61eddd4003f5c1"
+    },
+    {
+      "id": "secrets-azure-key-37560",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-37560::package-lock.json::sha256:5a8ba99b20b6ab4b"
+    },
+    {
+      "id": "secrets-azure-key-37958",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-37958::package-lock.json::sha256:ee725bf5eca1076d"
+    },
+    {
+      "id": "secrets-azure-key-38296",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-38296::package-lock.json::sha256:69b6fd9e3cd87ecc"
+    },
+    {
+      "id": "secrets-azure-key-38592",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-38592::package-lock.json::sha256:de51715c65102859"
+    },
+    {
+      "id": "secrets-azure-key-38961",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-38961::package-lock.json::sha256:e0483b2fa5a53f05"
+    },
+    {
+      "id": "secrets-azure-key-39302",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-39302::package-lock.json::sha256:836fd37fbf6b6088"
+    },
+    {
+      "id": "secrets-azure-key-39644",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-39644::package-lock.json::sha256:503a5283ff9bb131"
+    },
+    {
+      "id": "secrets-azure-key-39985",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-39985::package-lock.json::sha256:5a0f095035d799c6"
+    },
+    {
+      "id": "secrets-azure-key-40597",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-40597::package-lock.json::sha256:a8d6f1451fd2ad92"
+    },
+    {
+      "id": "secrets-azure-key-40966",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-40966::package-lock.json::sha256:40c15f438ddf7786"
+    },
+    {
+      "id": "secrets-azure-key-41327",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-41327::package-lock.json::sha256:e3a942f038fd33fe"
+    },
+    {
+      "id": "secrets-azure-key-41877",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-41877::package-lock.json::sha256:f7d4be6e1a270be5"
+    },
+    {
+      "id": "secrets-azure-key-42202",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-42202::package-lock.json::sha256:308d317f98a04fca"
+    },
+    {
+      "id": "secrets-azure-key-43958",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-43958::package-lock.json::sha256:08ebdbfcc218fc0c"
+    },
+    {
+      "id": "secrets-azure-key-44677",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-44677::package-lock.json::sha256:080d8a3931221093"
+    },
+    {
+      "id": "secrets-azure-key-45218",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-45218::package-lock.json::sha256:2b07d88b8180b643"
+    },
+    {
+      "id": "secrets-azure-key-45604",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-45604::package-lock.json::sha256:2d2ca98152a9477c"
+    },
+    {
+      "id": "secrets-azure-key-46120",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-46120::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-46653",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-46653::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-47157",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-47157::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-47538",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-47538::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-47951",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-47951::package-lock.json::sha256:e6c11be19cf5c385"
+    },
+    {
+      "id": "secrets-azure-key-48326",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-48326::package-lock.json::sha256:513c6c3913ca906d"
+    },
+    {
+      "id": "secrets-azure-key-48627",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-48627::package-lock.json::sha256:8a7e92ad553884a0"
+    },
+    {
+      "id": "secrets-azure-key-49017",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-49017::package-lock.json::sha256:6b86c50a9e41d4fa"
+    },
+    {
+      "id": "secrets-azure-key-49384",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-49384::package-lock.json::sha256:3488b673a0e135f4"
+    },
+    {
+      "id": "secrets-azure-key-49707",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-49707::package-lock.json::sha256:d07cbf912fb24b48"
+    },
+    {
+      "id": "secrets-azure-key-50064",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-50064::package-lock.json::sha256:9bab9dd3a1b6d961"
+    },
+    {
+      "id": "secrets-azure-key-50381",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-50381::package-lock.json::sha256:ebfcbbbd226f545f"
+    },
+    {
+      "id": "secrets-azure-key-50756",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-50756::package-lock.json::sha256:be8d4621efb79f95"
+    },
+    {
+      "id": "secrets-azure-key-51124",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-51124::package-lock.json::sha256:1c94acca59103546"
+    },
+    {
+      "id": "secrets-azure-key-51718",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-51718::package-lock.json::sha256:3b0f4fc185b37130"
+    },
+    {
+      "id": "secrets-azure-key-52184",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-52184::package-lock.json::sha256:8392677bd78672d9"
+    },
+    {
+      "id": "secrets-azure-key-52671",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-52671::package-lock.json::sha256:d315d1d913868afd"
+    },
+    {
+      "id": "secrets-azure-key-52951",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-52951::package-lock.json::sha256:22b04777d3479d5e"
+    },
+    {
+      "id": "secrets-azure-key-53414",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-53414::package-lock.json::sha256:04a8edead16d6de6"
+    },
+    {
+      "id": "secrets-azure-key-53841",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-53841::package-lock.json::sha256:d2fcfdce0eaabcef"
+    },
+    {
+      "id": "secrets-azure-key-54579",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-54579::package-lock.json::sha256:4e954801e1506082"
+    },
+    {
+      "id": "secrets-azure-key-54938",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-54938::package-lock.json::sha256:d6f2328d2ecaa6bb"
+    },
+    {
+      "id": "secrets-azure-key-55254",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-55254::package-lock.json::sha256:9226c0bfeda60881"
+    },
+    {
+      "id": "secrets-azure-key-56176",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-56176::package-lock.json::sha256:2187545c55a4fafd"
+    },
+    {
+      "id": "secrets-azure-key-56626",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-56626::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-57134",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-57134::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-57613",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-57613::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-57970",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-57970::package-lock.json::sha256:7f616ef1cbc69590"
+    },
+    {
+      "id": "secrets-azure-key-58793",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-58793::package-lock.json::sha256:905ad297fc2346a5"
+    },
+    {
+      "id": "secrets-azure-key-59137",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-59137::package-lock.json::sha256:249a95df6aeb93a4"
+    },
+    {
+      "id": "secrets-azure-key-59518",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-59518::package-lock.json::sha256:232cb08cefdea786"
+    },
+    {
+      "id": "secrets-azure-key-60492",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-60492::package-lock.json::sha256:dbdb4e82cb59ee90"
+    },
+    {
+      "id": "secrets-azure-key-60818",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-60818::package-lock.json::sha256:ecd894c691b08b4b"
+    },
+    {
+      "id": "secrets-azure-key-61358",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-61358::package-lock.json::sha256:0d90896756f20523"
+    },
+    {
+      "id": "secrets-azure-key-61742",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-61742::package-lock.json::sha256:6e58a62abf6df596"
+    },
+    {
+      "id": "secrets-azure-key-62412",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-62412::package-lock.json::sha256:917604d93c5b0f59"
+    },
+    {
+      "id": "secrets-azure-key-62850",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-62850::package-lock.json::sha256:fdc56f6374b4d861"
+    },
+    {
+      "id": "secrets-azure-key-63273",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-63273::package-lock.json::sha256:bd2e72fd49357ea3"
+    },
+    {
+      "id": "secrets-azure-key-63807",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-63807::package-lock.json::sha256:d18c9da4dd554a56"
+    },
+    {
+      "id": "secrets-azure-key-64200",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-64200::package-lock.json::sha256:b6fde9ccbe2b06ad"
+    },
+    {
+      "id": "secrets-azure-key-64499",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-64499::package-lock.json::sha256:1d4a2a47c977156d"
+    },
+    {
+      "id": "secrets-azure-key-64990",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-64990::package-lock.json::sha256:0a82844231be3ad8"
+    },
+    {
+      "id": "secrets-azure-key-65422",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-65422::package-lock.json::sha256:2077c2dea5fc236f"
+    },
+    {
+      "id": "secrets-azure-key-65872",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-65872::package-lock.json::sha256:a329ce2de4f5fa98"
+    },
+    {
+      "id": "secrets-azure-key-66423",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-66423::package-lock.json::sha256:d90517c45dbf9b6f"
+    },
+    {
+      "id": "secrets-azure-key-66896",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-66896::package-lock.json::sha256:488590a995bdf7e3"
+    },
+    {
+      "id": "secrets-azure-key-67268",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-67268::package-lock.json::sha256:78ee6ffcf7442e26"
+    },
+    {
+      "id": "secrets-azure-key-67726",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-67726::package-lock.json::sha256:934ecfe9f94424f7"
+    },
+    {
+      "id": "secrets-azure-key-68083",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-68083::package-lock.json::sha256:61349c495d190fd6"
+    },
+    {
+      "id": "secrets-azure-key-68509",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-68509::package-lock.json::sha256:2f0659dca5ce6eab"
+    },
+    {
+      "id": "secrets-azure-key-68832",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-68832::package-lock.json::sha256:e30489eb889648b6"
+    },
+    {
+      "id": "secrets-azure-key-69258",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-69258::package-lock.json::sha256:9ee82a691a7e2325"
+    },
+    {
+      "id": "secrets-azure-key-69632",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-69632::package-lock.json::sha256:a460863599c39d6e"
+    },
+    {
+      "id": "secrets-azure-key-69995",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-69995::package-lock.json::sha256:b7b98dce5bd259ad"
+    },
+    {
+      "id": "secrets-azure-key-70309",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-70309::package-lock.json::sha256:5c7f1590e7b937fa"
+    },
+    {
+      "id": "secrets-azure-key-70577",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-70577::package-lock.json::sha256:d37f0dcee4682ad6"
+    },
+    {
+      "id": "secrets-azure-key-70957",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-70957::package-lock.json::sha256:62c5701fd50982bf"
+    },
+    {
+      "id": "secrets-azure-key-71371",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-71371::package-lock.json::sha256:ab633ba74a141162"
+    },
+    {
+      "id": "secrets-azure-key-71726",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-71726::package-lock.json::sha256:1785b9e5c39dd658"
+    },
+    {
+      "id": "secrets-azure-key-72221",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-72221::package-lock.json::sha256:a99aa85e47c4ee38"
+    },
+    {
+      "id": "secrets-azure-key-72539",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-72539::package-lock.json::sha256:e1a1780acaead690"
+    },
+    {
+      "id": "secrets-azure-key-73005",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-73005::package-lock.json::sha256:0c3d10b50fd72fb5"
+    },
+    {
+      "id": "secrets-azure-key-73535",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-73535::package-lock.json::sha256:0c55e555ee3732bc"
+    },
+    {
+      "id": "secrets-azure-key-74093",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-74093::package-lock.json::sha256:ef63619f7e1c8fb2"
+    },
+    {
+      "id": "secrets-azure-key-74532",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-74532::package-lock.json::sha256:ad81c9359462f226"
+    },
+    {
+      "id": "secrets-azure-key-75003",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-75003::package-lock.json::sha256:9daa6e62330cdcef"
+    },
+    {
+      "id": "secrets-azure-key-75392",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-75392::package-lock.json::sha256:9943f5cb0521a061"
+    },
+    {
+      "id": "secrets-azure-key-76007",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-76007::package-lock.json::sha256:5003dd8e47788e98"
+    },
+    {
+      "id": "secrets-azure-key-76637",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-76637::package-lock.json::sha256:a4a2979da89de4aa"
+    },
+    {
+      "id": "secrets-azure-key-77002",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-77002::package-lock.json::sha256:164ebb0bb9dff681"
+    },
+    {
+      "id": "secrets-azure-key-77370",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-77370::package-lock.json::sha256:efd06076763881d0"
+    },
+    {
+      "id": "secrets-azure-key-77726",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-77726::package-lock.json::sha256:8483363a270d95f2"
+    },
+    {
+      "id": "secrets-azure-key-78027",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-78027::package-lock.json::sha256:f1e43ea4db2a26f9"
+    },
+    {
+      "id": "secrets-azure-key-78465",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-78465::package-lock.json::sha256:905ad297fc2346a5"
+    },
+    {
+      "id": "secrets-azure-key-78815",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-78815::package-lock.json::sha256:aa2b01024b727329"
+    },
+    {
+      "id": "secrets-azure-key-79244",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-79244::package-lock.json::sha256:e03dcc6310dd4306"
+    },
+    {
+      "id": "secrets-azure-key-79674",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-79674::package-lock.json::sha256:d063cfff945a509e"
+    },
+    {
+      "id": "secrets-azure-key-80272",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-80272::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-80779",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-80779::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-81257",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-81257::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-81626",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-81626::package-lock.json::sha256:c300a7d0d0ff4ebb"
+    },
+    {
+      "id": "secrets-azure-key-82391",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-82391::package-lock.json::sha256:c20887640376050d"
+    },
+    {
+      "id": "secrets-azure-key-82816",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-82816::package-lock.json::sha256:811e06934cf1aa9e"
+    },
+    {
+      "id": "secrets-azure-key-83294",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-83294::package-lock.json::sha256:b9fb63e2d939b836"
+    },
+    {
+      "id": "secrets-azure-key-83654",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-83654::package-lock.json::sha256:f3a6a1fd55394f7d"
+    },
+    {
+      "id": "secrets-azure-key-84161",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-84161::package-lock.json::sha256:0b65014fd80c4162"
+    },
+    {
+      "id": "secrets-azure-key-84450",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-84450::package-lock.json::sha256:058887dec125923e"
+    },
+    {
+      "id": "secrets-azure-key-84927",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-84927::package-lock.json::sha256:83e07f88a00c789a"
+    },
+    {
+      "id": "secrets-azure-key-85532",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-85532::package-lock.json::sha256:d230529d4d0190c6"
+    },
+    {
+      "id": "secrets-azure-key-86443",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-86443::package-lock.json::sha256:cabe620a270e0e46"
+    },
+    {
+      "id": "secrets-azure-key-86940",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-86940::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-87452",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-87452::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-87935",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-87935::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-88319",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-88319::package-lock.json::sha256:9d6d2a3b462393e2"
+    },
+    {
+      "id": "secrets-azure-key-88943",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-88943::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-89455",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-89455::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-89938",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-89938::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-90320",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-90320::package-lock.json::sha256:a457983403ec5b9b"
+    },
+    {
+      "id": "secrets-azure-key-90943",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-90943::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-91436",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-91436::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-91882",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-91882::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-92316",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-92316::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-92688",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-92688::package-lock.json::sha256:23cc5bedf2962aa3"
+    },
+    {
+      "id": "secrets-azure-key-93394",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-93394::package-lock.json::sha256:140d839e4fe15b70"
+    },
+    {
+      "id": "secrets-azure-key-93914",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-93914::package-lock.json::sha256:9327f270442eb83b"
+    },
+    {
+      "id": "secrets-azure-key-94218",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-94218::package-lock.json::sha256:21428e327a752486"
+    },
+    {
+      "id": "secrets-azure-key-94623",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-94623::package-lock.json::sha256:4a45ab0163755750"
+    },
+    {
+      "id": "secrets-azure-key-94986",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-94986::package-lock.json::sha256:614ad699827aba94"
+    },
+    {
+      "id": "secrets-azure-key-95338",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-95338::package-lock.json::sha256:77421fa20cb17a3a"
+    },
+    {
+      "id": "secrets-azure-key-95670",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-95670::package-lock.json::sha256:d1df59293ea39cb4"
+    },
+    {
+      "id": "secrets-azure-key-96028",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-96028::package-lock.json::sha256:27dd1d66205a0d34"
+    },
+    {
+      "id": "secrets-azure-key-96404",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-96404::package-lock.json::sha256:e948146207fad3e2"
+    },
+    {
+      "id": "secrets-azure-key-96852",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-96852::package-lock.json::sha256:8bf3c34d9289f4e9"
+    },
+    {
+      "id": "secrets-azure-key-97373",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-97373::package-lock.json::sha256:7080f0492b15476c"
+    },
+    {
+      "id": "secrets-azure-key-97699",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-97699::package-lock.json::sha256:60e5def584c555a4"
+    },
+    {
+      "id": "secrets-azure-key-98087",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-98087::package-lock.json::sha256:124c87d4bea30f2a"
+    },
+    {
+      "id": "secrets-azure-key-98583",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-98583::package-lock.json::sha256:2f66984c2c9c9824"
+    },
+    {
+      "id": "secrets-azure-key-98901",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-98901::package-lock.json::sha256:3369eeb76b6b3483"
+    },
+    {
+      "id": "secrets-azure-key-99524",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-99524::package-lock.json::sha256:ba9fb4c939a5fd8e"
+    },
+    {
+      "id": "secrets-azure-key-99922",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-99922::package-lock.json::sha256:a6acb9c809f18535"
+    },
+    {
+      "id": "secrets-azure-key-100278",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-100278::package-lock.json::sha256:7e7bb06baffbf49d"
+    },
+    {
+      "id": "secrets-azure-key-100583",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-100583::package-lock.json::sha256:c1cb82954778fef2"
+    },
+    {
+      "id": "secrets-azure-key-100931",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-100931::package-lock.json::sha256:99ccf591ed17c8a8"
+    },
+    {
+      "id": "secrets-azure-key-101458",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-101458::package-lock.json::sha256:28e8ea3e4fb473ff"
+    },
+    {
+      "id": "secrets-azure-key-101870",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-101870::package-lock.json::sha256:905ad297fc2346a5"
+    },
+    {
+      "id": "secrets-azure-key-102215",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-102215::package-lock.json::sha256:249a95df6aeb93a4"
+    },
+    {
+      "id": "secrets-azure-key-102610",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-102610::package-lock.json::sha256:f59215c9ac8eaeb9"
+    },
+    {
+      "id": "secrets-azure-key-103056",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-103056::package-lock.json::sha256:4e19e1da974a66de"
+    },
+    {
+      "id": "secrets-azure-key-103626",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-103626::package-lock.json::sha256:24ea121d800e0e12"
+    },
+    {
+      "id": "secrets-azure-key-104062",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-104062::package-lock.json::sha256:d12082f34b3b08b1"
+    },
+    {
+      "id": "secrets-azure-key-104603",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-104603::package-lock.json::sha256:99f1711635167656"
+    },
+    {
+      "id": "secrets-azure-key-104945",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-104945::package-lock.json::sha256:080d8a3931221093"
+    },
+    {
+      "id": "secrets-azure-key-105445",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-105445::package-lock.json::sha256:2a12f90fa286ddd4"
+    },
+    {
+      "id": "secrets-azure-key-105897",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-105897::package-lock.json::sha256:8c19f8ffc07d9cf4"
+    },
+    {
+      "id": "secrets-azure-key-106214",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-106214::package-lock.json::sha256:2e5c1f1886ba13f5"
+    },
+    {
+      "id": "secrets-azure-key-106617",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-106617::package-lock.json::sha256:fae7689992d3d516"
+    },
+    {
+      "id": "secrets-azure-key-107002",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-107002::package-lock.json::sha256:e5a36feac6148348"
+    },
+    {
+      "id": "secrets-azure-key-107815",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-107815::package-lock.json::sha256:079a23c6ca2b0613"
+    },
+    {
+      "id": "secrets-azure-key-108279",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-108279::package-lock.json::sha256:8653cb7cd932af5c"
+    },
+    {
+      "id": "secrets-azure-key-108763",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-108763::package-lock.json::sha256:fdf84b12bd7d5b64"
+    },
+    {
+      "id": "secrets-azure-key-109711",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-109711::package-lock.json::sha256:905ad297fc2346a5"
+    },
+    {
+      "id": "secrets-azure-key-110054",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-110054::package-lock.json::sha256:aa2b01024b727329"
+    },
+    {
+      "id": "secrets-azure-key-110476",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-110476::package-lock.json::sha256:e03dcc6310dd4306"
+    },
+    {
+      "id": "secrets-azure-key-110907",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-110907::package-lock.json::sha256:b310de305f5cb776"
+    },
+    {
+      "id": "secrets-azure-key-111529",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-111529::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-111970",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-111970::package-lock.json::sha256:32128cfb1bfa99db"
+    },
+    {
+      "id": "secrets-azure-key-112514",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-112514::package-lock.json::sha256:05c5d0b54231c3f7"
+    },
+    {
+      "id": "secrets-azure-key-112936",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-112936::package-lock.json::sha256:9017dcc78668abf8"
+    },
+    {
+      "id": "secrets-azure-key-113862",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-113862::package-lock.json::sha256:1046b77746d517cc"
+    },
+    {
+      "id": "secrets-azure-key-114145",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-114145::package-lock.json::sha256:0a1ce5fa9c7f20f8"
+    },
+    {
+      "id": "secrets-azure-key-114545",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-114545::package-lock.json::sha256:e5f6278706df1155"
+    },
+    {
+      "id": "secrets-azure-key-115032",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-115032::package-lock.json::sha256:8c56d38f53c718e6"
+    },
+    {
+      "id": "secrets-azure-key-115488",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-115488::package-lock.json::sha256:578be4e224d7d4be"
+    },
+    {
+      "id": "secrets-azure-key-115982",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-115982::package-lock.json::sha256:2b34f953ccce64cf"
+    },
+    {
+      "id": "secrets-azure-key-116425",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-116425::package-lock.json::sha256:7a50131a868c19db"
+    },
+    {
+      "id": "secrets-azure-key-116877",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-116877::package-lock.json::sha256:0c9dc30d9d96597e"
+    },
+    {
+      "id": "secrets-azure-key-117212",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-117212::package-lock.json::sha256:ccf9554d02024029"
+    },
+    {
+      "id": "secrets-azure-key-117672",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-117672::package-lock.json::sha256:76f95285e48f87be"
+    },
+    {
+      "id": "secrets-azure-key-118154",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-118154::package-lock.json::sha256:585045d27829e667"
+    },
+    {
+      "id": "secrets-azure-key-118630",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-118630::package-lock.json::sha256:a87d85319d524e94"
+    },
+    {
+      "id": "secrets-azure-key-119166",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-119166::package-lock.json::sha256:6498671a89099439"
+    },
+    {
+      "id": "secrets-azure-key-119596",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-119596::package-lock.json::sha256:2b817789e0368f8a"
+    },
+    {
+      "id": "secrets-azure-key-120239",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-120239::package-lock.json::sha256:b511ee74ffa37e6e"
+    },
+    {
+      "id": "secrets-azure-key-120531",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-120531::package-lock.json::sha256:abcc5f86c200d109"
+    },
+    {
+      "id": "secrets-azure-key-120888",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-120888::package-lock.json::sha256:29a6adf15579d80b"
+    },
+    {
+      "id": "secrets-azure-key-121501",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-121501::package-lock.json::sha256:c0d726b7b053c056"
+    },
+    {
+      "id": "secrets-azure-key-121792",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-121792::package-lock.json::sha256:78091179c905a000"
+    },
+    {
+      "id": "secrets-azure-key-122191",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-122191::package-lock.json::sha256:ce0dc4023b68581f"
+    },
+    {
+      "id": "secrets-azure-key-122561",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-122561::package-lock.json::sha256:12c747c15f2a659a"
+    },
+    {
+      "id": "secrets-azure-key-122949",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-122949::package-lock.json::sha256:a3cd91869f0b39ee"
+    },
+    {
+      "id": "secrets-azure-key-123385",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-123385::package-lock.json::sha256:73762210356e577a"
+    },
+    {
+      "id": "secrets-azure-key-123680",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-123680::package-lock.json::sha256:c7097c50b20a5c24"
+    },
+    {
+      "id": "secrets-azure-key-124114",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-124114::package-lock.json::sha256:ec36708d93ec0b72"
+    },
+    {
+      "id": "secrets-azure-key-124480",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-124480::package-lock.json::sha256:d93224dda7729c66"
+    },
+    {
+      "id": "secrets-azure-key-125008",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-125008::package-lock.json::sha256:3fb92b99b25d4e3c"
+    },
+    {
+      "id": "secrets-azure-key-125530",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-125530::package-lock.json::sha256:3e5baeeebf449933"
+    },
+    {
+      "id": "secrets-azure-key-125888",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-125888::package-lock.json::sha256:a98d6791f74088f2"
+    },
+    {
+      "id": "secrets-azure-key-126314",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-126314::package-lock.json::sha256:93c41757e2504f04"
+    },
+    {
+      "id": "secrets-azure-key-126613",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-126613::package-lock.json::sha256:e029ab2078d8a42b"
+    },
+    {
+      "id": "secrets-azure-key-126951",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-126951::package-lock.json::sha256:171bdc38e54a391d"
+    },
+    {
+      "id": "secrets-azure-key-127286",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-127286::package-lock.json::sha256:ec2a1752c58a5ed3"
+    },
+    {
+      "id": "secrets-azure-key-127603",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-127603::package-lock.json::sha256:7fb7f15e6d6d2133"
+    },
+    {
+      "id": "secrets-azure-key-128009",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-128009::package-lock.json::sha256:5cb061c65e2c558f"
+    },
+    {
+      "id": "secrets-azure-key-128377",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-128377::package-lock.json::sha256:f3aa1f0c456ccee2"
+    },
+    {
+      "id": "secrets-azure-key-128824",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-128824::package-lock.json::sha256:8192145efefd1b6b"
+    },
+    {
+      "id": "secrets-azure-key-129190",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-129190::package-lock.json::sha256:9bef47c60261a1dc"
+    },
+    {
+      "id": "secrets-azure-key-129458",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-129458::package-lock.json::sha256:8f4bbafd027adf92"
+    },
+    {
+      "id": "secrets-azure-key-129800",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-129800::package-lock.json::sha256:c4cbf3b9d8655703"
+    },
+    {
+      "id": "secrets-azure-key-130135",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-130135::package-lock.json::sha256:d6200ba2f237a4d0"
+    },
+    {
+      "id": "secrets-azure-key-130436",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-130436::package-lock.json::sha256:93069f36c7e54feb"
+    },
+    {
+      "id": "secrets-azure-key-130831",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-130831::package-lock.json::sha256:610f4a23f531d374"
+    },
+    {
+      "id": "secrets-azure-key-131356",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-131356::package-lock.json::sha256:21fca72f006d993f"
+    },
+    {
+      "id": "secrets-azure-key-131786",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-131786::package-lock.json::sha256:33da4559c040f369"
+    },
+    {
+      "id": "secrets-azure-key-132141",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-132141::package-lock.json::sha256:91f617cb4b228259"
+    },
+    {
+      "id": "secrets-azure-key-132584",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-132584::package-lock.json::sha256:5b7944a4d8077d57"
+    },
+    {
+      "id": "secrets-azure-key-133356",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-133356::package-lock.json::sha256:b6472e460208aa1f"
+    },
+    {
+      "id": "secrets-azure-key-134112",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-134112::package-lock.json::sha256:ec06c2fcd238a31c"
+    },
+    {
+      "id": "secrets-azure-key-134584",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-134584::package-lock.json::sha256:665be44c6a025010"
+    },
+    {
+      "id": "secrets-azure-key-134927",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-134927::package-lock.json::sha256:1f8d53f6ba17898d"
+    },
+    {
+      "id": "secrets-azure-key-135331",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-135331::package-lock.json::sha256:9d38348e45d22b74"
+    },
+    {
+      "id": "secrets-azure-key-135694",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-135694::package-lock.json::sha256:32ee34f5d6bc9834"
+    },
+    {
+      "id": "secrets-azure-key-136110",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-136110::package-lock.json::sha256:d3aab4bac5b21ef2"
+    },
+    {
+      "id": "secrets-azure-key-136480",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-136480::package-lock.json::sha256:3e3e9014d67ddd90"
+    },
+    {
+      "id": "secrets-azure-key-136837",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-136837::package-lock.json::sha256:3acdd8e0661f2990"
+    },
+    {
+      "id": "secrets-azure-key-137361",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-137361::package-lock.json::sha256:0d1b987bdbb53ce8"
+    },
+    {
+      "id": "secrets-azure-key-137743",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-137743::package-lock.json::sha256:68ee05db3b4f0411"
+    },
+    {
+      "id": "secrets-azure-key-138144",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-138144::package-lock.json::sha256:c3d7a7f540e16104"
+    },
+    {
+      "id": "secrets-azure-key-138591",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-138591::package-lock.json::sha256:973b6a61963c14d8"
+    },
+    {
+      "id": "secrets-azure-key-139177",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-139177::package-lock.json::sha256:a74a7916662aeb5e"
+    },
+    {
+      "id": "secrets-azure-key-139630",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-139630::package-lock.json::sha256:88e3ce87a72d4421"
+    },
+    {
+      "id": "secrets-azure-key-140070",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-140070::package-lock.json::sha256:7219557a77c917fa"
+    },
+    {
+      "id": "secrets-azure-key-140515",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-140515::package-lock.json::sha256:88e3ce87a72d4421"
+    },
+    {
+      "id": "secrets-azure-key-140946",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-140946::package-lock.json::sha256:36a5b2d2cd61978a"
+    },
+    {
+      "id": "secrets-azure-key-141388",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-141388::package-lock.json::sha256:88e3ce87a72d4421"
+    },
+    {
+      "id": "secrets-azure-key-141801",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-141801::package-lock.json::sha256:3de61a15d54366ea"
+    },
+    {
+      "id": "secrets-azure-key-142211",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-142211::package-lock.json::sha256:ecc545e3b72d0324"
+    },
+    {
+      "id": "secrets-azure-key-142632",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-142632::package-lock.json::sha256:9dc809a95385a4b6"
+    },
+    {
+      "id": "secrets-azure-key-142921",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-142921::package-lock.json::sha256:293a4195681adabe"
+    },
+    {
+      "id": "secrets-azure-key-143278",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-143278::package-lock.json::sha256:83cda7ae5f739603"
+    },
+    {
+      "id": "secrets-azure-key-143712",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-143712::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-144141",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-144141::package-lock.json::sha256:bfa775ae379c9ffa"
+    },
+    {
+      "id": "secrets-azure-key-144491",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-144491::package-lock.json::sha256:517a6c3dee987b56"
+    },
+    {
+      "id": "secrets-azure-key-144877",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-144877::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-145290",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-145290::package-lock.json::sha256:7598053de431854d"
+    },
+    {
+      "id": "secrets-azure-key-146083",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-146083::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-146482",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-146482::package-lock.json::sha256:3b6ad2698c45a2a7"
+    },
+    {
+      "id": "secrets-azure-key-146980",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-146980::package-lock.json::sha256:4f69ffff0d541148"
+    },
+    {
+      "id": "secrets-azure-key-147428",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-147428::package-lock.json::sha256:be7b44c7602d4c45"
+    },
+    {
+      "id": "secrets-azure-key-147795",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-147795::package-lock.json::sha256:1ded14a299c37b33"
+    },
+    {
+      "id": "secrets-azure-key-148149",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-148149::package-lock.json::sha256:05242daecefbbb12"
+    },
+    {
+      "id": "secrets-azure-key-148643",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-148643::package-lock.json::sha256:096298ef134d22a3"
+    },
+    {
+      "id": "secrets-azure-key-148920",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-148920::package-lock.json::sha256:29d4c0d197623a1c"
+    },
+    {
+      "id": "secrets-azure-key-149692",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-149692::package-lock.json::sha256:f97fa8a0b43ec67b"
+    },
+    {
+      "id": "secrets-azure-key-150041",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-150041::package-lock.json::sha256:f0bcd574f719a5c0"
+    },
+    {
+      "id": "secrets-azure-key-150536",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-150536::package-lock.json::sha256:b6ab9237a40305b6"
+    },
+    {
+      "id": "secrets-azure-key-151017",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-151017::package-lock.json::sha256:680aa9aeb23272be"
+    },
+    {
+      "id": "secrets-azure-key-151319",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-151319::package-lock.json::sha256:24df44422ac7cbe1"
+    },
+    {
+      "id": "secrets-azure-key-151637",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-151637::package-lock.json::sha256:60fe420853c2a1ab"
+    },
+    {
+      "id": "secrets-azure-key-151975",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-151975::package-lock.json::sha256:f4e25beaac8fe48f"
+    },
+    {
+      "id": "secrets-azure-key-152338",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-152338::package-lock.json::sha256:70592a452198623c"
+    },
+    {
+      "id": "secrets-azure-key-152939",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-152939::package-lock.json::sha256:dbdb4e82cb59ee90"
+    },
+    {
+      "id": "secrets-azure-key-153244",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-153244::package-lock.json::sha256:1af421e4a5d5783c"
+    },
+    {
+      "id": "secrets-azure-key-153889",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-153889::package-lock.json::sha256:c170fab818310882"
+    },
+    {
+      "id": "secrets-azure-key-154331",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-154331::package-lock.json::sha256:4075e0d39a45cda3"
+    },
+    {
+      "id": "secrets-azure-key-154801",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-154801::package-lock.json::sha256:4fb9b4e99f1a6344"
+    },
+    {
+      "id": "secrets-azure-key-155109",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-155109::package-lock.json::sha256:0a2a8d665946df55"
+    },
+    {
+      "id": "secrets-azure-key-155414",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-155414::package-lock.json::sha256:1a61ba5587b624c8"
+    },
+    {
+      "id": "secrets-azure-key-155845",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-155845::package-lock.json::sha256:cd9bac1816ba96f8"
+    },
+    {
+      "id": "secrets-azure-key-156361",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-156361::package-lock.json::sha256:7cc7cbe98bddbfca"
+    },
+    {
+      "id": "secrets-azure-key-156731",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-156731::package-lock.json::sha256:5d2227b139aeed0f"
+    },
+    {
+      "id": "secrets-azure-key-157278",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-157278::package-lock.json::sha256:163f1c6209e91d0d"
+    },
+    {
+      "id": "secrets-azure-key-157687",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-157687::package-lock.json::sha256:ed6e3b0ca8208b52"
+    },
+    {
+      "id": "secrets-azure-key-158092",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-158092::package-lock.json::sha256:3d9f36cf47bff824"
+    },
+    {
+      "id": "secrets-azure-key-158375",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-158375::package-lock.json::sha256:c9046895a50f6746"
+    },
+    {
+      "id": "secrets-azure-key-158746",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-158746::package-lock.json::sha256:58a6ed4b9a680b92"
+    },
+    {
+      "id": "secrets-azure-key-159210",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-159210::package-lock.json::sha256:9ad5172672f4e449"
+    },
+    {
+      "id": "secrets-azure-key-159626",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-159626::package-lock.json::sha256:23063bab76f94b0b"
+    },
+    {
+      "id": "secrets-azure-key-160021",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-160021::package-lock.json::sha256:62ed894114c92e47"
+    },
+    {
+      "id": "secrets-azure-key-160376",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-160376::package-lock.json::sha256:8763ae0131f7f935"
+    },
+    {
+      "id": "secrets-azure-key-160854",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-160854::package-lock.json::sha256:bebdd7fe5c45c4cc"
+    },
+    {
+      "id": "secrets-azure-key-161302",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-161302::package-lock.json::sha256:05fcab7ef5bd7a45"
+    },
+    {
+      "id": "secrets-azure-key-161884",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-161884::package-lock.json::sha256:49d539a437821d01"
+    },
+    {
+      "id": "secrets-azure-key-162238",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-162238::package-lock.json::sha256:0b77d7f61ede3645"
+    },
+    {
+      "id": "secrets-azure-key-162796",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-162796::package-lock.json::sha256:f0758df3dadf20f3"
+    },
+    {
+      "id": "secrets-azure-key-163110",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-163110::package-lock.json::sha256:51ab494b93ab4266"
+    },
+    {
+      "id": "secrets-azure-key-163584",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-163584::package-lock.json::sha256:1828d27889a9cb14"
+    },
+    {
+      "id": "secrets-azure-key-164023",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-164023::package-lock.json::sha256:8b80c5789ddcf768"
+    },
+    {
+      "id": "secrets-azure-key-164370",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-164370::package-lock.json::sha256:e2e95e9227772904"
+    },
+    {
+      "id": "secrets-azure-key-164869",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-164869::package-lock.json::sha256:fca14d9464edb1d5"
+    },
+    {
+      "id": "secrets-azure-key-165500",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-165500::package-lock.json::sha256:c4b64be707721bfa"
+    },
+    {
+      "id": "secrets-azure-key-165795",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-165795::package-lock.json::sha256:2af145b8290d1109"
+    },
+    {
+      "id": "secrets-azure-key-166124",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-166124::package-lock.json::sha256:1a6d94a7392d19d4"
+    },
+    {
+      "id": "secrets-azure-key-166493",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-166493::package-lock.json::sha256:2f30fd9cbf0e0e7c"
+    },
+    {
+      "id": "secrets-azure-key-166835",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-166835::package-lock.json::sha256:2b07d88b8180b643"
+    },
+    {
+      "id": "secrets-azure-key-167213",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-167213::package-lock.json::sha256:d857be919c86d399"
+    },
+    {
+      "id": "secrets-azure-key-167560",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-167560::package-lock.json::sha256:b57718295ec4a1e4"
+    },
+    {
+      "id": "secrets-azure-key-168099",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-168099::package-lock.json::sha256:19cde0f586746dcf"
+    },
+    {
+      "id": "secrets-azure-key-168403",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-168403::package-lock.json::sha256:e96090acf93493ba"
+    },
+    {
+      "id": "secrets-azure-key-168837",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-168837::package-lock.json::sha256:e1307788094a9e95"
+    },
+    {
+      "id": "secrets-azure-key-169198",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-169198::package-lock.json::sha256:949c6ade393c3eac"
+    },
+    {
+      "id": "secrets-azure-key-169542",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-169542::package-lock.json::sha256:73b14f7b86815f10"
+    },
+    {
+      "id": "secrets-azure-key-169985",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-169985::package-lock.json::sha256:15c681e188309bf8"
+    },
+    {
+      "id": "secrets-azure-key-170402",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-170402::package-lock.json::sha256:cfcdfd39e757cdc2"
+    },
+    {
+      "id": "secrets-azure-key-170934",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-170934::package-lock.json::sha256:0dda8b0a5c546b62"
+    },
+    {
+      "id": "secrets-azure-key-171309",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-171309::package-lock.json::sha256:a0b280d9f87a79a3"
+    },
+    {
+      "id": "secrets-azure-key-171820",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-171820::package-lock.json::sha256:89ddc87de08067d1"
+    },
+    {
+      "id": "secrets-azure-key-172298",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-172298::package-lock.json::sha256:4f5218095d5e0e78"
+    },
+    {
+      "id": "secrets-azure-key-172696",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-172696::package-lock.json::sha256:da7576e06be12fb2"
+    },
+    {
+      "id": "secrets-azure-key-173101",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-173101::package-lock.json::sha256:d9551efa39aa68ae"
+    },
+    {
+      "id": "secrets-azure-key-173423",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-173423::package-lock.json::sha256:b08b18677eca0bd6"
+    },
+    {
+      "id": "secrets-azure-key-173813",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-173813::package-lock.json::sha256:efafca7018548c25"
+    },
+    {
+      "id": "secrets-azure-key-174247",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-174247::package-lock.json::sha256:18a22231ce35d816"
+    },
+    {
+      "id": "secrets-azure-key-174618",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-174618::package-lock.json::sha256:cf51431919151029"
+    },
+    {
+      "id": "secrets-azure-key-174978",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-174978::package-lock.json::sha256:901ad18997b1d7c5"
+    },
+    {
+      "id": "secrets-azure-key-175518",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-175518::package-lock.json::sha256:901ad18997b1d7c5"
+    },
+    {
+      "id": "secrets-azure-key-176018",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-176018::package-lock.json::sha256:894bb321271dc166"
+    },
+    {
+      "id": "secrets-azure-key-176472",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-176472::package-lock.json::sha256:894bb321271dc166"
+    },
+    {
+      "id": "secrets-azure-key-176894",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-176894::package-lock.json::sha256:d34c24bce1fa62d1"
+    },
+    {
+      "id": "secrets-azure-key-177333",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-177333::package-lock.json::sha256:c0318f823d2260b3"
+    },
+    {
+      "id": "secrets-azure-key-177734",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-177734::package-lock.json::sha256:dc3a7f75eeedf4ff"
+    },
+    {
+      "id": "secrets-azure-key-178301",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-178301::package-lock.json::sha256:21f8be20b572c3d6"
+    },
+    {
+      "id": "secrets-azure-key-178652",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-178652::package-lock.json::sha256:1c252a7ac5ff0e91"
+    },
+    {
+      "id": "secrets-azure-key-179119",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-179119::package-lock.json::sha256:9b7c4cc45447fabb"
+    },
+    {
+      "id": "secrets-azure-key-179546",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-179546::package-lock.json::sha256:60a0db4b5b95823f"
+    },
+    {
+      "id": "secrets-azure-key-180051",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-180051::package-lock.json::sha256:e1bcb78d8a8f13e2"
+    },
+    {
+      "id": "secrets-azure-key-180527",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-180527::package-lock.json::sha256:0dd0ffe4bb8642e2"
+    },
+    {
+      "id": "secrets-azure-key-180906",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-180906::package-lock.json::sha256:1769c62f2cfd0b06"
+    },
+    {
+      "id": "secrets-azure-key-181291",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-181291::package-lock.json::sha256:1c3fd3d172b34557"
+    },
+    {
+      "id": "secrets-azure-key-181678",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-181678::package-lock.json::sha256:563b943ee5008eb1"
+    },
+    {
+      "id": "secrets-azure-key-181969",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-181969::package-lock.json::sha256:9b08d17f097826df"
+    },
+    {
+      "id": "secrets-azure-key-182487",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-182487::package-lock.json::sha256:ca3c1077fb769bb3"
+    },
+    {
+      "id": "secrets-azure-key-182852",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-182852::package-lock.json::sha256:54822723f9463943"
+    },
+    {
+      "id": "secrets-azure-key-183244",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-183244::package-lock.json::sha256:382b28c41c44a3bf"
+    },
+    {
+      "id": "secrets-azure-key-183623",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-183623::package-lock.json::sha256:7dd00a2b5e7e91b5"
+    },
+    {
+      "id": "secrets-azure-key-184107",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-184107::package-lock.json::sha256:86c8acf05a4a7ae7"
+    },
+    {
+      "id": "secrets-azure-key-184404",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-184404::package-lock.json::sha256:48bd6015b9c8e931"
+    },
+    {
+      "id": "secrets-azure-key-184727",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-184727::package-lock.json::sha256:8fccdb87891fc386"
+    },
+    {
+      "id": "secrets-azure-key-185170",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-185170::package-lock.json::sha256:95f4886709950e41"
+    },
+    {
+      "id": "secrets-azure-key-185616",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-185616::package-lock.json::sha256:11396becdad963dc"
+    },
+    {
+      "id": "secrets-azure-key-185967",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-185967::package-lock.json::sha256:a94cfc0b40dd38de"
+    },
+    {
+      "id": "secrets-azure-key-186364",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-186364::package-lock.json::sha256:5b476217f24385c1"
+    },
+    {
+      "id": "secrets-azure-key-186695",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-186695::package-lock.json::sha256:d4a511aeede99482"
+    },
+    {
+      "id": "secrets-azure-key-186974",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-186974::package-lock.json::sha256:703d01776b443c33"
+    },
+    {
+      "id": "secrets-azure-key-187516",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-187516::package-lock.json::sha256:88f7b911580996b2"
+    },
+    {
+      "id": "secrets-azure-key-187839",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-187839::package-lock.json::sha256:4a0a9990b61f7f94"
+    },
+    {
+      "id": "secrets-azure-key-188194",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-188194::package-lock.json::sha256:a99ef651d805d841"
+    },
+    {
+      "id": "secrets-azure-key-188668",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-188668::package-lock.json::sha256:a247075860c41b89"
+    },
+    {
+      "id": "secrets-azure-key-188998",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-188998::package-lock.json::sha256:57c29801c0559259"
+    },
+    {
+      "id": "secrets-azure-key-189343",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-189343::package-lock.json::sha256:3f3259a995481591"
+    },
+    {
+      "id": "secrets-azure-key-189951",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-189951::package-lock.json::sha256:3f3259a995481591"
+    },
+    {
+      "id": "secrets-azure-key-190519",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-190519::package-lock.json::sha256:98ec39b3a29447d8"
+    },
+    {
+      "id": "secrets-azure-key-190811",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-190811::package-lock.json::sha256:9d1e3c173cec9e79"
+    },
+    {
+      "id": "secrets-azure-key-191439",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-191439::package-lock.json::sha256:91d7d21cd6ccc89e"
+    },
+    {
+      "id": "secrets-azure-key-191762",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-191762::package-lock.json::sha256:1876291ffb6e2a86"
+    },
+    {
+      "id": "secrets-azure-key-192112",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-192112::package-lock.json::sha256:1111cb018f75d03f"
+    },
+    {
+      "id": "secrets-azure-key-192407",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-192407::package-lock.json::sha256:4f92085c3366a57b"
+    },
+    {
+      "id": "secrets-azure-key-193034",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-193034::package-lock.json::sha256:998a7d1908ad1c25"
+    },
+    {
+      "id": "secrets-azure-key-193380",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-193380::package-lock.json::sha256:db681e4b1f469e5d"
+    },
+    {
+      "id": "secrets-azure-key-193788",
+      "severity": "critical",
+      "category": "secrets",
+      "title": "Hardcoded Azure storage account key",
+      "file": "package-lock.json",
+      "fingerprint": "secrets-azure-key-193788::package-lock.json::sha256:c220028799f38474"
+    },
+    {
+      "id": "hooks-no-pretooluse",
+      "severity": "medium",
+      "category": "misconfiguration",
+      "title": "No PreToolUse security hooks configured",
+      "file": ".claude/settings.local.json",
+      "fingerprint": "hooks-no-pretooluse::.claude/settings.local.json::sha256:no-evidence"
+    }
+  ]
+}
