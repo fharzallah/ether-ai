@@ -20,6 +20,18 @@ body{display:flex;height:100vh;overflow:hidden;background:var(--b1);color:var(--
 .login-card p{color:var(--t3);font-size:.88rem;margin-bottom:28px;font-weight:400;line-height:1.5}
 .login-card input{display:block;width:100%;padding:12px 16px;margin-bottom:12px;border-radius:var(--radius);border:1px solid var(--bd);background:var(--b1);color:var(--t1);font-size:.88rem;outline:none;transition:border .2s,box-shadow .2s}
 .login-card input:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--gl)}
+.login-screen{flex-direction:column}
+.login-tabs{display:flex;gap:4px;background:var(--b1);border:1px solid var(--bd);border-radius:12px;padding:4px;margin-bottom:16px}
+.login-tabs button{flex:1;padding:8px;border:0;border-radius:9px;background:transparent;color:var(--t3);font:inherit;font-size:.82rem;font-weight:600;cursor:pointer}
+.login-tabs button.on{background:var(--b2);color:var(--t1);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.login-info{background:var(--gl);border:1px solid var(--ac);color:var(--t1)!important;border-radius:10px;padding:10px 12px;font-size:.8rem!important;margin-bottom:14px!important;text-align:left}
+.login-link{display:inline-block;margin-top:14px;font-size:.78rem;color:var(--t3);text-decoration:none}
+.login-link:hover{color:var(--ac)}
+#LS .ls-up,#LS .ls-rec,#LS .ls-in{display:none}
+#LS[data-mode="signup"] .ls-up,#LS[data-mode="recover"] .ls-rec,#LS[data-mode="login"] .ls-in{display:block}
+#LS[data-mode="recover"] .login-tabs{display:none}
+.login-card p strong{color:var(--t1)}
+.rc-code{display:block;font-family:ui-monospace,Menlo,monospace;font-size:1.15rem;letter-spacing:2px;background:var(--b1);border:1px dashed var(--ac);border-radius:12px;padding:14px;margin:0 0 14px;color:var(--t1);user-select:all}
 
 /* BUTTONS */
 .btn-p{padding:11px;width:100%;border:none;border-radius:var(--radius);background:var(--ac);color:#fff;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s}

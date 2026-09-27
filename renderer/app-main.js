@@ -1176,7 +1176,7 @@ function loadProviderKeys() {
             var el = G('KEY-' + p.toUpperCase());
             if (!el) continue;
             el.value = '';
-            el.placeholder = providerKeyStatus[p] ? 'Cle enregistree (chiffree) — laisser vide pour conserver' : 'Non configuree';
+            el.placeholder = providerKeyStatus[p] ? 'Ta cle perso est enregistree dans ce navigateur — laisser vide pour la conserver' : 'Facultatif : ta cle perso (sinon cle du serveur)';
         }
         loadCustomProviders();
         updProviderStatuses();
@@ -1240,7 +1240,7 @@ G('SAVE-KEYS').onclick = function() {
         for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
             var p = BUILTIN_PROVIDERS[i];
             var el = G('KEY-' + p.toUpperCase());
-            if (el) el.placeholder = providerKeyStatus[p] ? 'Cle enregistree (chiffree) — laisser vide pour conserver' : 'Non configuree';
+            if (el) el.placeholder = providerKeyStatus[p] ? 'Ta cle perso est enregistree dans ce navigateur — laisser vide pour la conserver' : 'Facultatif : ta cle perso (sinon cle du serveur)';
         }
         updProviderStatuses();
         if (failed.length) {
@@ -1280,7 +1280,13 @@ function updProviderStatuses() {
             opEl.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Non configure';
         }
     }
-    // OpenRouter (cle cote serveur, routeur gratuit)
+    // Workers AI et OpenRouter : cles cote serveur
+    var waStatusEl = G('PROV-WORKERSAI-STATUS');
+    if (waStatusEl) {
+        waStatusEl.innerHTML = providerStatus.workersai
+            ? '<span class="prov-dot prov-dot-green"></span>Actif'
+            : '<span class="prov-dot prov-dot-red"></span>Indisponible';
+    }
     var orStatusEl = G('PROV-OPENROUTER-STATUS');
     if (orStatusEl) {
         orStatusEl.innerHTML = providerStatus.openrouter
@@ -1331,11 +1337,11 @@ function testProvider(provider) {
             xhrM.onerror = function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; };
             xhrM.send(JSON.stringify({ model: 'mistral-small-latest', messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 }));
         }
-    } else if (provider === 'openrouter') {
-        window.etherDesktop.providerKeysTest('openrouter').then(function(r) {
-            providerStatus.openrouter = !!r.ok;
+    } else if (provider === 'openrouter' || provider === 'workersai') {
+        window.etherDesktop.providerKeysTest(provider).then(function(r) {
+            providerStatus[provider] = !!r.ok;
             statusEl.innerHTML = r.ok ? '<span class="prov-dot prov-dot-green"></span>Actif' : '<span class="prov-dot prov-dot-red"></span>Indisponible';
-        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; providerStatus.openrouter = false; });
+        })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Indisponible'; providerStatus[provider] = false; });
     } else if (provider === 'custom') {
         // Les fournisseurs personnalises se testent un par un depuis leur ligne dans la liste.
         var n = customProviders.length;
@@ -1450,57 +1456,14 @@ G('NET-TOGGLE').onchange = function() {
 // === ETHER — Features (accounts, ephemeral, teacher, tabs, shortcuts, etc.) ===
 
 // === DECONNEXION ===
-G('LOGOUT').onclick = function() {
-    if (!confirm('Se deconnecter ?')) return;
-    // Sauvegarder le compte actuel dans la liste des comptes
-    var accounts = sGet('accounts', []);
-    var found = false;
-    for (var i = 0; i < accounts.length; i++) {
-        if (accounts[i].name === user.name) { found = true; break; }
-    }
-    if (!found) { accounts.push(user); sSet('accounts', accounts); }
-    sSet('user', null);
+// Rien du compte ne reste dans ce navigateur : les donnees vivent sur le
+// serveur et reviennent a la prochaine connexion.
+function logout() {
     G('SM').classList.add('hidden');
-    location.reload();
-};
-
-// === MULTI-COMPTES ===
-G('ADD-ACC').onclick = function() {
-    // Sauvegarder le compte actuel
-    var accounts = sGet('accounts', []);
-    var found = false;
-    for (var i = 0; i < accounts.length; i++) {
-        if (accounts[i].name === user.name) { found = true; break; }
-    }
-    if (!found) { accounts.push(user); sSet('accounts', accounts); }
-    // Deconnecter et montrer le login
-    sSet('user', null);
-    G('SM').classList.add('hidden');
-    location.reload();
-};
-
-G('SWITCH-ACC').onclick = function() {
-    var accounts = sGet('accounts', []);
-    if (accounts.length < 2) { alert('Un seul compte enregistre.'); return; }
-    var list = '';
-    for (var i = 0; i < accounts.length; i++) {
-        list += (i + 1) + '. ' + accounts[i].name + (accounts[i].name === user.name ? ' (actuel)' : '') + '\n';
-    }
-    var choice = prompt('Changer de compte :\n\n' + list + '\nTape le numero :');
-    if (!choice) return;
-    var idx = parseInt(choice) - 1;
-    if (idx < 0 || idx >= accounts.length) return;
-    user = accounts[idx];
-    sSet('user', user);
-    location.reload();
-};
-
-// Afficher le bouton switch si plusieurs comptes
-function updAccountUI() {
-    var accounts = sGet('accounts', []);
-    G('SWITCH-ACC').style.display = accounts.length > 1 ? 'block' : 'none';
+    window.etherDesktop.authLogout().then(function() { location.reload(); });
 }
-updAccountUI();
+G('LOGOUT').onclick = function() { if (confirm('Se deconnecter ?')) logout(); };
+G('ADD-ACC').onclick = function() { if (confirm('Se deconnecter pour utiliser un autre compte ?')) logout(); };
 
 
 // === CHAT EPHEMERE ===
@@ -1900,7 +1863,8 @@ var modelNames = {
     'mistral-large-latest': 'Mistral Large',
     'mistral-small-latest': 'Mistral Small',
     'qwen-3-235b-a22b-instruct-2507': 'Qwen 235B (Cerebras)',
-    'openrouter/free': 'OpenRouter (gratuit)'
+    'openrouter/free': 'OpenRouter (gratuit)',
+    '@cf/meta/llama-3.3-70b-instruct-fp8-fast': 'Llama 3.3 70B (Workers AI)'
 };
 
 G('MODEL-SEL-BTN').onclick = function(e) {
@@ -1952,6 +1916,7 @@ function builtinPickerEntries() {
         { provider: 'gemini',   label: 'Gemini',   model: GEMINI_MODELS.main,   note: 'Long contexte, creatif' },
         { provider: 'mistral',  label: 'Mistral',  model: MISTRAL_MODELS.main,  note: 'Raisonnement' },
         { provider: 'cerebras', label: 'Cerebras', model: CEREBRAS_MODELS.main, note: 'Tres gros modele' },
+        { provider: 'workersai', label: 'Workers AI', model: WORKERSAI_MODELS.main, note: 'Llama 3.3 70B, sans cle' },
         { provider: 'openrouter', label: 'OpenRouter', model: OPENROUTER_MODELS.main, note: 'Gratuit, dernier recours' }
     ];
 }
@@ -1961,7 +1926,7 @@ function builtinPickerEntries() {
 // serait une mauvaise surprise. Ils n'apparaissent que si une cle est enregistree.
 var OPTIONAL_MODELS = {
     openai:    { main: 'gpt-4o',        label: 'OpenAI',    note: 'GPT-4o, cle requise' },
-    anthropic: { main: 'claude-opus-5', label: 'Anthropic', note: 'Claude Opus 5, cle requise' }
+    anthropic: { main: 'claude-sonnet-5', label: 'Anthropic', note: 'Claude Sonnet 5, cle requise' }
 };
 
 function optionalPickerEntries() {
@@ -2680,45 +2645,108 @@ if (window.etherDesktop && window.etherDesktop.onSystemThemeChanged) {
     });
 }
 
-if(user) showApp();
+// Sans jeton de session, pas d'app : l'ecran de connexion s'affiche.
+var _hasSession = !!(window.etherDesktop && window.etherDesktop.authToken && window.etherDesktop.authToken());
+if(user && _hasSession) showApp(); else setLoginMode(user ? 'login' : 'signup', null, user && user.email);
 
 // LOGIN
-G('LB').onclick=function(){
-    var prenom=G('LN').value.trim();
-    var nom=G('LNAME').value.trim();
-    var email=G('LE').value.trim();
-    var errEl=G('login-err');
-    errEl.style.display='none';
-    // Validation prenom
-    if(!prenom){G('LN').style.borderColor='#ef4444';errEl.textContent='Le prenom est requis.';errEl.style.display='block';return;}
-    G('LN').style.borderColor='';
-    // Validation email
-    if(!email||email.indexOf('@')===-1||email.indexOf('.')===-1){G('LE').style.borderColor='#ef4444';errEl.textContent='Adresse email invalide.';errEl.style.display='block';return;}
-    G('LE').style.borderColor='';
-    var fullName=nom?prenom+' '+nom:prenom;
-    user={name:fullName,firstName:prenom,lastName:nom,email:email};
-    sSet('user',user);
-    // Envoyer un email de bienvenue
-    sendWelcomeEmail(email,prenom);
-    showApp();
-};
-G('LN').onkeydown=function(e){if(e.key==='Enter')G('LNAME').focus();};
-G('LNAME').onkeydown=function(e){if(e.key==='Enter')G('LE').focus();};
-G('LE').onkeydown=function(e){if(e.key==='Enter')G('LB').onclick();};
-
-function sendWelcomeEmail(email, prenom) {
-    if (window.etherDesktop && window.etherDesktop.sendEmail) {
-        window.etherDesktop.sendEmail({ email: email, prenom: prenom }).then(function() {
-            console.log('Email envoye a ' + email);
-        })['catch'](function(err) {
-            console.log('Erreur email:', err);
-        });
-    }
+// Trois ecrans sur la meme carte : connexion, creation de compte, et
+// reinitialisation du mot de passe avec le code de secours.
+// Pas de valeur initiale ici : setLoginMode() a deja pu etre appele plus haut
+// au demarrage, et une affectation l'ecraserait (le formulaire affichait
+// "Creer un compte" mais tentait une connexion).
+var loginMode;
+function setLoginMode(mode, info, email) {
+    loginMode = mode;
+    G('LS').setAttribute('data-mode', mode);
+    G('LT-IN').classList.toggle('on', mode === 'login');
+    G('LT-UP').classList.toggle('on', mode === 'signup');
+    G('LB').textContent = mode === 'signup' ? 'Creer mon compte' : mode === 'recover' ? 'Changer le mot de passe' : 'Se connecter';
+    G('LP').placeholder = mode === 'login' ? 'Mot de passe' : (mode === 'recover' ? 'Nouveau mot de passe' : 'Mot de passe') + ' (8 caracteres min.)';
+    G('LP').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
+    if (email) G('LE').value = email;
+    var inf = G('login-info');
+    if (info) { inf.textContent = info; inf.classList.remove('hidden'); } else { inf.classList.add('hidden'); }
+    G('login-err').style.display = 'none';
 }
+
+// Appele par platform-web.js quand le serveur refuse la session.
+window.etherShowLogin = function(info) {
+    info = info || {};
+    G('APP').classList.add('hidden');
+    G('RC-CARD').classList.add('hidden');
+    if (G('TUTO')) G('TUTO').classList.add('hidden');
+    G('LS').classList.remove('hidden');
+    G('LS').querySelector('.login-card').classList.remove('hidden');
+    setLoginMode(info.legacy ? 'signup' : 'login', info.message || null, info.email || (user && user.email));
+    if (info.legacy && user && user.firstName) { G('LN').value = user.firstName; G('LNAME').value = user.lastName || ''; }
+};
+
+G('LT-IN').onclick = function() { setLoginMode('login'); };
+G('LT-UP').onclick = function() { setLoginMode('signup'); };
+G('L-FORGOT').onclick = function(e) { e.preventDefault(); setLoginMode('recover', 'Entre ton email, le code de secours recu a l inscription, et un nouveau mot de passe.'); };
+G('L-BACK').onclick = function(e) { e.preventDefault(); setLoginMode('login'); };
+
+G('LF').onsubmit = function() { G('LB').onclick(); return false; };
+G('LB').onclick = function() {
+    var D = window.etherDesktop;
+    var email = G('LE').value.trim();
+    var pw = G('LP').value;
+    var errEl = G('login-err');
+    function fail(msg) { errEl.textContent = msg; errEl.style.display = 'block'; G('LB').disabled = false; }
+    errEl.style.display = 'none';
+    if (!email || email.indexOf('@') === -1 || email.indexOf('.') === -1) return fail('Adresse email invalide.');
+    if (!pw) return fail('Mot de passe requis.');
+    if (loginMode !== 'login' && pw.length < 8) return fail('Le mot de passe doit faire au moins 8 caracteres.');
+
+    var prenom = G('LN').value.trim(), nom = G('LNAME').value.trim();
+    var call;
+    if (loginMode === 'signup') {
+        if (!prenom) return fail('Le prenom est requis.');
+        call = D.authSignup({ name: nom ? prenom + ' ' + nom : prenom, email: email, password: pw });
+    } else if (loginMode === 'recover') {
+        var code = G('LRC').value.trim();
+        if (!code) return fail('Le code de secours est requis.');
+        call = D.authRecover({ email: email, recoveryCode: code, newPassword: pw });
+    } else {
+        call = D.authLogin({ email: email, password: pw });
+    }
+    G('LB').disabled = true;
+    call.then(function(r) {
+        if (!r || !r.ok) {
+            if (r && r.exists) setLoginMode('login', null, email);
+            return fail((r && r.error) || 'Connexion impossible, reessaie.');
+        }
+        var full = r.user.name || prenom || 'Utilisateur';
+        var sp = full.indexOf(' ');
+        user = { name: full, firstName: loginMode === 'signup' ? prenom : (sp > 0 ? full.slice(0, sp) : full),
+                 lastName: loginMode === 'signup' ? nom : (sp > 0 ? full.slice(sp + 1) : ''), email: r.user.email };
+        sSet('user', user);
+        G('LP').value = '';
+        if (r.recoveryCode) showRecoveryCode(r.recoveryCode);
+        else D.authFinish();
+    })['catch'](function() { fail('Reseau indisponible, reessaie.'); });
+};
+
+// Le code de secours n'est affiche qu'une fois, juste apres l'inscription ou
+// une reinitialisation : on ne continue qu'une fois qu'il est note.
+function showRecoveryCode(code) {
+    G('LS').querySelector('.login-card').classList.add('hidden');
+    G('RC-CODE').textContent = code;
+    G('RC-CARD').classList.remove('hidden');
+    G('RC-COPY').onclick = function() {
+        var b = G('RC-COPY');
+        (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(function() {
+            b.textContent = 'Copie !';
+        }, function() { b.textContent = 'Selectionne le code et copie-le'; });
+    };
+    G('RC-OK').onclick = function() { G('RC-OK').disabled = true; window.etherDesktop.authFinish(); };
+}
+
 
 function showApp(){
     G('LS').classList.add('hidden'); G('APP').classList.remove('hidden');
-    G('UNM').textContent=user.name; G('UAV').textContent=user.name.charAt(0).toUpperCase();
+    G('UNM').textContent=user.name; if (user.email) G('ACC-EMAIL').textContent='Connecte en tant que '+user.email; G('UAV').textContent=user.name.charAt(0).toUpperCase();
     var wg=G('welc-greet'); if(wg) wg.textContent=getGreeting()+', '+user.name;
     initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI(); renderModelOptions(); loadAllModeResources();
     G('uinp').focus();

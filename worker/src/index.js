@@ -1,7 +1,8 @@
 /**
  * ETHER API — Cloudflare Worker
- * Proxy securise entre le client (web ou Electron) et les providers IA.
- * Les cles API sont dans les Cloudflare Secrets, jamais exposees au client.
+ * Sert le site et l'API : comptes, quotas, stockage et relais vers les
+ * fournisseurs IA. Les cles du serveur sont dans les Cloudflare Secrets ;
+ * une cle personnelle d'utilisateur est relayee, jamais stockee.
  */
 
 // Registre des providers : evite tout repli silencieux sur un provider par defaut.
@@ -14,17 +15,32 @@ const PROVIDERS = {
   // Pollinations : palier anonyme, aucune cle requise.
   // Attention : l'alias "openai" tape sur un compte credite et renvoie une
   // erreur DANS un HTTP 200. Le modele anonyme est "openai-fast".
-  pollinations: { keyless: true, chat: callPollinations, stream: streamPollinations }
+  pollinations: { keyless: true, chat: callPollinations, stream: streamPollinations },
+  // Workers AI : modeles heberges par Cloudflare, via le binding AI, sans cle.
+  workersai: { binding: 'AI', chat: callWorkersAI, stream: streamWorkersAI },
+  // Uniquement avec la cle personnelle de l'utilisateur (ou une cle serveur si posee).
+  openai:    { key: 'OPENAI_KEY', byok: true,
+               chat: (env, m, ms, t, mt) => callOpenAICompat('api.openai.com', env.OPENAI_KEY, 'gpt-4o-mini', 'openai', m, ms, t, mt),
+               stream: (env, m, ms, t, mt) => streamOpenAICompat(env, 'api.openai.com', env.OPENAI_KEY, m || 'gpt-4o-mini', ms, t, mt) },
+  anthropic: { key: 'ANTHROPIC_KEY', byok: true, chat: callAnthropic, stream: streamAnthropic },
+  // Endpoint compatible OpenAI choisi par l'utilisateur : cle ET url viennent de lui.
+  custom:    { key: 'CUSTOM_KEY', byok: true, userOnly: true, chat: callCustom, stream: streamCustom }
 };
 
-// Verifie qu'un provider existe ET qu'il est configure. Renvoie une Response
-// d'erreur explicite, ou null si tout va bien.
-function checkProvider(provider, env) {
+// Verifie qu'un provider existe ET qu'il est utilisable (cle serveur, cle
+// personnelle ou binding). Renvoie une Response d'erreur explicite, ou null.
+function checkProvider(provider, env, userKey) {
   const p = PROVIDERS[provider];
   if (!p) {
     return json({ ok: false, error: `Provider inconnu : ${provider}`, available: Object.keys(PROVIDERS) }, 400, env);
   }
   if (p.keyless) return null;
+  if (p.binding) {
+    return env[p.binding] ? null
+      : json({ ok: false, error: `Provider non configure sur le serveur : ${provider}`, hint: 'Ajouter [ai] binding = "AI" dans wrangler.toml' }, 503, env);
+  }
+  if (userKey) return null;
+  if (p.userOnly) return json({ ok: false, error: 'Cle personnelle requise pour ce fournisseur' }, 400, env);
   if (!env[p.key]) {
     return json({ ok: false, error: `Provider non configure sur le serveur : ${provider}`, hint: `Deployer la cle avec : npx wrangler secret put ${p.key}` }, 503, env);
   }
@@ -43,57 +59,44 @@ export default {
     try {
       // --- HEALTH ---
       if (path === '/api/health') {
-        return json({ status: 'ok', name: 'ETHER API', version: '2.1', providers: configuredProviders(env) }, 200, env);
+        return json({ status: 'ok', name: 'ETHER API', version: '2.2', providers: configuredProviders(env) }, 200, env);
       }
 
       // --- AUTH sur les routes protegees ---
       if (path.startsWith('/api/chat') || path.startsWith('/api/quota') ||
           path.startsWith('/api/vision') || path.startsWith('/api/transcribe') ||
           path.startsWith('/api/fetch') || path.startsWith('/api/image') ||
-          path.startsWith('/api/search')) {
+          path.startsWith('/api/search') || path.startsWith('/api/diag') ||
+          path.startsWith('/api/providers/test')) {
         const authErr = await verifyAuth(request, env);
         if (authErr) return authErr;
       }
 
-      // --- CHAT ---
-      if (path === '/api/chat' && request.method === 'POST') {
+      // --- CHAT (reponse complete ou streaming SSE) ---
+      if ((path === '/api/chat' || path === '/api/chat/stream') && request.method === 'POST') {
         const body = await request.json();
-        const provider = body.provider || 'gemini';
+        const provider = body.provider || 'groq';
+        // Cle personnelle : relayee au fournisseur, jamais stockee ni journalisee.
+        const userKey = (request.headers.get('X-Provider-Key') || '').trim().slice(0, 500);
 
-        const bad = checkProvider(provider, env);
+        const bad = checkProvider(provider, env, userKey);
         if (bad) return bad;
 
         const messages = body.messages;
         if (!messages || !messages.length) return json({ ok: false, error: 'Messages required' }, 400, env);
 
-        // Quota impose ici : un client ne peut pas le contourner en
-        // sautant l'appel a /api/quota/use.
-        const q = await quotaConsume(request, env);
-        if (!q.ok) return json(q, 429, env);
+        // Quota impose ici : un client ne peut pas le contourner en sautant
+        // /api/quota/use. Avec sa propre cle, l'utilisateur paie : pas de quota.
+        if (!userKey) {
+          const q = await quotaConsume(request, env);
+          if (!q.ok) return json(q, 429, env);
+        }
 
-        const result = await PROVIDERS[provider].chat(
-          env, body.model, messages, body.temperature ?? 0.7, body.max_tokens || 4000
-        );
+        const penv = providerEnv(env, provider, userKey, body);
+        const args = [penv, body.model, messages, body.temperature ?? 0.7, body.max_tokens || 4000];
+        if (path === '/api/chat/stream') return PROVIDERS[provider].stream(...args);
+        const result = await PROVIDERS[provider].chat(...args);
         return json(result, result.ok ? 200 : 502, env);
-      }
-
-      // --- CHAT STREAM (SSE) ---
-      if (path === '/api/chat/stream' && request.method === 'POST') {
-        const body = await request.json();
-        const provider = body.provider || 'gemini';
-
-        const bad = checkProvider(provider, env);
-        if (bad) return bad;
-
-        const messages = body.messages;
-        if (!messages || !messages.length) return json({ ok: false, error: 'Messages required' }, 400, env);
-
-        const q = await quotaConsume(request, env);
-        if (!q.ok) return json(q, 429, env);
-
-        return PROVIDERS[provider].stream(
-          env, body.model, messages, body.temperature ?? 0.7, body.max_tokens || 4000
-        );
       }
 
       // --- MODELS : catalogue par provider ---
@@ -115,10 +118,12 @@ export default {
 
       // --- VISION (Gemini) ---
       if (path === '/api/vision' && request.method === 'POST') {
-        const bad = checkProvider('gemini', env);
-        if (bad) return bad;
         const body = await request.json();
-        return json(await callGeminiVision(env, body), 200, env);
+        // Gemini d'abord s'il est configure, Workers AI en repli.
+        let r = env.GEMINI_KEY ? await callGeminiVision(env, body) : { ok: false };
+        if (!r.ok && env.AI) r = await callWorkersAIVision(env, body);
+        if (!r.ok && !env.GEMINI_KEY && !env.AI) r = { ok: false, error: 'Aucun modele de vision configure' };
+        return json(r, 200, env);
       }
 
       // --- TRANSCRIPTION AUDIO (Whisper via Groq) ---
@@ -153,35 +158,28 @@ export default {
         return json({ ok: false, error: 'Envoi d email non configure', hint: 'Necessite un service type Resend : npx wrangler secret put RESEND_KEY' }, 501, env);
       }
 
-      // --- REGISTER ---
-      if (path === '/api/register' && request.method === 'POST') {
-        const body = await request.json();
-        if (!body.email || !body.name) return json({ ok: false, error: 'Email and name required' }, 400, env);
-        if (!env.JWT_SECRET) return json({ ok: false, error: 'JWT_SECRET absent sur le serveur' }, 503, env);
-
-        // Code d'invitation : sans lui, n'importe qui ayant le lien peut
-        // creer un compte et consommer les quotas du proprietaire.
-        // Si INVITE_CODE n'est pas defini, l'inscription reste ouverte.
-        if (env.INVITE_CODE) {
-          const fourni = (body.code || '').trim();
-          if (!fourni) {
-            return json({ ok: false, error: 'Code d invitation requis', needCode: true }, 403, env);
-          }
-          if (!timingSafeEqual(fourni, env.INVITE_CODE)) {
-            return json({ ok: false, error: 'Code d invitation invalide', needCode: true }, 403, env);
-          }
-        }
-
-        const token = await createJWT({ email: body.email, name: body.name, pro: false }, env.JWT_SECRET);
-        return json({ ok: true, token }, 200, env);
+      // --- COMPTES ---
+      // L'ancienne inscription par simple email donnait l'acces a n'importe quel
+      // compte a qui connaissait l'adresse. Elle est fermee.
+      if (path === '/api/register') {
+        return json({ ok: false, error: 'Recharge la page : la connexion se fait maintenant avec un mot de passe.', authRequired: true }, 410, env);
       }
-
-      // --- VERIFY TOKEN ---
+      if (path === '/api/auth/signup' && request.method === 'POST') {
+        const [body, status] = await authSignup(request, env);
+        return json(body, status, env);
+      }
+      if (path === '/api/auth/login' && request.method === 'POST') {
+        const [body, status] = await authLogin(request, env);
+        return json(body, status, env);
+      }
+      if (path === '/api/auth/recover' && request.method === 'POST') {
+        const [body, status] = await authRecover(request, env);
+        return json(body, status, env);
+      }
       if (path === '/api/verify' && request.method === 'POST') {
-        const body = await request.json();
-        const payload = await verifyJWT(body.token, env.JWT_SECRET);
-        if (payload) return json({ ok: true, user: payload }, 200, env);
-        return json({ ok: false, error: 'Invalid token' }, 401, env);
+        const user = await currentUser(request, env);
+        if (user) return json({ ok: true, user }, 200, env);
+        return json({ ok: false, error: 'Invalid token', authRequired: true }, 401, env);
       }
 
       // --- QUOTAS ---
@@ -291,7 +289,7 @@ function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env?.CORS_ORIGIN || '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Provider-Key',
     'Access-Control-Max-Age': '86400'
   };
 }
@@ -304,7 +302,7 @@ function json(data, status = 200, env = null) {
 }
 
 function configuredProviders(env) {
-  return Object.keys(PROVIDERS).filter(p => PROVIDERS[p].keyless || !!env[PROVIDERS[p].key]);
+  return Object.keys(PROVIDERS).filter(p => PROVIDERS[p].keyless || !!env[PROVIDERS[p].binding || PROVIDERS[p].key]);
 }
 
 // === BASE64 URL-SAFE (gere les accents : btoa seul casse sur "Zoe" accentue) ===
@@ -374,14 +372,25 @@ async function verifyAuth(request, env) {
   if (!auth || !auth.startsWith('Bearer ')) {
     return json({ ok: false, error: 'Authorization required' }, 401, env);
   }
-  const payload = await verifyJWT(auth.slice(7).trim(), env.JWT_SECRET);
-  if (!payload) {
-    return json({ ok: false, error: 'Token invalide ou expire' }, 401, env);
+  if (!(await currentUser(request, env))) {
+    return json({ ok: false, error: 'Session expiree, reconnecte-toi', authRequired: true }, 401, env);
   }
   return null;
 }
 
+// Utilisateur du jeton, verifie contre son compte : un jeton d'avant les
+// mots de passe (sans tv) ou emis avant un changement de mot de passe est refuse.
 async function currentUser(request, env) {
+  const payload = await bearerPayload(request, env);
+  if (!payload) return null;
+  if (!env.ETHER_KV) return payload;
+  if (typeof payload.tv !== 'number') return null;
+  const rec = await env.ETHER_KV.get(accountKey(payload.email), 'json');
+  if (!rec || rec.tv !== payload.tv) return null;
+  return { email: rec.email, name: rec.name, pro: !!rec.pro, tv: rec.tv };
+}
+
+async function bearerPayload(request, env) {
   const auth = request.headers.get('Authorization');
   if (!auth || !auth.startsWith('Bearer ')) return null;
   return await verifyJWT(auth.slice(7).trim(), env.JWT_SECRET);
@@ -389,7 +398,7 @@ async function currentUser(request, env) {
 
 // === QUOTAS ===
 // Sans KV, le quota reste indicatif. Avec le binding ETHER_KV il devient reel.
-const DAILY_LIMIT = 30;
+const DAILY_LIMIT = 100;
 
 function quotaKey(user) {
   const day = new Date().toISOString().slice(0, 10);
@@ -420,6 +429,11 @@ async function quotaConsume(request, env) {
 async function quotaBonus(request, env, bonus) {
   const user = await currentUser(request, env);
   if (!env.ETHER_KV) return { ok: true, tracked: false };
+  if (!user) return { ok: false, error: 'Non connecte' };
+  // Une fois par jour : sans ce verrou, rappeler la route rendait le quota illimite.
+  const flag = `bonus:${user.email}:${new Date().toISOString().slice(0, 10)}`;
+  if (await env.ETHER_KV.get(flag)) return { ok: false, error: 'Bonus deja utilise aujourd hui' };
+  await env.ETHER_KV.put(flag, '1', { expirationTtl: 172800 });
   const n = Math.max(0, Math.min(10, parseInt(bonus, 10) || 0));
   const k = quotaKey(user);
   const raw = await env.ETHER_KV.get(k);
@@ -430,7 +444,9 @@ async function quotaBonus(request, env, bonus) {
 
 // === PROXY DE CONTENU (garde SSRF) ===
 // Empeche le worker de servir de relais vers des adresses internes.
-const BLOCKED_HOSTS = /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?|.*\.internal|.*\.local)$/i;
+// Plages IP : prefixe. Noms : correspondance exacte ou suffixe. (L'ancienne
+// version ancrait tout sur la fin de chaine, si bien qu'aucune IP n'etait bloquee.)
+const BLOCKED_HOSTS = /^(?:(?:127|10|0)\.[\d.]+|192\.168\.[\d.]+|169\.254\.[\d.]+|172\.(?:1[6-9]|2\d|3[01])\.[\d.]+|\[(?:::1?|f[cd][0-9a-f]*:[0-9a-f:.]*|fe80:[0-9a-f:.]*)\]|localhost|.*\.localhost|.*\.internal|.*\.local)$/i;
 
 async function proxyFetch(target, kind) {
   let u;
@@ -620,10 +636,29 @@ const MODELS = {
 };
 
 // === TEST PROVIDERS ===
+// Chaque test envoie une vraie requete a chaque fournisseur. Le resultat est
+// garde 5 minutes : sans ce cache, chaque chargement de page consommait les
+// quotas des fournisseurs pour rien.
 async function testProviders(env) {
+  const CACHE = 'cache:providers';
+  if (env.ETHER_KV) {
+    const cached = await env.ETHER_KV.get(CACHE, 'json').catch(() => null);
+    if (cached) return cached;
+  }
+  const results = await testProvidersNow(env);
+  // Un echec peut etre ponctuel : on le garde moins longtemps qu'un succes.
+  const ttl = results.every(r => r.ok || r.error === 'non configure') ? 300 : 60;
+  if (env.ETHER_KV) await env.ETHER_KV.put(CACHE, JSON.stringify(results), { expirationTtl: ttl }).catch(() => {});
+  return results;
+}
+
+async function testProvidersNow(env) {
   const results = [];
   for (const name of Object.keys(PROVIDERS)) {
-    if (!PROVIDERS[name].keyless && !env[PROVIDERS[name].key]) {
+    const p = PROVIDERS[name];
+    if (p.userOnly) continue;                                   // n'existe qu'avec une cle perso
+    if (p.byok && !env[p.key]) continue;                        // idem sans cle serveur
+    if (p.binding ? !env[p.binding] : (!p.keyless && !env[p.key])) {
       results.push({ provider: name, ok: false, error: 'non configure' });
       continue;
     }
@@ -795,11 +830,13 @@ function streamOpenRouter(env, model, messages, temperature, maxTokens) {
 // Chaque cle porte un horodatage : en cas d'ecriture depuis deux machines,
 // la plus recente gagne, cle par cle.
 function persistKey(user) {
-  return 'persist:' + ((user && user.email) || 'anonyme');
+  return 'persist:' + user.email;
 }
 
 async function persistRead(env, user) {
   if (!env.ETHER_KV) return { ok: true, data: {}, keyTimes: {}, tracked: false };
+  // Pas de coffre "anonyme" partage : sans compte, rien n'est lu ni ecrit.
+  if (!user || !user.email) return { ok: false, error: 'Non connecte', authRequired: true };
   const raw = await env.ETHER_KV.get(persistKey(user));
   if (!raw) return { ok: true, data: {}, keyTimes: {}, tracked: true };
   try {
@@ -812,6 +849,7 @@ async function persistRead(env, user) {
 
 async function persistWrite(env, user, incoming) {
   if (!env.ETHER_KV) return { ok: false, error: 'Stockage indisponible', tracked: false };
+  if (!user || !user.email) return { ok: false, error: 'Non connecte', authRequired: true };
   if (!incoming || typeof incoming !== 'object') return { ok: false, error: 'Charge utile invalide' };
 
   const inData = incoming.data || {};
@@ -943,4 +981,307 @@ function hostOf(u) {
 
 function stripTags(s) {
   return String(s).replace(/<[^>]+>/g, '');
+}
+
+// === CLE PERSONNELLE ===
+// Construit l'environnement vu par le fournisseur pour CETTE requete : la cle
+// de l'utilisateur remplace celle du serveur, sans jamais etre ecrite nulle part.
+function providerEnv(env, provider, userKey, body) {
+  const p = PROVIDERS[provider];
+  if (!userKey || !p.key) return env;
+  const penv = { ...env, [p.key]: userKey };
+  if (provider === 'custom') penv.CUSTOM_URL = String((body && body.baseUrl) || '');
+  return penv;
+}
+
+// === WORKERS AI ===
+const WORKERS_AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const WORKERS_AI_VISION_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
+
+// Seuls les modeles du catalogue Workers AI (@cf/...) sont acceptes : un nom de
+// modele d'un autre fournisseur, venu d'une cascade, retombe sur le defaut.
+function workersAIModel(model) {
+  return model && String(model).startsWith('@cf/') ? model : WORKERS_AI_MODEL;
+}
+
+async function callWorkersAI(env, model, messages, temperature, maxTokens) {
+  const m = workersAIModel(model);
+  try {
+    const r = await env.AI.run(m, { messages, temperature, max_tokens: maxTokens });
+    const text = r && (typeof r.response === 'string' ? r.response
+      : (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content));
+    if (typeof text !== 'string') return { ok: false, error: 'workersai: reponse vide', provider: 'workersai' };
+    return { ok: true, text, model: m, provider: 'workersai' };
+  } catch (e) {
+    return { ok: false, error: 'workersai error: ' + e.message, provider: 'workersai' };
+  }
+}
+
+async function streamWorkersAI(env, model, messages, temperature, maxTokens) {
+  try {
+    const stream = await env.AI.run(workersAIModel(model), { messages, temperature, max_tokens: maxTokens, stream: true });
+    return sseResponse({ ok: true, status: 200, body: stream }, env);
+  } catch (e) {
+    return json({ ok: false, error: 'workersai error: ' + e.message }, 502, env);
+  }
+}
+
+async function callWorkersAIVision(env, body) {
+  const image = body.image && String(body.image).startsWith('data:')
+    ? body.image : 'data:' + (body.mimeType || 'image/png') + ';base64,' + (body.image || '');
+  try {
+    const r = await env.AI.run(WORKERS_AI_VISION_MODEL, {
+      messages: [{ role: 'user', content: [
+        { type: 'text', text: body.prompt || 'Decris cette image.' },
+        { type: 'image_url', image_url: { url: image } }
+      ] }],
+      max_tokens: 1500
+    });
+    const text = r && (r.response || (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content));
+    if (!text) return { ok: false, error: 'workersai vision: reponse vide' };
+    return { ok: true, text, model: WORKERS_AI_VISION_MODEL, provider: 'workersai' };
+  } catch (e) {
+    return { ok: false, error: 'workersai vision error: ' + e.message };
+  }
+}
+
+// === ANTHROPIC ===
+function anthropicRequest(env, model, messages, maxTokens, stream) {
+  const system = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+  const body = {
+    model: model || 'claude-haiku-4-5',
+    max_tokens: maxTokens,
+    messages: messages.filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+    stream
+  };
+  if (system) body.system = system;
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function callAnthropic(env, model, messages, temperature, maxTokens) {
+  const resp = await anthropicRequest(env, model, messages, maxTokens, false);
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    return { ok: false, error: 'anthropic error ' + resp.status, detail: detail.slice(0, 300), provider: 'anthropic' };
+  }
+  const data = await resp.json();
+  const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  return { ok: true, text, model: data.model, provider: 'anthropic' };
+}
+
+async function streamAnthropic(env, model, messages, temperature, maxTokens) {
+  return sseResponse(await anthropicRequest(env, model, messages, maxTokens, true), env);
+}
+
+// === FOURNISSEUR PERSONNALISE (compatible OpenAI) ===
+// L'URL vient de l'utilisateur : HTTPS obligatoire et adresses internes
+// refusees, sinon le worker servirait de relais vers son propre reseau.
+function customEndpoint(raw) {
+  let u;
+  try { u = new URL(raw); } catch { return null; }
+  if (u.protocol !== 'https:' || BLOCKED_HOSTS.test(u.hostname)) return null;
+  const base = u.toString().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  return base + '/chat/completions';
+}
+
+function customRequest(env, model, messages, temperature, maxTokens, stream) {
+  const url = customEndpoint(env.CUSTOM_URL);
+  if (!url) return null;
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + env.CUSTOM_KEY },
+    body: JSON.stringify({ model, messages, temperature, max_tokens: maxTokens, stream })
+  });
+}
+
+async function callCustom(env, model, messages, temperature, maxTokens) {
+  const req = customRequest(env, model, messages, temperature, maxTokens, false);
+  if (!req) return { ok: false, error: 'URL du fournisseur invalide (HTTPS public requis)', provider: 'custom' };
+  const resp = await req;
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    return { ok: false, error: 'custom error ' + resp.status, detail: detail.slice(0, 300), provider: 'custom' };
+  }
+  const data = await resp.json();
+  return { ok: true, text: data.choices[0].message.content, model, provider: 'custom' };
+}
+
+async function streamCustom(env, model, messages, temperature, maxTokens) {
+  const req = customRequest(env, model, messages, temperature, maxTokens, true);
+  if (!req) return json({ ok: false, error: 'URL du fournisseur invalide (HTTPS public requis)' }, 400, env);
+  return sseResponse(await req, env);
+}
+
+// === COMPTES (email + mot de passe + code de secours) ===
+// Enregistrement KV "user:<email>" : { email, name, tv, pw: {salt, hash}, rc: {salt, hash} }.
+// tv (token version) augmente a chaque reinitialisation : les anciens jetons meurent.
+function normEmail(e) { return String(e || '').trim().toLowerCase(); }
+function validEmail(e) { return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+function accountKey(email) { return 'user:' + normEmail(email); }
+
+async function pbkdf2(secret, salt) {
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), 'PBKDF2', false, ['deriveBits']);
+  // 100 000 iterations : le maximum accepte par Workers.
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 100000 }, km, 256);
+  return bytesToB64url(bits);
+}
+
+async function makeSecret(value) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  return { salt: bytesToB64url(salt), hash: await pbkdf2(value, salt) };
+}
+
+async function checkSecret(entry, value) {
+  if (!entry || !value) return false;
+  return timingSafeEqual(await pbkdf2(value, b64urlToBytes(entry.salt)), entry.hash);
+}
+
+// 16 caracteres sans ambiguite (pas de 0/O, 1/I), environ 80 bits.
+function newRecoveryCode() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  let c = '';
+  for (let i = 0; i < 16; i++) c += A[b[i] % 32] + (i % 4 === 3 && i < 15 ? '-' : '');
+  return c;
+}
+function normCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+function issueToken(env, rec) {
+  return createJWT({ email: rec.email, name: rec.name, pro: !!rec.pro, tv: rec.tv }, env.JWT_SECRET);
+}
+
+// 10 echecs par email et par quart d'heure, pour ralentir le devinage.
+async function authLocked(env, email) {
+  return parseInt((await env.ETHER_KV.get('authfail:' + email)) || '0', 10) >= 10;
+}
+async function authFailed(env, email) {
+  const k = 'authfail:' + email;
+  const n = parseInt((await env.ETHER_KV.get(k)) || '0', 10) + 1;
+  await env.ETHER_KV.put(k, String(n), { expirationTtl: 900 });
+}
+
+function authPrereq(env) {
+  if (!env.JWT_SECRET) return [{ ok: false, error: 'JWT_SECRET absent sur le serveur' }, 503];
+  if (!env.ETHER_KV) return [{ ok: false, error: 'Stockage KV absent : comptes impossibles' }, 503];
+  return null;
+}
+
+function checkPassword(pw) {
+  if (pw.length < 8) return 'Mot de passe trop court (8 caracteres minimum)';
+  if (pw.length > 200) return 'Mot de passe trop long';
+  return null;
+}
+
+async function authSignup(request, env) {
+  const pre = authPrereq(env); if (pre) return pre;
+  const body = await request.json().catch(() => ({}));
+  const email = normEmail(body.email);
+  const name = String(body.name || '').trim().slice(0, 80);
+  const password = String(body.password || '');
+  if (!name || !validEmail(email)) return [{ ok: false, error: 'Prenom et adresse email valide requis' }, 400];
+  const pwErr = checkPassword(password); if (pwErr) return [{ ok: false, error: pwErr }, 400];
+
+  // Code d'invitation : si INVITE_CODE n'est pas defini, l'inscription est ouverte.
+  if (env.INVITE_CODE) {
+    const fourni = String(body.code || '').trim();
+    if (!fourni || !timingSafeEqual(fourni, env.INVITE_CODE)) {
+      return [{ ok: false, error: fourni ? 'Code d invitation invalide' : 'Code d invitation requis', needCode: true }, 403];
+    }
+  }
+
+  if (await env.ETHER_KV.get(accountKey(email))) {
+    return [{ ok: false, error: 'Un compte existe deja avec cet email. Connecte-toi.', exists: true }, 409];
+  }
+
+  // Donnees d'avant les mots de passe : seul l'appareil qui detient encore
+  // l'ancien jeton a cet email peut les reprendre. Sinon, n'importe qui
+  // pourrait "creer" le compte de quelqu'un d'autre et lire ses conversations.
+  const legacyKeys = await findLegacyVaults(env, email);
+  if (legacyKeys.length) {
+    const old = await bearerPayload(request, env);
+    if (!old || normEmail(old.email) !== email) {
+      return [{ ok: false, legacy: true, error: 'Cet email a deja des conversations sur ETHER. Ouvre ETHER sur l appareil ou tu etais connecte pour creer ton mot de passe.' }, 409];
+    }
+    await mergeLegacyVaults(env, email, legacyKeys);
+  }
+
+  const recoveryCode = newRecoveryCode();
+  const rec = { email, name, tv: 1, created: Date.now(), pw: await makeSecret(password), rc: await makeSecret(normCode(recoveryCode)) };
+  await env.ETHER_KV.put(accountKey(email), JSON.stringify(rec));
+  return [{ ok: true, token: await issueToken(env, rec), user: { name, email }, recoveryCode, migrated: legacyKeys.length > 0 }, 200];
+}
+
+// Coffres d'avant les comptes pour cet email, quelle que soit la casse saisie
+// a l'epoque ("Alice@x" et "alice@x" etaient deux coffres). KV ne sait pas
+// chercher sans la casse : on parcourt les cles, ce qui n'arrive qu'a l'inscription.
+async function findLegacyVaults(env, email) {
+  const found = [];
+  let cursor;
+  do {
+    const page = await env.ETHER_KV.list({ prefix: 'persist:', cursor });
+    for (const k of page.keys) {
+      if (normEmail(k.name.slice('persist:'.length)) === email) found.push(k.name);
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  return found;
+}
+
+// Fusionne les variantes dans "persist:<email normalise>", cle par cle,
+// la plus recente gagnant, puis supprime les anciennes.
+async function mergeLegacyVaults(env, email, keys) {
+  const target = 'persist:' + email;
+  const data = {}, keyTimes = {};
+  for (const k of keys) {
+    const v = await env.ETHER_KV.get(k, 'json').catch(() => null);
+    if (!v || !v.data) continue;
+    for (const [name, val] of Object.entries(v.data)) {
+      const t = Number((v.keyTimes || {})[name]) || 0;
+      if (!(name in keyTimes) || t >= keyTimes[name]) { data[name] = val; keyTimes[name] = t; }
+    }
+  }
+  await env.ETHER_KV.put(target, JSON.stringify({ data, keyTimes }));
+  for (const k of keys) if (k !== target) await env.ETHER_KV.delete(k);
+}
+
+async function authLogin(request, env) {
+  const pre = authPrereq(env); if (pre) return pre;
+  const body = await request.json().catch(() => ({}));
+  const email = normEmail(body.email);
+  if (!validEmail(email)) return [{ ok: false, error: 'Adresse email invalide' }, 400];
+  if (await authLocked(env, email)) return [{ ok: false, error: 'Trop de tentatives. Reessaie dans 15 minutes.' }, 429];
+  const rec = await env.ETHER_KV.get(accountKey(email), 'json');
+  if (!rec || !(await checkSecret(rec.pw, String(body.password || '')))) {
+    await authFailed(env, email);
+    return [{ ok: false, error: 'Email ou mot de passe incorrect' }, 401];
+  }
+  return [{ ok: true, token: await issueToken(env, rec), user: { name: rec.name, email } }, 200];
+}
+
+async function authRecover(request, env) {
+  const pre = authPrereq(env); if (pre) return pre;
+  const body = await request.json().catch(() => ({}));
+  const email = normEmail(body.email);
+  const password = String(body.newPassword || '');
+  if (!validEmail(email)) return [{ ok: false, error: 'Adresse email invalide' }, 400];
+  const pwErr = checkPassword(password); if (pwErr) return [{ ok: false, error: pwErr }, 400];
+  if (await authLocked(env, email)) return [{ ok: false, error: 'Trop de tentatives. Reessaie dans 15 minutes.' }, 429];
+  const rec = await env.ETHER_KV.get(accountKey(email), 'json');
+  if (!rec || !(await checkSecret(rec.rc, normCode(body.recoveryCode)))) {
+    await authFailed(env, email);
+    return [{ ok: false, error: 'Email ou code de secours incorrect' }, 401];
+  }
+  // Nouveau mot de passe, nouveau code, et tous les anciens jetons revoques.
+  const recoveryCode = newRecoveryCode();
+  rec.pw = await makeSecret(password);
+  rec.rc = await makeSecret(normCode(recoveryCode));
+  rec.tv = (rec.tv || 1) + 1;
+  await env.ETHER_KV.put(accountKey(email), JSON.stringify(rec));
+  await env.ETHER_KV.delete('authfail:' + email);
+  return [{ ok: true, token: await issueToken(env, rec), user: { name: rec.name, email }, recoveryCode }, 200];
 }

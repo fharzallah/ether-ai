@@ -17,11 +17,26 @@
 <div style="width:120px;height:120px;margin:0 auto 24px"><canvas id="login-wv" width="240" height="240" style="width:120px;height:120px"></canvas></div>
 <h1>ETHER</h1>
 <p data-i18n="login_sub">IA franche, mesuree et transparente</p>
-<input type="text" id="LN" data-i18n-ph="login_name" placeholder="Prenom" required>
-<input type="text" id="LNAME" data-i18n-ph="login_lastname" placeholder="Nom (facultatif)">
-<input type="email" id="LE" data-i18n-ph="login_email" placeholder="Adresse email" required>
+<div class="login-tabs" role="tablist"><button type="button" id="LT-IN" class="on">Se connecter</button><button type="button" id="LT-UP">Creer un compte</button></div>
+<p id="login-info" class="login-info hidden"></p>
+<form id="LF" autocomplete="on" onsubmit="return false">
+<input type="text" id="LN" class="ls-up" data-i18n-ph="login_name" placeholder="Prenom" autocomplete="given-name">
+<input type="text" id="LNAME" class="ls-up" data-i18n-ph="login_lastname" placeholder="Nom (facultatif)" autocomplete="family-name">
+<input type="email" id="LE" data-i18n-ph="login_email" placeholder="Adresse email" autocomplete="username" required>
+<input type="text" id="LRC" class="ls-rec" placeholder="Code de secours (ex. ABCD-EFGH-JKLM-NPQR)" autocomplete="off" spellcheck="false">
+<input type="password" id="LP" placeholder="Mot de passe" autocomplete="current-password" required>
 <p id="login-err" style="color:#ef4444;font-size:.8rem;margin-bottom:8px;display:none"></p>
-<button class="btn-p" id="LB" data-i18n="login_start">Commencer</button>
+<button type="submit" class="btn-p" id="LB">Se connecter</button>
+</form>
+<a href="#" id="L-FORGOT" class="login-link ls-in">Mot de passe oublie ?</a>
+<a href="#" id="L-BACK" class="login-link ls-rec">Retour a la connexion</a>
+</div>
+<div id="RC-CARD" class="login-card hidden">
+<h1 style="font-size:1.2rem;letter-spacing:1px">Ton code de secours</h1>
+<p>C'est le <strong>seul moyen</strong> de retrouver ton compte si tu oublies ton mot de passe. Note-le ou enregistre-le dans ton gestionnaire de mots de passe : il ne sera plus jamais affiche.</p>
+<code id="RC-CODE" class="rc-code"></code>
+<button type="button" class="btn-s" id="RC-COPY" style="width:100%;margin-bottom:10px">Copier le code</button>
+<button type="button" class="btn-p" id="RC-OK">J'ai note mon code</button>
 </div>
 </div>
 
@@ -268,6 +283,7 @@
 <div style="display:flex;align-items:center;gap:8px"><span style="background:#f55036;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Groq</span><span style="color:var(--t2)">Llama 70B / Qwen3 — ultra-rapide</span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="background:#fd7e14;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Mistral</span><span style="color:var(--t2)">Mistral Large — puissance souveraine, prioritaire</span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="background:#8b5cf6;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Cerebras</span><span style="color:var(--t2)">Qwen 235B — raisonnement avance</span></div>
+<div style="display:flex;align-items:center;gap:8px"><span style="background:#f6821f;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Workers AI</span><span style="color:var(--t2)">Llama 3.3 70B — heberge par Cloudflare, sans cle</span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="background:#6467f2;color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">OpenRouter</span><span style="color:var(--t2)">Modeles gratuits — dernier recours, quota independant</span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="background:linear-gradient(135deg,#fd7e14,#4285F4);color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;min-width:80px;text-align:center">Auto</span><span style="color:var(--t2)">Collaboration native — Gemini + Mistral + Groq + OpenRouter</span></div>
 </div>
@@ -353,6 +369,23 @@
 </div>
 <div class="prov-footer">
 <span class="prov-hint">Cle integree — gratuit</span>
+</div>
+</div>
+</div>
+<!-- WORKERS AI — Cloudflare, sans cle -->
+<div class="prov-card" id="PROV-WORKERSAI">
+<div class="prov-card-top">
+<div class="prov-logo" style="background:#f6821f;border-radius:12px;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><path d="M17.5 17H7a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17.2 8.5 4.25 4.25 0 0 1 17.5 17z"/></svg></div>
+<div class="prov-meta">
+<div class="prov-name">Workers AI <span style="font-size:.6rem;color:var(--t3);font-weight:400">Cloudflare</span></div>
+<div class="prov-models">Llama 3.3 70B, gpt-oss 120B, vision Llama 4 Scout</div>
+</div>
+</div>
+<div class="prov-status" id="PROV-WORKERSAI-STATUS"><span class="prov-dot prov-dot-gray"></span>Verification...</div>
+<div class="prov-body">
+<div class="prov-footer">
+<span class="prov-hint">Heberge par Cloudflare — aucune cle, quota quotidien</span>
+<button type="button" class="btn-s" onclick="testProvider('workersai')">Tester</button>
 </div>
 </div>
 </div>
@@ -517,7 +550,7 @@
 </div>
 </div>
 </div>
-<div class="ss"><h3 data-i18n="set_account">Compte</h3><button class="btn-s" id="ADD-ACC" style="width:100%;margin-bottom:8px;padding:10px">Ajouter un compte</button><button class="btn-s" id="SWITCH-ACC" style="width:100%;margin-bottom:8px;padding:10px;display:none">Changer de compte</button><button class="btn-do" id="LOGOUT" style="width:100%;margin-bottom:8px">Se deconnecter</button></div>
+<div class="ss"><h3 data-i18n="set_account">Compte</h3><p id="ACC-EMAIL" class="ss-h" style="margin-bottom:10px"></p><button class="btn-s" id="ADD-ACC" style="width:100%;margin-bottom:8px;padding:10px">Changer de compte</button><button class="btn-do" id="LOGOUT" style="width:100%;margin-bottom:8px">Se deconnecter</button></div>
 <div class="ss"><h3 data-i18n="set_data">Donnees</h3><button class="btn-d" id="DHB">Supprimer tout l'historique</button><button class="btn-do" id="DAB">Supprimer mon compte</button></div>
 </div></div></div>
 

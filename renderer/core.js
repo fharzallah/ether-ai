@@ -417,9 +417,11 @@ var MISTRAL_MODELS = { main: 'mistral-large-latest', fast: 'mistral-small-latest
 var CEREBRAS_MODELS = { main: 'qwen-3-235b-a22b-instruct-2507', fast: 'llama3.1-8b' };
 // OpenRouter : routeur gratuit cote serveur, dernier recours quand les autres sont a court de quota.
 var OPENROUTER_MODELS = { main: 'openrouter/free', fast: 'openrouter/free', reasoning: 'openrouter/free' };
+// Workers AI : modeles heberges par Cloudflare, sans cle, quota gratuit quotidien.
+var WORKERSAI_MODELS = { main: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', fast: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', reasoning: '@cf/openai/gpt-oss-120b' };
 
 // Provider availability tracking
-var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true, openrouter: true };
+var providerStatus = { groq: true, gemini: true, mistral: true, cerebras: true, workersai: true, openrouter: true };
 
 // getSmartRoute et getSmartModel sont definis dans engine.js (routing intelligent)
 
