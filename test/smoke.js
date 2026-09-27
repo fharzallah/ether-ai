@@ -209,6 +209,13 @@ test('BLOCKED_HOSTS bloque les adresses internes, pas les domaines publics', () 
     .forEach(u => assert(!re.test(host(u)), 'Devrait etre autorise : ' + u));
 });
 
+test('images : FLUX via /api/imagine (auth), lecture /api/img/<id> par identifiant aleatoire', () => {
+  assert(workerSrc.includes("path.startsWith('/api/imagine')"), '/api/imagine doit exiger une session');
+  assert(workerSrc.includes('flux-1-schnell') && workerSrc.includes('flux-2-klein'), 'Modeles FLUX absents');
+  assert(/\[0-9a-f\]\{32\}/.test(workerSrc), 'Identifiant d image non contraint');
+  assert(shimSrc.includes("request('/api/imagine'"), 'Front : appel /api/imagine absent');
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 
