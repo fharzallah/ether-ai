@@ -170,6 +170,45 @@ test('plus aucune reference a Ollama dans le renderer', () => {
   });
 });
 
+// === 6c. COMPTES ET CLES ===
+console.log('\n\x1b[36m6c. Comptes, cles perso, SSRF\x1b[0m');
+const workerSrc = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'index.js'), 'utf8');
+const shimSrc = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'platform-web.js'), 'utf8');
+
+test('les routes de compte existent et l ancienne inscription est fermee', () => {
+  ['/api/auth/signup', '/api/auth/login', '/api/auth/recover'].forEach(r => assert(workerSrc.includes(r), 'Missing ' + r));
+  assert(/path === '\/api\/register'\)\s*\{\s*return json\(\{ ok: false/.test(workerSrc), '/api/register doit refuser');
+});
+
+test('mots de passe haches avec PBKDF2 et sel aleatoire', () => {
+  assert(workerSrc.includes("name: 'PBKDF2'"), 'PBKDF2 absent');
+  assert(workerSrc.includes('crypto.getRandomValues(new Uint8Array(16))'), 'Sel aleatoire absent');
+});
+
+test('pas de coffre partage "anonyme"', () => {
+  assert(!/persist:'\s*\+\s*\(\(user && user\.email\) \|\| 'anonyme'\)/.test(workerSrc), 'Coffre anonyme partage');
+});
+
+test('les jetons sont revoques par numero de version (tv)', () => {
+  assert(/rec\.tv !== payload\.tv/.test(workerSrc), 'Verification tv absente');
+});
+
+test('la cle perso passe par X-Provider-Key et n est jamais stockee cote serveur', () => {
+  assert(shimSrc.includes("'X-Provider-Key'"), 'Front : en-tete absent');
+  assert(workerSrc.includes("request.headers.get('X-Provider-Key')"), 'Worker : en-tete non lu');
+  assert(!/ETHER_KV\.put\([^)]*userKey/.test(workerSrc), 'Cle perso ecrite dans KV');
+});
+
+test('BLOCKED_HOSTS bloque les adresses internes, pas les domaines publics', () => {
+  const re = eval(workerSrc.match(/const BLOCKED_HOSTS = (\/.*\/i);/)[1]);
+  const host = u => new URL(u).hostname;
+  ['https://127.0.0.1/', 'https://10.1.2.3/', 'https://2130706433/', 'https://192.168.1.1/',
+   'https://169.254.169.254/', 'https://[::1]/', 'https://[fd00::1]/', 'https://localhost/', 'https://x.local/']
+    .forEach(u => assert(re.test(host(u)), 'Devrait etre bloque : ' + u));
+  ['https://api.together.xyz/', 'https://10.example.com/', 'https://8.8.8.8/']
+    .forEach(u => assert(!re.test(host(u)), 'Devrait etre autorise : ' + u));
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 
@@ -181,7 +220,6 @@ test('worker contient les routes API', () => {
   const worker = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'index.js'), 'utf8');
   assert(worker.includes('/api/health'), 'Missing /api/health');
   assert(worker.includes('/api/chat'), 'Missing /api/chat');
-  assert(worker.includes('/api/register'), 'Missing /api/register');
   assert(worker.includes('/api/providers'), 'Missing /api/providers');
   assert(worker.includes('/api/search'), 'Missing /api/search');
   assert(worker.includes('/api/persist'), 'Missing /api/persist');
