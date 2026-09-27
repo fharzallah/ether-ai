@@ -48,7 +48,9 @@ function checkProvider(provider, env, userKey) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    // ctx sert a finir un travail apres la reponse (comptage d'usage d'un stream).
+    env = { ...env, CTX: ctx };
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders(env) });
     }
@@ -93,6 +95,9 @@ export default {
 
         const bad = checkProvider(provider, env, userKey);
         if (bad) return bad;
+        if (provider === 'workersai' && !(await aiBudgetLeft(env))) {
+          return json({ ok: false, error: 'Workers AI : quota gratuit du jour presque epuise', aiBudget: true }, 429, env);
+        }
 
         const messages = body.messages;
         if (!messages || !messages.length) return json({ ok: false, error: 'Messages required' }, 400, env);
@@ -133,7 +138,7 @@ export default {
         const body = await request.json();
         // Gemini d'abord s'il est configure, Workers AI en repli.
         let r = env.GEMINI_KEY ? await callGeminiVision(env, body) : { ok: false };
-        if (!r.ok && env.AI) r = await callWorkersAIVision(env, body);
+        if (!r.ok && env.AI && await aiBudgetLeft(env)) r = await callWorkersAIVision(env, body);
         if (!r.ok && !env.GEMINI_KEY && !env.AI) r = { ok: false, error: 'Aucun modele de vision configure' };
         return json(r, 200, env);
       }
@@ -188,6 +193,15 @@ export default {
         const [body, status] = await authRecover(request, env);
         return json(body, status, env);
       }
+      // Droits sur ses donnees (RGPD) : tout recuperer, ou tout effacer.
+      if (path === '/api/account/export' && request.method === 'GET') {
+        const [body, status] = await accountExport(request, env);
+        return json(body, status, env);
+      }
+      if (path === '/api/account/delete' && request.method === 'POST') {
+        const [body, status] = await accountDelete(request, env);
+        return json(body, status, env);
+      }
       if (path === '/api/verify' && request.method === 'POST') {
         const user = await currentUser(request, env);
         if (user) return json({ ok: true, user }, 200, env);
@@ -201,13 +215,12 @@ export default {
       if (path === '/api/quota/use' && request.method === 'POST') {
         return json(await quotaConsume(request, env), 200, env);
       }
-      if (path === '/api/quota/bonus' && request.method === 'POST') {
-        const body = await request.json();
-        return json(await quotaBonus(request, env, body.bonus), 200, env);
-      }
-      if (path === '/api/quota/pro' && request.method === 'GET') {
-        const user = await currentUser(request, env);
-        return json({ ok: true, pro: !!(user && user.pro) }, 200, env);
+      // --- USAGE WORKERS AI (estimation du jour) ---
+      if (path === '/api/usage' && request.method === 'GET') {
+        const authErr = await verifyAuth(request, env);
+        if (authErr) return authErr;
+        const u = await aiUsage(env);
+        return json({ ok: true, day: aiDay(), limit: AI_FREE_NEURONS, cutoff: AI_SAFETY, resetsAt: '00:00 UTC', ...u }, 200, env);
       }
 
       // --- DIAG : modeles reellement disponibles chez chaque provider ---
@@ -236,57 +249,6 @@ export default {
         return json({ ok: r.ok, error: r.error }, 200, env);
       }
 
-      // --- STRIPE: checkout ---
-      if (path === '/api/stripe/checkout' && request.method === 'POST') {
-        if (!env.STRIPE_SECRET) return json({ error: 'Stripe non configure' }, 503, env);
-        const body = await request.json();
-        if (!body.email) return json({ error: 'Email required' }, 400, env);
-
-        const session = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + btoa(env.STRIPE_SECRET + ':'),
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: new URLSearchParams({
-            'mode': 'subscription',
-            'customer_email': body.email,
-            'line_items[0][price]': env.STRIPE_PRICE_ID || 'price_placeholder',
-            'line_items[0][quantity]': '1',
-            'success_url': 'https://ether-ai.app/success?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url': 'https://ether-ai.app/cancel',
-            'metadata[app]': 'ether'
-          }).toString()
-        });
-        const data = await session.json();
-        if (data.url) return json({ ok: true, url: data.url }, 200, env);
-        return json({ ok: false, error: data.error?.message || 'Stripe error' }, 400, env);
-      }
-
-      // --- STRIPE: webhook ---
-      if (path === '/api/stripe/webhook' && request.method === 'POST') {
-        if (!env.STRIPE_SECRET) return json({ error: 'Stripe non configure' }, 503, env);
-        const body = await request.text();
-        try {
-          const event = JSON.parse(body);
-          if (event.type === 'checkout.session.completed') {
-            console.log('[STRIPE] Pro active pour:', event.data.object.customer_email);
-          }
-          if (event.type === 'customer.subscription.deleted') {
-            console.log('[STRIPE] Pro desactive pour customer:', event.data.object.customer);
-          }
-          return json({ received: true }, 200, env);
-        } catch (e) {
-          return json({ error: 'Invalid webhook payload' }, 400, env);
-        }
-      }
-
-      // --- STRIPE: statut Pro ---
-      if (path === '/api/stripe/status' && request.method === 'POST') {
-        const body = await request.json();
-        if (!body.email) return json({ error: 'Email required' }, 400, env);
-        return json({ ok: true, pro: false, email: body.email }, 200, env);
-      }
 
       return json({ error: 'Not found' }, 404, env);
 
@@ -399,7 +361,7 @@ async function currentUser(request, env) {
   if (typeof payload.tv !== 'number') return null;
   const rec = await env.ETHER_KV.get(accountKey(payload.email), 'json');
   if (!rec || rec.tv !== payload.tv) return null;
-  return { email: rec.email, name: rec.name, pro: !!rec.pro, tv: rec.tv };
+  return { email: rec.email, name: rec.name, tv: rec.tv };
 }
 
 async function bearerPayload(request, env) {
@@ -419,7 +381,6 @@ function quotaKey(user) {
 
 async function quotaRead(request, env) {
   const user = await currentUser(request, env);
-  if (user && user.pro) return { ok: true, unlimited: true, pro: true };
   if (!env.ETHER_KV) return { ok: true, remaining: DAILY_LIMIT, limit: DAILY_LIMIT, tracked: false };
   const raw = await env.ETHER_KV.get(quotaKey(user));
   const used = raw ? parseInt(raw, 10) : 0;
@@ -428,28 +389,11 @@ async function quotaRead(request, env) {
 
 async function quotaConsume(request, env) {
   const user = await currentUser(request, env);
-  if (user && user.pro) return { ok: true, unlimited: true };
   if (!env.ETHER_KV) return { ok: true, tracked: false };
   const k = quotaKey(user);
   const raw = await env.ETHER_KV.get(k);
   const used = (raw ? parseInt(raw, 10) : 0) + 1;
   if (used > DAILY_LIMIT) return { ok: false, error: 'Quota journalier atteint', remaining: 0 };
-  await env.ETHER_KV.put(k, String(used), { expirationTtl: 172800 });
-  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), tracked: true };
-}
-
-async function quotaBonus(request, env, bonus) {
-  const user = await currentUser(request, env);
-  if (!env.ETHER_KV) return { ok: true, tracked: false };
-  if (!user) return { ok: false, error: 'Non connecte' };
-  // Une fois par jour : sans ce verrou, rappeler la route rendait le quota illimite.
-  const flag = `bonus:${user.email}:${new Date().toISOString().slice(0, 10)}`;
-  if (await env.ETHER_KV.get(flag)) return { ok: false, error: 'Bonus deja utilise aujourd hui' };
-  await env.ETHER_KV.put(flag, '1', { expirationTtl: 172800 });
-  const n = Math.max(0, Math.min(10, parseInt(bonus, 10) || 0));
-  const k = quotaKey(user);
-  const raw = await env.ETHER_KV.get(k);
-  const used = Math.max(0, (raw ? parseInt(raw, 10) : 0) - n);
   await env.ETHER_KV.put(k, String(used), { expirationTtl: 172800 });
   return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), tracked: true };
 }
@@ -668,6 +612,10 @@ async function testProvidersNow(env) {
   const results = [];
   for (const name of Object.keys(PROVIDERS)) {
     const p = PROVIDERS[name];
+    if (name === 'workersai' && env.AI && !(await aiBudgetLeft(env))) {
+      results.push({ provider: name, ok: false, error: 'quota gratuit du jour presque epuise' });
+      continue;
+    }
     if (p.userOnly) continue;                                   // n'existe qu'avec une cle perso
     if (p.byok && !env[p.key]) continue;                        // idem sans cle serveur
     if (p.binding ? !env[p.binding] : (!p.keyless && !env[p.key])) {
@@ -1020,6 +968,7 @@ async function callWorkersAI(env, model, messages, temperature, maxTokens) {
   const m = workersAIModel(model);
   try {
     const r = await env.AI.run(m, { messages, temperature, max_tokens: maxTokens });
+    recordAI(env, 'chat', tokenNeurons(r && r.usage, LLAMA_RATES));
     const text = r && (typeof r.response === 'string' ? r.response
       : (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content));
     if (typeof text !== 'string') return { ok: false, error: 'workersai: reponse vide', provider: 'workersai' };
@@ -1032,7 +981,11 @@ async function callWorkersAI(env, model, messages, temperature, maxTokens) {
 async function streamWorkersAI(env, model, messages, temperature, maxTokens) {
   try {
     const stream = await env.AI.run(workersAIModel(model), { messages, temperature, max_tokens: maxTokens, stream: true });
-    return sseResponse({ ok: true, status: 200, body: stream }, env);
+    // Une copie du flux sert a lire la consommation reelle annoncee par Cloudflare.
+    const [client, meter] = stream.tee();
+    const counting = streamNeurons(meter).then(n => recordAI(env, 'chat', n));
+    if (env.CTX) env.CTX.waitUntil(counting);
+    return sseResponse({ ok: true, status: 200, body: client }, env);
   } catch (e) {
     return json({ ok: false, error: 'workersai error: ' + e.message }, 502, env);
   }
@@ -1049,6 +1002,7 @@ async function callWorkersAIVision(env, body) {
       ] }],
       max_tokens: 1500
     });
+    recordAI(env, 'vision', tokenNeurons(r && r.usage, SCOUT_RATES));
     const text = r && (r.response || (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content));
     if (!text) return { ok: false, error: 'workersai vision: reponse vide' };
     return { ok: true, text, model: WORKERS_AI_VISION_MODEL, provider: 'workersai' };
@@ -1164,7 +1118,7 @@ function newRecoveryCode() {
 function normCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 
 function issueToken(env, rec) {
-  return createJWT({ email: rec.email, name: rec.name, pro: !!rec.pro, tv: rec.tv }, env.JWT_SECRET);
+  return createJWT({ email: rec.email, name: rec.name, tv: rec.tv }, env.JWT_SECRET);
 }
 
 // 10 echecs par email et par quart d'heure, pour ralentir le devinage.
@@ -1344,6 +1298,8 @@ async function runKlein(env, prompt, width, height, seed) {
 
 async function imagine(request, env) {
   if (!env.AI || !env.ETHER_KV) return [{ ok: false, error: 'Generation d images non configuree sur le serveur' }, 503];
+  // Quota Workers AI du jour presque epuise : l'app bascule sur Pollinations.
+  if (!(await aiBudgetLeft(env))) return [{ ok: false, aiBudget: true, error: 'Quota gratuit Workers AI du jour presque epuise' }, 429];
   const user = await currentUser(request, env);
   const body = await request.json().catch(() => ({}));
   const prompt = String(body.prompt || '').trim().slice(0, 2000);
@@ -1366,7 +1322,16 @@ async function imagine(request, env) {
   const bytes = b64urlToBytes(out.image);   // accepte aussi le base64 standard
   const id = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
   await env.ETHER_KV.put('img:' + id, bytes);
+  // Liste des images de l'utilisateur, pour les inclure a l'export et les
+  // effacer avec son compte.
+  if (user) {
+    const listKey = 'imgs:' + user.email;
+    const ids = (await env.ETHER_KV.get(listKey, 'json').catch(() => null)) || [];
+    ids.push(id);
+    await env.ETHER_KV.put(listKey, JSON.stringify(ids));
+  }
   await env.ETHER_KV.put(quotaKey, String(used + 1), { expirationTtl: 172800 });
+  recordAI(env, 'images', imageNeurons(out.model, clampSize(body.width), clampSize(body.height)));
   return [{ ok: true, url: '/api/img/' + id + '.jpg', model: out.model, seed, remaining: IMAGE_DAILY_LIMIT - used - 1 }, 200];
 }
 
@@ -1378,4 +1343,119 @@ async function serveImage(env, id) {
   return new Response(buf, {
     headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }
   });
+}
+
+// === DONNEES DU COMPTE ===
+async function accountExport(request, env) {
+  const user = await currentUser(request, env);
+  if (!user || !env.ETHER_KV) return [{ ok: false, error: 'Non connecte', authRequired: true }, 401];
+  const rec = await env.ETHER_KV.get(accountKey(user.email), 'json');
+  const vault = (await env.ETHER_KV.get(persistKey(user), 'json').catch(() => null)) || {};
+  const images = (await env.ETHER_KV.get('imgs:' + user.email, 'json').catch(() => null)) || [];
+  return [{
+    ok: true,
+    exportedAt: new Date().toISOString(),
+    // Jamais le mot de passe ni le code de secours, meme haches.
+    account: { email: user.email, name: user.name, created: rec && rec.created ? new Date(rec.created).toISOString() : null },
+    data: vault.data || {},
+    images: images.map(id => '/api/img/' + id + '.jpg')
+  }, 200];
+}
+
+// Suppression definitive : le mot de passe est redemande, pour qu'un appareil
+// laisse ouvert ne suffise pas a effacer le compte de quelqu'un.
+async function accountDelete(request, env) {
+  const user = await currentUser(request, env);
+  if (!user || !env.ETHER_KV) return [{ ok: false, error: 'Non connecte', authRequired: true }, 401];
+  const body = await request.json().catch(() => ({}));
+  if (await authLocked(env, user.email)) return [{ ok: false, error: 'Trop de tentatives. Reessaie dans 15 minutes.' }, 429];
+  const rec = await env.ETHER_KV.get(accountKey(user.email), 'json');
+  if (!rec || !(await checkSecret(rec.pw, String(body.password || '')))) {
+    await authFailed(env, user.email);
+    return [{ ok: false, error: 'Mot de passe incorrect' }, 401];
+  }
+  const images = (await env.ETHER_KV.get('imgs:' + user.email, 'json').catch(() => null)) || [];
+  const day = new Date().toISOString().slice(0, 10);
+  const keys = [
+    accountKey(user.email), persistKey(user), 'imgs:' + user.email, 'authfail:' + user.email,
+    `quota:${user.email}:${day}`, `imgq:${user.email}:${day}`, `bonus:${user.email}:${day}`
+  ].concat(images.map(id => 'img:' + id));
+  for (const k of keys) await env.ETHER_KV.delete(k);
+  return [{ ok: true, deleted: keys.length }, 200];
+}
+
+// === SUIVI DU QUOTA WORKERS AI ===
+// Le palier gratuit donne 10 000 "neurones" par jour (remis a zero a minuit
+// UTC). Au-dela, Cloudflare facture ou refuse. On additionne la consommation
+// dans KV et on coupe Workers AI a 95 % : la cascade passe alors aux autres
+// fournisseurs, et les images a Pollinations.
+const AI_FREE_NEURONS = 10000;
+const AI_SAFETY = 9500;
+
+// Tarifs publies par Cloudflare, en neurones par jeton (1 neurone = 0,011 $ / 1000).
+const LLAMA_RATES = { input: 0.026668, output: 0.204805 };   // Llama 3.3 70B fp8-fast
+const SCOUT_RATES = { input: 0.024545, output: 0.077273 };   // Llama 4 Scout (vision)
+
+function aiDay() { return new Date().toISOString().slice(0, 10); }
+
+async function aiUsage(env) {
+  const u = env.ETHER_KV ? await env.ETHER_KV.get('aiusage:' + aiDay(), 'json').catch(() => null) : null;
+  return u || { neurons: 0, chat: 0, images: 0, vision: 0 };
+}
+
+async function aiBudgetLeft(env) {
+  return (await aiUsage(env)).neurons < AI_SAFETY;
+}
+
+// Une ecriture KV par appel Workers AI (et seulement pour ceux-la) : le palier
+// gratuit de KV est limite a 1 000 ecritures par jour.
+function recordAI(env, kind, neurons) {
+  if (!env.ETHER_KV) return Promise.resolve();
+  const work = (async () => {
+    const u = await aiUsage(env);
+    u.neurons = Math.round((u.neurons + (neurons || 0)) * 10) / 10;
+    u[kind] = (u[kind] || 0) + 1;
+    await env.ETHER_KV.put('aiusage:' + aiDay(), JSON.stringify(u), { expirationTtl: 8 * 86400 });
+  })().catch(() => {});
+  if (env.CTX) env.CTX.waitUntil(work);
+  return work;
+}
+
+function tokenNeurons(usage, rates) {
+  if (!usage) return 0;
+  return (usage.prompt_tokens || 0) * rates.input + (usage.completion_tokens || 0) * rates.output;
+}
+
+// En streaming, chaque morceau annonce les neurones qu'il a coute, et le
+// dernier repete le TOTAL (reconnaissable a ses jetons d'entree ET de sortie).
+// Additionner tous les morceaux comptait donc la reponse deux fois (mesure :
+// 10,38 au lieu de 5,19).
+async function streamNeurons(stream) {
+  const reader = stream.getReader();
+  const dec = new TextDecoder();
+  let sum = 0, total = null, buf = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data:') || line.includes('[DONE]')) continue;
+      let u;
+      try { u = JSON.parse(line.slice(5)).usage; } catch { continue; }
+      if (!u || typeof u.neurons !== 'number') continue;
+      if (u.prompt_tokens > 0 && u.completion_tokens > 0) total = u.neurons;
+      else sum += u.neurons;
+    }
+  }
+  return total !== null ? total : sum;
+}
+
+// Estimation d'apres les tarifs FLUX.1 [schnell] (4,8 neurones par tuile de
+// 512x512, 9,6 par etape, 4 etapes). FLUX.2 [klein] n'a pas de tarif publie
+// detaille : on applique le meme calcul.
+function imageNeurons(model, width, height) {
+  const tiles = Math.ceil(width / 512) * Math.ceil(height / 512);
+  return tiles * 4.8 + 4 * 9.6;
 }

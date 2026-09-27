@@ -45,7 +45,7 @@ test('_headers (CSP) existe', () => {
   assert(fs.existsSync(path.join(__dirname, '..', '_headers')));
 });
 
-const rendererFiles = ['platform-web.js', 'core.js', 'memory.js', 'engine.js', 'ui.js', 'skill-creator.js', 'app-main.js'];
+const rendererFiles = ['platform-web.js', 'core.js', 'memory.js', 'engine.js', 'ui.js', 'skill-creator.js', 'docgen.js', 'app-main.js'];
 rendererFiles.forEach(f => {
   test('renderer/' + f + ' existe', () => {
     assert(fs.existsSync(path.join(__dirname, '..', 'renderer', f)));
@@ -216,6 +216,23 @@ test('images : FLUX via /api/imagine (auth), lecture /api/img/<id> par identifia
   assert(shimSrc.includes("request('/api/imagine'"), 'Front : appel /api/imagine absent');
 });
 
+test('donnees du compte : export et suppression (mot de passe exige)', () => {
+  assert(workerSrc.includes("'/api/account/export'") && workerSrc.includes("'/api/account/delete'"), 'Routes absentes');
+  const del = workerSrc.slice(workerSrc.indexOf('async function accountDelete'));
+  assert(del.indexOf('checkSecret(rec.pw') !== -1 && del.indexOf('checkSecret(rec.pw') < del.indexOf('ETHER_KV.delete'), 'Mot de passe verifie avant suppression');
+  assert(!/pw|rc/.test((workerSrc.match(/account: \{[^}]*\}/) || [''])[0]), 'L export ne doit pas contenir les secrets');
+});
+
+test('plus de plan Pro ni de Stripe', () => {
+  assert(!/stripe/i.test(workerSrc), 'Stripe encore present');
+  assert(/var isPro = true;/.test(fs.readFileSync(path.join(__dirname, '..', 'renderer', 'core.js'), 'utf8')), 'isPro doit etre actif');
+});
+
+test('quota Workers AI : comptage sans double du total de flux, coupure a 95 %', () => {
+  assert(workerSrc.includes('const AI_SAFETY = 9500'), 'Seuil de coupure absent');
+  assert(/u\.prompt_tokens > 0 && u\.completion_tokens > 0\) total = u\.neurons/.test(workerSrc), 'Total de flux non distingue');
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 
@@ -230,8 +247,6 @@ test('worker contient les routes API', () => {
   assert(worker.includes('/api/providers'), 'Missing /api/providers');
   assert(worker.includes('/api/search'), 'Missing /api/search');
   assert(worker.includes('/api/persist'), 'Missing /api/persist');
-  assert(worker.includes('/api/stripe/checkout'), 'Missing /api/stripe/checkout');
-  assert(worker.includes('/api/stripe/webhook'), 'Missing /api/stripe/webhook');
 });
 
 // === 8. API TESTS (si le worker local tourne) ===

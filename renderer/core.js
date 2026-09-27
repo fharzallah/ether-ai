@@ -53,7 +53,9 @@ var G = function(id) { return document.getElementById(id); };
 
 // Variables globales disponibles pour tous les scripts suivants
 // (initialisées ici pour éviter les ReferenceError dans ui.js chargé avant app-main.js)
-var isPro = false; // sera écrasé par sGet('pro', false) dans app-main.js au boot
+// Plus de plan Pro : toutes les fonctionnalites sont actives pour tout le monde.
+// Les seules limites sont celles du serveur (requetes et images par jour).
+var isPro = true;
 function sSet(k,v) {
     try {
         // JSON.stringify(undefined) renvoie undefined et setItem stocke la chaine "undefined",
