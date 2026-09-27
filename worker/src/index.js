@@ -760,7 +760,7 @@ async function streamPollinations(env, model, messages, temperature, maxTokens) 
 // les modeles gratuits pris individuellement tombent souvent en 429/504.
 const OPENROUTER_MODEL = 'openrouter/free';
 const OPENROUTER_HEADERS = {
-  'HTTP-Referer': 'https://ether-api.ether-hichem.workers.dev',
+  'HTTP-Referer': 'https://ether-ai.ether-hichem.workers.dev',
   'X-Title': 'Ether AI'
 };
 

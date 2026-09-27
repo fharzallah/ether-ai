@@ -693,7 +693,7 @@
 
 <script src="marked.min.js"></script>
 <!-- Web : le worker sert le site et l API sur la meme origine. Ignore sous Electron. -->
-<script>window.ETHER_API_BASE = window.ETHER_API_BASE || (/^https?:$/.test(location.protocol) ? location.origin : 'https://ether-api.ether-hichem.workers.dev');</script>
+<script>window.ETHER_API_BASE = window.ETHER_API_BASE || (/^https?:$/.test(location.protocol) ? location.origin : 'https://ether-ai.ether-hichem.workers.dev');</script>
 <!-- Shim navigateur : ne s'installe que si le pont Electron est absent. -->
 <script src="renderer/platform-web.js"></script>
 <script src="renderer/core.js"></script>
