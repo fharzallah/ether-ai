@@ -398,7 +398,7 @@ async function bearerPayload(request, env) {
 
 // === QUOTAS ===
 // Sans KV, le quota reste indicatif. Avec le binding ETHER_KV il devient reel.
-const DAILY_LIMIT = 30;
+const DAILY_LIMIT = 100;
 
 function quotaKey(user) {
   const day = new Date().toISOString().slice(0, 10);
