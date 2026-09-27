@@ -234,10 +234,12 @@ test('quota Workers AI : comptage sans double du total de flux, coupure a 95 %',
 });
 
 test('aucun nom personnel ni adresse d instance code en dur', () => {
+  // Le nom est encode pour ne pas l'ecrire en clair dans le depot.
+  const NAME = new RegExp(Buffer.from('aGljaGVt', 'base64').toString(), 'i');
   const files = ['index.html', 'README.md', 'DEPLOY.md', 'worker/src/index.js', 'worker/wrangler.toml'].concat(rendererFiles.map(f => 'renderer/' + f));
   files.forEach(f => {
     const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-    assert(!/***/i.test(src), 'Nom personnel dans ' + f);
+    assert(!NAME.test(src), 'Nom personnel dans ' + f);
     assert(!/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev/i.test(src.replace(/<ton-[^>]+>/g, '')), 'Adresse d instance en dur dans ' + f);
   });
 });
