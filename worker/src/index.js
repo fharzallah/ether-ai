@@ -67,9 +67,21 @@ export default {
           path.startsWith('/api/vision') || path.startsWith('/api/transcribe') ||
           path.startsWith('/api/fetch') || path.startsWith('/api/image') ||
           path.startsWith('/api/search') || path.startsWith('/api/diag') ||
-          path.startsWith('/api/providers/test')) {
+          path.startsWith('/api/providers/test') || path.startsWith('/api/imagine')) {
         const authErr = await verifyAuth(request, env);
         if (authErr) return authErr;
+      }
+
+      // --- GENERATION D'IMAGES (FLUX sur Workers AI) ---
+      if (path === '/api/imagine' && request.method === 'POST') {
+        const [body, status] = await imagine(request, env);
+        return json(body, status, env);
+      }
+      // Lecture publique : l'identifiant aleatoire (128 bits) fait office de secret,
+      // comme un lien d'image partage. Sans cela, <img src> ne pourrait pas l'afficher.
+      const imgMatch = /^\/api\/img\/([0-9a-f]{32})\.jpg$/.exec(path);
+      if (imgMatch && request.method === 'GET') {
+        return serveImage(env, imgMatch[1]);
       }
 
       // --- CHAT (reponse complete ou streaming SSE) ---
@@ -1284,4 +1296,86 @@ async function authRecover(request, env) {
   await env.ETHER_KV.put(accountKey(email), JSON.stringify(rec));
   await env.ETHER_KV.delete('authfail:' + email);
   return [{ ok: true, token: await issueToken(env, rec), user: { name: rec.name, email }, recoveryCode }, 200];
+}
+
+// === GENERATION D'IMAGES ===
+// Carre : FLUX.1 [schnell], 1 a 2 s. Portrait ou paysage : FLUX.2 [klein], seul
+// a respecter le format mais lent (10 a 65 s mesures), avec repli carre apres 30 s. L'image est rangee dans KV sous un identifiant aleatoire et servie par
+// /api/img/<id>.jpg : l'adresse reste valable, contrairement a un lien externe.
+const IMAGE_DAILY_LIMIT = 20;
+const FLUX_KLEIN = '@cf/black-forest-labs/flux-2-klein-4b';
+const FLUX_SCHNELL = '@cf/black-forest-labs/flux-1-schnell';
+
+function clampSize(n) {
+  n = parseInt(n, 10) || 1024;
+  return Math.max(256, Math.min(1536, Math.round(n / 16) * 16));
+}
+
+async function runFlux(env, prompt, width, height, seed) {
+  if (width !== height) {
+    const klein = runKlein(env, prompt, width, height, seed).catch(e => {
+      console.log('[IMAGINE] klein indisponible, repli schnell :', e.message);
+      return null;
+    });
+    const timeout = new Promise(r => setTimeout(() => r(null), 30000));
+    const r = await Promise.race([klein, timeout]);
+    if (r) return r;
+  }
+  // schnell refuse le parametre seed (erreur 5006) et ne produit que du carre.
+  const r = await env.AI.run(FLUX_SCHNELL, { prompt, steps: 4 });
+  if (r && r.image) return { image: r.image, model: 'flux-1-schnell' };
+  throw new Error('reponse vide');
+}
+
+// Les modeles FLUX.2 n'acceptent que du multipart/form-data.
+async function runKlein(env, prompt, width, height, seed) {
+  const form = new FormData();
+  form.append('prompt', prompt);
+  form.append('width', String(width));
+  form.append('height', String(height));
+  form.append('seed', String(seed));
+  const req = new Request('http://form', { method: 'POST', body: form });
+  const r = await env.AI.run(FLUX_KLEIN, {
+    multipart: { body: req.body, contentType: req.headers.get('content-type') }
+  });
+  if (r && r.image) return { image: r.image, model: 'flux-2-klein' };
+  throw new Error('reponse vide');
+}
+
+async function imagine(request, env) {
+  if (!env.AI || !env.ETHER_KV) return [{ ok: false, error: 'Generation d images non configuree sur le serveur' }, 503];
+  const user = await currentUser(request, env);
+  const body = await request.json().catch(() => ({}));
+  const prompt = String(body.prompt || '').trim().slice(0, 2000);
+  if (!prompt) return [{ ok: false, error: 'Prompt vide' }, 400];
+
+  const quotaKey = `imgq:${(user && user.email) || 'anon'}:${new Date().toISOString().slice(0, 10)}`;
+  const used = parseInt((await env.ETHER_KV.get(quotaKey)) || '0', 10);
+  if (used >= IMAGE_DAILY_LIMIT) {
+    return [{ ok: false, limit: true, error: `Limite de ${IMAGE_DAILY_LIMIT} images par jour atteinte` }, 429];
+  }
+
+  const seed = Number.isInteger(body.seed) ? Math.abs(body.seed) % 2147483647 : Math.floor(Math.random() * 2147483647);
+  let out;
+  try {
+    out = await runFlux(env, prompt, clampSize(body.width), clampSize(body.height), seed);
+  } catch (e) {
+    return [{ ok: false, error: 'FLUX indisponible : ' + e.message }, 502];
+  }
+
+  const bytes = b64urlToBytes(out.image);   // accepte aussi le base64 standard
+  const id = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+  await env.ETHER_KV.put('img:' + id, bytes);
+  await env.ETHER_KV.put(quotaKey, String(used + 1), { expirationTtl: 172800 });
+  return [{ ok: true, url: '/api/img/' + id + '.jpg', model: out.model, seed, remaining: IMAGE_DAILY_LIMIT - used - 1 }, 200];
+}
+
+async function serveImage(env, id) {
+  const buf = env.ETHER_KV ? await env.ETHER_KV.get('img:' + id, 'arrayBuffer') : null;
+  if (!buf) return new Response('Image introuvable', { status: 404 });
+  const b = new Uint8Array(buf);
+  const type = b[0] === 0x89 ? 'image/png' : b[0] === 0x52 ? 'image/webp' : 'image/jpeg';
+  return new Response(buf, {
+    headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }
+  });
 }
