@@ -23,6 +23,10 @@ CORS_ORIGIN = "*"
 binding = "ETHER_KV"
 id = "601d23be0b40404f8019f753ffad6210"
 
+# Workers AI : modeles heberges par Cloudflare, sans cle (quota gratuit quotidien).
+[ai]
+binding = "AI"
+
 # Le site statique est servi par le meme worker que l'API :
 # une seule origine, donc plus aucun probleme de CORS.
 [assets]

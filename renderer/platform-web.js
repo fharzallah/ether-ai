@@ -25,11 +25,10 @@
         return h;
     }
 
-    // === Inscription automatique ===
-    // L'onboarding de l'app (formulaire prenom/email) est purement local et
-    // ne connait pas le worker. On reutilise l'identite qu'il a stockee pour
-    // obtenir un JWT, de facon transparente pour le reste du code.
-    var _tokenPromise = null;
+    // === COMPTES ===
+    // Connexion par email + mot de passe (routes /api/auth/* du worker).
+    // L'ancienne inscription automatique donnait un compte a quiconque tapait
+    // l'email de quelqu'un d'autre : elle n'existe plus.
 
     // === CODE D'INVITATION ===
     // Transmis par le lien : https://.../?code=XXXX
@@ -66,90 +65,56 @@
         document.body.appendChild(box);
     }
 
-    function profile() {
+    function tokenPayload() {
         try {
-            var u = JSON.parse(localStorage.getItem('ether_user') || '{}');
-            return {
-                name: u.name || u.firstName || 'Utilisateur',
-                email: u.email || 'anonyme@ether.local'
-            };
-        } catch (e) {
-            return { name: 'Utilisateur', email: 'anonyme@ether.local' };
-        }
-    }
-
-    // Email encode dans le JWT courant, pour detecter un changement d'identite.
-    function tokenEmail() {
-        try {
-            var t = getToken();
-            if (!t) return '';
-            var b = t.split('.')[1];
-            if (!b) return '';
+            var b = (getToken().split('.')[1]) || '';
+            if (!b) return null;
             b = b.replace(/-/g, '+').replace(/_/g, '/');
             while (b.length % 4) b += '=';
-            return (JSON.parse(atob(b)) || {}).email || '';
-        } catch (e) { return ''; }
+            return JSON.parse(atob(b));
+        } catch (e) { return null; }
     }
 
-    var RELOAD_FLAG = 'ether__sync_reload';
-
-    function registerNow() {
-        if (_tokenPromise) return _tokenPromise;
-        var p = profile();
-        p.code = inviteCode();
-        _tokenPromise = fetch(API_BASE + '/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(p)
-        }).then(function(r) { return r.json(); })
-          .then(function(j) {
-              if (j && j.token) { setToken(j.token); }
-              else if (j && j.needCode) {
-                  try { localStorage.removeItem(INVITE_KEY); } catch (e) {}
-                  showInviteError(inviteCode()
-                      ? 'Le code de votre lien n est pas valide. Demandez un lien a jour.'
-                      : 'Ether AI est sur invitation. Ouvrez le lien qui vous a ete transmis, il contient le code d acces.');
-              }
-              _tokenPromise = null;
-              return getToken();
-          })
-          .catch(function() { _tokenPromise = null; return ''; });
-        return _tokenPromise;
+    // Le serveur a refuse le jeton : on affiche l'ecran de connexion. Un jeton
+    // d'avant les mots de passe (sans "tv") ouvre directement la creation du
+    // mot de passe avec l'email de cet appareil : c'est ce jeton, renvoye a
+    // l'inscription, qui prouve au serveur que les conversations sont a lui.
+    var _loginShown = false;
+    function authRequired(message) {
+        // Sans jeton, l'app affiche deja l'ecran de connexion.
+        if (_loginShown || !getToken()) return;
+        _loginShown = true;
+        var p = tokenPayload();
+        var legacy = !!(p && p.email && typeof p.tv !== 'number');
+        var info = {
+            email: p && p.email,
+            legacy: legacy,
+            message: legacy
+                ? 'ETHER a maintenant des mots de passe. Cree le tien pour retrouver tes conversations.'
+                : (getToken() ? 'Ta session a expire, reconnecte-toi.' : '')
+        };
+        var show = function() {
+            if (typeof window.etherShowLogin === 'function') window.etherShowLogin(info);
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show);
+        else setTimeout(show, 0);
     }
 
-    function ensureToken(force) {
-        // Au premier chargement l'app n'a pas encore d'identite : on s'inscrit
-        // en anonyme. Des que l'utilisateur saisit son email dans l'onboarding,
-        // il faut reprendre un token a son nom — sinon il ne retrouve jamais
-        // ses conversations.
-        if (!force && getToken() && tokenEmail() !== profile().email) {
-            setToken('');
-            _syncData = {};
-            _syncTimes = {};
-            saveLocalCache();
-
-            return registerNow().then(function(tok) {
-                // restoreFromPersist() est deja passe au demarrage, avec un
-                // coffre anonyme vide. On retire le vrai coffre et on
-                // recharge une fois pour que l'app le prenne en compte.
-                return syncPull().then(function(data) {
-                    var restaure = data && Object.keys(data).length > 0;
-                    var dejaRecharge = false;
-                    try { dejaRecharge = !!sessionStorage.getItem(RELOAD_FLAG); } catch (e) {}
-                    if (restaure && !dejaRecharge) {
-                        try { sessionStorage.setItem(RELOAD_FLAG, '1'); } catch (e) {}
-                        setTimeout(function() { location.reload(); }, 150);
-                    }
-                    return tok;
-                });
-            });
-        }
-        if (!force && getToken()) return Promise.resolve(getToken());
-        return registerNow();
+    function authCall(path, body) {
+        return rawRequest(path, body).then(function(r) {
+            if (r && r.token) { setToken(r.token); _loginShown = false; }
+            else if (r && r.needCode) {
+                try { localStorage.removeItem(INVITE_KEY); } catch (e) {}
+                showInviteError(inviteCode()
+                    ? 'Le code de votre lien n est pas valide. Demandez un lien a jour.'
+                    : 'Ether AI est sur invitation. Ouvrez le lien qui vous a ete transmis, il contient le code d acces.');
+            }
+            return r;
+        });
     }
 
     function isAuthError(res) {
-        return res && res.ok === false && /Authorization required|Token invalide/i.test(res.error || '');
+        return res && res.ok === false && (res.authRequired || /Authorization required|Token invalide|Session expiree/i.test(res.error || ''));
     }
 
     function rawRequest(path, body, method) {
@@ -164,14 +129,11 @@
         });
     }
 
-    // Appel JSON generique : garantit un token, et en redemande un si le
-    // serveur le refuse (expire, secret change cote worker...).
+    // Appel JSON generique : un refus d'authentification ouvre l'ecran de connexion.
     function request(path, body, method) {
-        return ensureToken().then(function() {
-            return rawRequest(path, body, method);
-        }).then(function(res) {
-            if (!isAuthError(res)) return res;
-            return ensureToken(true).then(function() { return rawRequest(path, body, method); });
+        return rawRequest(path, body, method).then(function(res) {
+            if (isAuthError(res)) authRequired(res.error);
+            return res;
         });
     }
 
@@ -252,26 +214,63 @@
         return '';
     }
 
-    function stream(provider, data, _retried) {
+    // === CLES PERSONNELLES ===
+    // Gardees dans CE navigateur uniquement. Envoyees dans l'en-tete
+    // X-Provider-Key : le worker les relaie au fournisseur sans les stocker.
+    // Le nom n'a pas le prefixe ether_ : core.js purge et synchronise ces cles-la.
+    var USER_KEYS = 'etherx_provider_keys';
+    function userKeys() {
+        try { return JSON.parse(localStorage.getItem(USER_KEYS) || '{}') || {}; } catch (e) { return {}; }
+    }
+    function saveUserKeys(o) {
+        try { localStorage.setItem(USER_KEYS, JSON.stringify(o)); return true; } catch (e) { return false; }
+    }
+
+    // Ce qu'il faut ajouter a une requete pour ce fournisseur : la cle perso,
+    // et pour un fournisseur personnalise son URL et son modele.
+    function providerContext(provider, data) {
+        if (provider === 'custom') {
+            return idbGet('customProviders').then(function(list) {
+                var id = data && data.providerId, found = null;
+                for (var i = 0; i < (list || []).length; i++) if (list[i].id === id) found = list[i];
+                if (!found) return { error: 'Fournisseur personnalise introuvable' };
+                return { key: found.apiKey || '', baseUrl: found.baseUrl, model: (data && data.model) || found.model };
+            });
+        }
+        return Promise.resolve({ key: userKeys()[provider] || '' });
+    }
+
+    function chatHeaders(ctx) {
+        var h = headers();
+        if (ctx.key) h['X-Provider-Key'] = ctx.key;
+        return h;
+    }
+
+    function chatBody(provider, data, ctx) {
+        return JSON.stringify({
+            provider: provider,
+            model: ctx.model || (data && data.model),
+            messages: data && data.messages,
+            temperature: data && data.temperature,
+            max_tokens: data && (data.max_tokens || data.maxTokens),
+            baseUrl: ctx.baseUrl
+        });
+    }
+
+    function stream(provider, data) {
         var full = '';
         _abort = new AbortController();
 
-        return ensureToken().then(function() { return fetch(API_BASE + '/api/chat/stream', {
-            method: 'POST',
-            headers: headers(),
-            signal: _abort.signal,
-            body: JSON.stringify({
-                provider: provider,
-                model: data && data.model,
-                messages: data && data.messages,
-                temperature: data && data.temperature,
-                max_tokens: data && (data.max_tokens || data.maxTokens)
-            })
-        }); }).then(function(resp) {
-            // Token refuse : on se reinscrit et on rejoue une seule fois.
-            if (resp.status === 401 && !_retried) {
-                return ensureToken(true).then(function() { return stream(provider, data, true); });
-            }
+        return providerContext(provider, data).then(function(ctx) {
+            if (ctx.error) throw new Error(ctx.error);
+            return fetch(API_BASE + '/api/chat/stream', {
+                method: 'POST',
+                headers: chatHeaders(ctx),
+                signal: _abort.signal,
+                body: chatBody(provider, data, ctx)
+            });
+        }).then(function(resp) {
+            if (resp.status === 401) authRequired();
             if (!resp.ok || !resp.body) {
                 return resp.text().then(function(t) {
                     throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 200));
@@ -309,12 +308,23 @@
     }
 
     function chat(provider, data) {
-        return request('/api/chat', {
-            provider: provider,
-            model: data && data.model,
-            messages: data && data.messages,
-            temperature: data && data.temperature,
-            max_tokens: data && (data.max_tokens || data.maxTokens)
+        return providerContext(provider, data).then(function(ctx) {
+            if (ctx.error) return { ok: false, error: ctx.error };
+            return fetch(API_BASE + '/api/chat', {
+                method: 'POST', headers: chatHeaders(ctx), body: chatBody(provider, data, ctx)
+            }).then(function(r) {
+                return r.json().catch(function() { return { ok: false, error: 'Reponse illisible (HTTP ' + r.status + ')' }; });
+            }).then(function(res) {
+                if (isAuthError(res)) authRequired(res.error);
+                return res;
+            });
+        })['catch'](function(e) { return { ok: false, error: 'Reseau indisponible : ' + e.message }; });
+    }
+
+    // Liste sans les cles : elles ne quittent jamais IndexedDB.
+    function publicProviders(list) {
+        return (list || []).map(function(p) {
+            return { id: p.id, name: p.name, baseUrl: p.baseUrl, model: p.model, hasKey: !!p.apiKey };
         });
     }
 
@@ -356,6 +366,7 @@
     // localStorage les cles plus recentes cote serveur — c'est ce qui fait
     // apparaitre les conversations d'un autre ordinateur.
     function syncPull() {
+        if (!getToken()) return Promise.resolve(_syncData);
         return request('/api/persist').then(function(r) {
             if (!r || !r.ok) return _syncData;
 
@@ -381,6 +392,7 @@
     }
 
     function syncPush() {
+        if (!getToken()) return Promise.resolve({ ok: false });
         return request('/api/persist', { data: _syncData, keyTimes: _syncTimes })
             .catch(function() { return { ok: false }; });
     }
@@ -392,6 +404,8 @@
     }
 
     loadLocalCache();
+    // Memoriser le code du lien d'invitation des l'ouverture, avant tout rechargement.
+    inviteCode();
 
     // Dernier envoi quand l'onglet se ferme, pour ne pas perdre les 1,5 s
     // de regroupement.
@@ -432,6 +446,8 @@
         openrouterChat:   function(d) { return chat('openrouter', d); },
         openrouterStream: function(d) { return stream('openrouter', d); },
         pollinationsChat: function(d) { return chat('pollinations', d); },
+        workersaiChat:    function(d) { return chat('workersai', d); },
+        workersaiStream:  function(d) { return stream('workersai', d); },
         geminiVision:    function(d) { return request('/api/vision', d); },
 
         groqTest:  function() { return request('/api/providers'); },
@@ -444,47 +460,77 @@
         onDone:  function(cb) { _doneCallbacks.push(cb); },
         removeStreamListeners: function() { _chunkCallbacks = []; _doneCallbacks = []; },
 
-        // === Cles API : disparaissent en web ===
-        // Les cles vivent dans les Cloudflare Secrets. L'utilisateur n'en saisit aucune.
+        // === Cles personnelles (optionnelles) ===
+        // Sans cle perso, le serveur utilise les siennes. Seule la PRESENCE
+        // d'une cle est renvoyee a l'interface, jamais sa valeur.
         providerKeysStatus: function() {
+            var k = userKeys(), out = {};
+            for (var p in k) if (k.hasOwnProperty(p) && k[p]) out[p] = true;
+            return Promise.resolve(out);
+        },
+        providerKeysSet: function(p, v) {
+            var k = userKeys();
+            v = String(v || '').trim();
+            if (v) k[p] = v; else delete k[p];
+            return Promise.resolve(saveUserKeys(k) ? { ok: true } : { ok: false, error: 'Stockage du navigateur indisponible' });
+        },
+        providerKeysClear: function(p) {
+            var k = userKeys(); delete k[p];
+            return Promise.resolve({ ok: saveUserKeys(k) });
+        },
+        providerKeysTest: function(p) {
+            if (userKeys()[p]) {
+                return chat(p, { messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 })
+                    .then(function(r) { return { ok: !!(r && r.ok), error: r && r.error }; });
+            }
             return request('/api/providers').then(function(r) {
-                var out = {};
                 var list = (r && r.providers) || [];
-                for (var i = 0; i < list.length; i++) out[list[i].provider] = { set: !!list[i].ok, managed: true };
-                return out;
+                for (var i = 0; i < list.length; i++) if (list[i].provider === p) return { ok: !!list[i].ok, error: list[i].error };
+                return { ok: false, error: 'Non configure' };
             });
         },
-        providerKeysSet:    function() { return Promise.resolve({ ok: false, error: 'Les cles sont gerees par le serveur', managed: true }); },
-        providerKeysClear:  function() { return Promise.resolve({ ok: false, error: 'Les cles sont gerees par le serveur', managed: true }); },
-        providerKeysTest:   function(p) { return request('/api/providers').then(function(r) {
-            var list = (r && r.providers) || [];
-            for (var i = 0; i < list.length; i++) if (list[i].provider === p) return { ok: !!list[i].ok };
-            return { ok: false, error: 'Provider inconnu' };
-        }); },
-        secureStorageAvailable: function() { return Promise.resolve(false); },
+        // Pas de chiffrement systeme dans un navigateur : les cles restent en clair
+        // dans le stockage local de ce navigateur, a l'abri des autres sites.
+        secureStorageAvailable: function() { return Promise.resolve(true); },
         setApiKey:        function() { return Promise.resolve({ ok: false, managed: true }); },
         setGroqKey:       function() { return Promise.resolve({ ok: false, managed: true }); },
         setMistralKey:    function() { return Promise.resolve({ ok: false, managed: true }); },
         getGroqKeyStatus: function() { return Promise.resolve({ set: true, managed: true }); },
 
-        // === Fournisseurs personnalises (stockes localement) ===
-        customProvidersList:   function() { return idbGet('customProviders').then(function(v) { return v || []; }); },
-        customProvidersSave:   function(d) {
+        // === Fournisseurs personnalises (stockes dans ce navigateur) ===
+        customProvidersList: function() {
+            return idbGet('customProviders').then(publicProviders);
+        },
+        customProvidersSave: function(d) {
+            d = d || {};
+            if (!d.name || !d.model || !/^https:\/\//i.test(d.baseUrl || '')) {
+                return Promise.resolve({ ok: false, error: 'Nom, modele et URL en https:// requis' });
+            }
             return idbGet('customProviders').then(function(list) {
                 list = list || [];
-                var found = false;
-                for (var i = 0; i < list.length; i++) if (list[i].id === d.id) { list[i] = d; found = true; }
-                if (!found) list.push(d);
-                return idbSet('customProviders', list);
+                var cur = null;
+                for (var i = 0; i < list.length; i++) if (d.id && list[i].id === d.id) cur = list[i];
+                if (!cur) { cur = { id: 'c' + Date.now() }; list.push(cur); }
+                cur.name = d.name; cur.baseUrl = d.baseUrl; cur.model = d.model;
+                // Champ laisse vide en modification : la cle existante est conservee.
+                if (typeof d.apiKey === 'string') cur.apiKey = d.apiKey.trim();
+                return idbSet('customProviders', list).then(function() {
+                    return { ok: true, providers: publicProviders(list) };
+                });
             });
         },
         customProvidersDelete: function(id) {
             return idbGet('customProviders').then(function(list) {
                 list = (list || []).filter(function(p) { return p.id !== id; });
-                return idbSet('customProviders', list);
+                return idbSet('customProviders', list).then(function() {
+                    return { ok: true, providers: publicProviders(list) };
+                });
             });
         },
-        customProvidersTest:   function(id) { return request('/api/providers/test', { id: id }); },
+        customProvidersTest: function(id) {
+            return chat('custom', { providerId: id, messages: [{ role: 'user', content: 'ok' }], max_tokens: 5 })
+                .then(function(r) { return { ok: !!(r && r.ok), error: r && r.error }; });
+        },
 
         // === Memoire persistante → serveur (+ IndexedDB en cache) ===
         // C'est ce qui permet de retrouver ses conversations depuis
@@ -608,15 +654,36 @@
             return Promise.resolve({ ok: true });
         },
 
-        // === Auth (propre au web) ===
-        authRegister: function(d) {
-            return request('/api/register', d).then(function(r) {
-                if (r && r.token) setToken(r.token);
-                return r;
+        // === Comptes ===
+        authSignup: function(d) {
+            return authCall('/api/auth/signup', { name: d.name, email: d.email, password: d.password, code: inviteCode() });
+        },
+        authLogin:   function(d) { return authCall('/api/auth/login', { email: d.email, password: d.password }); },
+        authRecover: function(d) { return authCall('/api/auth/recover', { email: d.email, recoveryCode: d.recoveryCode, newPassword: d.newPassword }); },
+        // Apres connexion : recuperer le coffre du compte, puis recharger pour
+        // que l'app demarre sur ces donnees.
+        authFinish: function() {
+            return syncPull().then(function() { location.reload(); });
+        },
+        // Deconnexion : dernier envoi, puis rien du compte ne reste dans ce
+        // navigateur (ordinateur partage). Theme, langue et invitation restent.
+        authLogout: function() {
+            if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
+            var push = getToken() ? syncPush() : Promise.resolve();
+            var timeout = new Promise(function(r) { setTimeout(r, 3000); });
+            return Promise.race([push, timeout]).then(function() {
+                var keep = { ether_theme: 1, ether_lang: 1, ether_invite_code: 1 };
+                try {
+                    for (var i = localStorage.length - 1; i >= 0; i--) {
+                        var k = localStorage.key(i);
+                        if (k && (k.indexOf('ether') === 0) && !keep[k]) localStorage.removeItem(k);
+                    }
+                } catch (e) {}
+                _syncData = {}; _syncTimes = {};
+                return idbSet('customProviders', []).then(function() { return { ok: true }; }, function() { return { ok: true }; });
             });
         },
-        authToken:    getToken,
-        authSetToken: function(t) { setToken(t); return Promise.resolve({ ok: true }); },
+        authToken: getToken,
 
         // === Heritage desktop : sans objet dans un navigateur ===
         installUpdate:     unavailable('installUpdate'),
@@ -640,8 +707,6 @@
         var style = document.createElement('style');
         style.id = 'ETHER-WEB-MODE-STYLE';
         style.textContent = [
-            '.prov-key-row{display:none !important}',
-            '#SAVE-KEYS{display:none !important}',
             '#API-KEY-DISPLAY,#API-KEY-VIS{display:none !important}',
             '.ether-web-note{background:var(--b1);border:1px solid var(--bd);',
             'border-radius:14px;padding:12px 16px;margin-bottom:14px;',
@@ -655,10 +720,11 @@
         if (grid && !document.querySelector('.ether-web-note')) {
             var note = document.createElement('div');
             note.className = 'ether-web-note';
-            note.innerHTML = '<strong>Cles gerees par le serveur.</strong> ' +
-                'Dans la version web, les cles API sont stockees de maniere ' +
-                'securisee cote serveur et ne transitent jamais par votre ' +
-                'navigateur. Vous n\'avez aucune cle a saisir.';
+            note.innerHTML = '<strong>Aucune cle requise.</strong> ' +
+                'Par defaut, ETHER utilise les cles du serveur. Tu peux ajouter ' +
+                'ta propre cle : elle reste dans ce navigateur, le serveur la ' +
+                'transmet au fournisseur sans jamais l\'enregistrer, et tes ' +
+                'messages ne comptent alors plus dans le quota.';
             grid.parentNode.insertBefore(note, grid);
         }
     }
