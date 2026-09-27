@@ -118,7 +118,3 @@ npm run dev                                     # http://localhost:8787
 ```
 
 En local, le KV est simulé et laisser `JWT_SECRET` vide désactive l'authentification.
-
-## Paiement (expérimental)
-
-Les routes `/api/stripe/*` sont une ébauche : le webhook ne vérifie pas encore la signature Stripe et n'active rien, et l'URL de retour est codée en dur. **Ne pose pas `STRIPE_SECRET` en production** tant que ce n'est pas terminé.

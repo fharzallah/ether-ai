@@ -113,6 +113,15 @@
         });
     }
 
+    // Limite journaliere du serveur : on previent l'utilisateur au lieu de
+    // laisser croire a une panne de connexion.
+    function checkQuota(res) {
+        if (res && res.ok === false && /Quota journalier/i.test(res.error || '') && typeof window.showQuotaExhausted === 'function') {
+            window.showQuotaExhausted();
+        }
+        return res;
+    }
+
     function isAuthError(res) {
         return res && res.ok === false && (res.authRequired || /Authorization required|Token invalide|Session expiree/i.test(res.error || ''));
     }
@@ -273,6 +282,7 @@
             if (resp.status === 401) authRequired();
             if (!resp.ok || !resp.body) {
                 return resp.text().then(function(t) {
+                    try { checkQuota(JSON.parse(t)); } catch (e) {}
                     throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 200));
                 });
             }
@@ -316,9 +326,21 @@
                 return r.json().catch(function() { return { ok: false, error: 'Reponse illisible (HTTP ' + r.status + ')' }; });
             }).then(function(res) {
                 if (isAuthError(res)) authRequired(res.error);
-                return res;
+                return checkQuota(res);
             });
         })['catch'](function(e) { return { ok: false, error: 'Reseau indisponible : ' + e.message }; });
+    }
+
+    function wipeLocal() {
+        var keep = { ether_theme: 1, ether_lang: 1, ether_invite_code: 1 };
+        try {
+            for (var i = localStorage.length - 1; i >= 0; i--) {
+                var k = localStorage.key(i);
+                if (k && (k.indexOf('ether') === 0) && !keep[k]) localStorage.removeItem(k);
+            }
+        } catch (e) {}
+        _syncData = {}; _syncTimes = {};
+        return idbSet('customProviders', []).then(function() { return { ok: true }; }, function() { return { ok: true }; });
     }
 
     // Liste sans les cles : elles ne quittent jamais IndexedDB.
@@ -625,8 +647,6 @@
         // === Quotas (cote serveur) ===
         quotaCheck:     function() { return request('/api/quota'); },
         quotaUse:       function(k) { return request('/api/quota/use', { key: k }); },
-        quotaAdBonus:   function(k, b) { return request('/api/quota/bonus', { key: k, bonus: b }); },
-        quotaVerifyPro: function() { return request('/api/quota/pro'); },
 
         // === Theme systeme → matchMedia ===
         getSystemTheme: function() {
@@ -672,16 +692,16 @@
             if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
             var push = getToken() ? syncPush() : Promise.resolve();
             var timeout = new Promise(function(r) { setTimeout(r, 3000); });
-            return Promise.race([push, timeout]).then(function() {
-                var keep = { ether_theme: 1, ether_lang: 1, ether_invite_code: 1 };
-                try {
-                    for (var i = localStorage.length - 1; i >= 0; i--) {
-                        var k = localStorage.key(i);
-                        if (k && (k.indexOf('ether') === 0) && !keep[k]) localStorage.removeItem(k);
-                    }
-                } catch (e) {}
-                _syncData = {}; _syncTimes = {};
-                return idbSet('customProviders', []).then(function() { return { ok: true }; }, function() { return { ok: true }; });
+            return Promise.race([push, timeout]).then(wipeLocal);
+        },
+        accountExport: function() { return request('/api/account/export'); },
+        aiUsage:       function() { return request('/api/usage'); },
+        // Apres suppression, surtout pas de dernier envoi : il recreerait le coffre.
+        accountDelete: function(password) {
+            if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
+            return request('/api/account/delete', { password: password }).then(function(r) {
+                if (!r || !r.ok) return r;
+                return wipeLocal().then(function() { return r; });
             });
         },
         authToken: getToken,

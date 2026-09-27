@@ -449,10 +449,10 @@ function genDoc(format, desc) {
         var docIdx = generatedDocs.length - 1;
         var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b', markdown: '#8b5cf6' };
         var docResp = {
-            reasoning: { analyste: 'Document genere via IA.', critique: 'Contenu genere par Groq.', synthese: 'Document pret au telechargement.' },
+            reasoning: { analyste: 'Document genere via IA.', critique: 'Contenu genere par ' + (aiResp._provider || 'ETHER') + '.', synthese: 'Document pret au telechargement.' },
             answer: '<p><strong>Document genere et telecharge :</strong></p><div style="background:var(--b3);border:1px solid var(--bd);border-radius:var(--radius);padding:16px;margin:10px 0"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:10px;background:' + (colors[format] || 'var(--ac)') + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700">' + format.toUpperCase().substring(0, 3) + '</div><div><strong>' + esc(desc) + '</strong><br><span style="font-size:.78rem;color:var(--t3)">' + format.toUpperCase() + ' - Genere par ETHER AI</span></div></div><button onclick="dlDoc(' + docIdx + ')" style="margin-top:12px;padding:8px 16px;border:1px solid var(--ac);border-radius:var(--radius);background:transparent;color:var(--ac);cursor:pointer;font-size:.82rem;transition:all .15s">Retelecharger</button></div><details style="margin-top:8px"><summary style="cursor:pointer;font-size:.82rem;color:var(--t3)">Voir le contenu</summary><pre style="background:var(--b3);padding:12px;border-radius:var(--radius);font-size:.78rem;overflow-x:auto;margin-top:8px;white-space:pre-wrap">' + esc(finalContent.substring(0, 1000)) + '</pre></details>',
             confidence: 'verified',
-            sources: ['Groq AI'],
+            sources: [aiResp._provider || 'ETHER'],
             _noSuggestions: true
         };
         addAIMsg(docResp);
@@ -467,6 +467,18 @@ function dlDoc(idx) {
 }
 
 function dlDocContent(doc) {
+    var base = 'ether-' + doc.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    // Vrais fichiers Office (voir docgen.js) plutot qu'un HTML renomme en .doc ou un CSV.
+    if (typeof DOCGEN !== 'undefined' && (doc.format === 'word' || doc.format === 'excel')) {
+        try {
+            if (doc.format === 'word') {
+                downloadFile(base + '.docx', DOCGEN.docx(doc.title, doc.content), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+            } else {
+                downloadFile(base + '.xlsx', DOCGEN.xlsx(doc.title, doc.content), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            }
+            return;
+        } catch (e) { console.warn('[DOC] Generation Office echouee, repli sur l ancien format :', e); }
+    }
     var ext = { word: 'doc', excel: 'csv', text: 'txt', html: 'html', markdown: 'md' };
     var mime = { word: 'application/msword', excel: 'text/csv', text: 'text/plain', html: 'text/html', markdown: 'text/markdown' };
     var content = doc.content;
@@ -934,45 +946,6 @@ function downloadFile(name,content,type){var b=new Blob([content],{type:type});v
 // Load shared conversation from URL
 (function(){try{var p=new URLSearchParams(location.search);var s=p.get('share');if(s){var d=JSON.parse(decodeURIComponent(escape(atob(s))));if(d.messages){var id='sh_'+Date.now();convs[id]={title:'[Partage] '+(d.title||'Conv'),messages:d.messages,ts:new Date().toISOString()};sSet('convs',convs);if(user){loadConv(id);updHist();}}}}catch(e){}})();
 
-// PRO
-// QUOTA / ADS
-G('QUOTA-AD-BTN').onclick = function() { showAdModal(); };
-G('AD-X').onclick = function() { G('AD-MODAL').classList.add('hidden'); };
-G('AD-MODAL').querySelector('.modal-bk').onclick = function() { G('AD-MODAL').classList.add('hidden'); };
-G('AD-CLAIM').onclick = function() { claimAdReward(); };
-updQuotaUI();
-
-G('PRO-BTN').onclick=function(){if(isPro)return;G('PRO-M').classList.remove('hidden');};
-G('PRO-X').onclick=function(){G('PRO-M').classList.add('hidden');};
-G('PRO-M').querySelector('.modal-bk').onclick=function(){G('PRO-M').classList.add('hidden');};
-G('BUY-PRO').onclick=function(){if(confirm('Demo: Activer le mode Pro?')){isPro=true;sSet('pro',true);updPlanUI();G('PRO-M').classList.add('hidden');}};
-function updPlanUI(){
-    var b=G('plan-badge');var d=G('plan-desc');var pb=G('PRO-BTN');var fb=G('FREE-BTN');
-    if(isPro){
-        b.textContent='Pro';b.style.background='linear-gradient(135deg,#f59e0b,#ef4444)';b.style.color='#fff';b.style.border='none';
-        d.textContent='Images illimitees, reponses longues';
-        pb.textContent='Vous etes Pro!';pb.style.opacity='0.5';pb.style.cursor='default';
-        fb.style.display='block';
-        var n=G('UNM');if(n&&n.innerHTML.indexOf('pro-badge')===-1)n.innerHTML=esc(user?user.name:'')+'<span class="pro-badge">PRO</span>';
-    } else {
-        b.textContent='Gratuit';b.style.background='var(--b3)';b.style.color='var(--t2)';b.style.border='1px solid var(--bd)';
-        d.textContent='5 images/jour, reponses standard';
-        pb.textContent='Passer a ETHER Pro';pb.style.opacity='1';pb.style.cursor='pointer';
-        fb.style.display='none';
-        var n=G('UNM');if(n&&user)n.textContent=user.name;
-    }
-    updImgCount();
-    updQuotaUI();
-    if(typeof updDeepThinkBtn==='function') updDeepThinkBtn();
-    if(typeof updLearnBtn==='function') updLearnBtn();
-}
-G('FREE-BTN').onclick=function(){
-    if(confirm('Revenir au forfait Gratuit? Vous perdrez les avantages Pro (images illimitees, etc.).')){
-        isPro=false;sSet('pro',false);updPlanUI();
-    }
-};
-updPlanUI();
-
 // API TEST
 // (bouton Tester API supprime — le test se fait via checkApiStatus)
 
@@ -1286,6 +1259,25 @@ function updProviderStatuses() {
         waStatusEl.innerHTML = providerStatus.workersai
             ? '<span class="prov-dot prov-dot-green"></span>Actif'
             : '<span class="prov-dot prov-dot-red"></span>Indisponible';
+        // Consommation du quota gratuit du jour (partage par tous les utilisateurs du serveur).
+        if (window.etherDesktop && window.etherDesktop.aiUsage) {
+            window.etherDesktop.aiUsage().then(function(u) {
+                if (!u || !u.ok) return;
+                var pct = Math.min(100, Math.round(u.neurons / u.limit * 100));
+                var color = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e';
+                var hint = G('PROV-WORKERSAI-USAGE');
+                if (!hint) {
+                    hint = document.createElement('div');
+                    hint.id = 'PROV-WORKERSAI-USAGE';
+                    hint.style.cssText = 'font-size:.72rem;color:var(--t3);margin-top:6px';
+                    waStatusEl.parentNode.insertBefore(hint, waStatusEl.nextSibling);
+                }
+                hint.innerHTML = 'Aujourd\'hui : <strong style="color:' + color + '">' + Math.round(u.neurons).toLocaleString('fr-FR')
+                    + '</strong> / ' + u.limit.toLocaleString('fr-FR') + ' neurones (' + pct + ' %) — '
+                    + u.chat + ' reponses, ' + u.images + ' images. Coupure a 95 %, remise a zero a minuit UTC.'
+                    + '<div style="height:4px;background:var(--b3);border-radius:4px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + color + '"></div></div>';
+            })['catch'](function() {});
+        }
     }
     var orStatusEl = G('PROV-OPENROUTER-STATUS');
     if (orStatusEl) {
@@ -1464,6 +1456,38 @@ function logout() {
 }
 G('LOGOUT').onclick = function() { if (confirm('Se deconnecter ?')) logout(); };
 G('ADD-ACC').onclick = function() { if (confirm('Se deconnecter pour utiliser un autre compte ?')) logout(); };
+
+// === MES DONNEES ===
+G('ACC-EXPORT').onclick = function() {
+    var b = G('ACC-EXPORT');
+    b.disabled = true; b.textContent = 'Preparation...';
+    window.etherDesktop.accountExport().then(function(r) {
+        b.disabled = false; b.textContent = 'Telecharger toutes mes donnees';
+        if (!r || !r.ok) { alert((r && r.error) || 'Export impossible.'); return; }
+        // Les images sont des liens : on les rend absolus pour qu'ils restent utilisables hors d'ETHER.
+        r.images = (r.images || []).map(function(u) { return location.origin + u; });
+        delete r.ok;
+        downloadFile('ether-mes-donnees-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(r, null, 2), 'application/json');
+    });
+};
+G('ACC-DEL-OPEN').onclick = function() {
+    G('ACC-DEL-BOX').classList.remove('hidden');
+    G('ACC-DEL-ERR').classList.add('hidden');
+    G('ACC-DEL-PW').value = '';
+    G('ACC-DEL-PW').focus();
+};
+G('ACC-DEL-CANCEL').onclick = function() { G('ACC-DEL-BOX').classList.add('hidden'); };
+G('ACC-DEL-OK').onclick = function() {
+    var pw = G('ACC-DEL-PW').value, err = G('ACC-DEL-ERR'), b = G('ACC-DEL-OK');
+    if (!pw) { err.textContent = 'Entre ton mot de passe.'; err.classList.remove('hidden'); return; }
+    b.disabled = true;
+    window.etherDesktop.accountDelete(pw).then(function(r) {
+        b.disabled = false;
+        if (!r || !r.ok) { err.textContent = (r && r.error) || 'Suppression impossible.'; err.classList.remove('hidden'); return; }
+        alert('Ton compte et toutes tes donnees ont ete supprimes.');
+        location.reload();
+    });
+};
 
 
 // === CHAT EPHEMERE ===
@@ -2374,159 +2398,21 @@ function showKbHint(text) {
 
 // === ETHER — Init (ads, quotas, custom modes, event wiring, startup) ===
 
-// === PUB / AD MODAL ===
-// === SYSTEME PUBLICITAIRE ===
-// Pubs locales par defaut (modifiables via URL distante)
-var ADS_LOCAL = [
-    { id: 'ether-pro', emoji: '⚡', title: 'ETHER Pro', desc: 'Messages illimites, images illimitees, modes personnalises. Passe au niveau superieur.', cta: 'Decouvrir Pro', action: 'pro', bg: '' },
-    { id: 'placeholder-1', emoji: '🚀', title: 'Votre pub ici', desc: 'Contactez-nous pour afficher votre publicite aupres de nos utilisateurs.', cta: 'Nous contacter', url: 'mailto:contact@ether-ai.app', bg: '' },
-    { id: 'placeholder-2', emoji: '💡', title: 'Vous etes entrepreneur ?', desc: 'ETHER peut vous aider a developper vos idees. Essayez le mode Creatif.', cta: 'Essayer', action: 'creative', bg: '' }
-];
 
-// URL distante pour charger des pubs personnalisees (JSON)
-var ADS_REMOTE_URL = sGet('ads_url', '');
-var currentAds = ADS_LOCAL;
-var currentAdIndex = 0;
 
-function loadAds() {
-    // Charger les pubs distantes si une URL est configuree
-    if (ADS_REMOTE_URL && window.etherDesktop) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', ADS_REMOTE_URL, true);
-        xhr.timeout = 5000;
-        xhr.onload = function() {
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (Array.isArray(data) && data.length > 0) {
-                    currentAds = data;
-                }
-            } catch(e) { /* garder les pubs locales */ }
-        };
-        xhr.onerror = function() {};
-        xhr.send();
-    }
-}
-
-function displayAd() {
-    if (!currentAds.length) return;
-    var ad = currentAds[currentAdIndex % currentAds.length];
-    var emojiEl = G('AD-EMOJI');
-    var titleEl = G('AD-TITLE');
-    var descEl = G('AD-DESC');
-    var ctaEl = G('AD-CTA');
-    var imgEl = G('AD-IMG');
-
-    if (emojiEl) {
-        if (ad.image) {
-            imgEl.innerHTML = '<img src="' + ad.image + '" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML=\'<span style=font-size:2rem>' + (ad.emoji || '📢') + '</span>\'">';
-        } else {
-            emojiEl.textContent = ad.emoji || '📢';
-        }
-    }
-    if (titleEl) titleEl.textContent = ad.title || 'Publicite';
-    if (descEl) descEl.textContent = ad.desc || '';
-    if (ctaEl) ctaEl.textContent = ad.cta || 'En savoir plus';
-    // Stocker l'ad active
-    G('AD-PLACEHOLDER').setAttribute('data-ad-id', ad.id || '');
-    G('AD-PLACEHOLDER').setAttribute('data-ad-url', ad.url || '');
-    G('AD-PLACEHOLDER').setAttribute('data-ad-action', ad.action || '');
-}
-
-function clickAd() {
-    var placeholder = G('AD-PLACEHOLDER');
-    var adId = placeholder.getAttribute('data-ad-id');
-    var url = placeholder.getAttribute('data-ad-url');
-    var action = placeholder.getAttribute('data-ad-action');
-
-    // Tracker le clic
-    var clicks = sGet('ad_clicks', []);
-    clicks.push({ id: adId, ts: Date.now() });
-    if (clicks.length > 100) clicks = clicks.slice(-100);
-    sSet('ad_clicks', clicks);
-
-    if (action === 'pro') {
-        G('AD-MODAL').classList.add('hidden');
-        G('PRO-M').classList.remove('hidden');
-    } else if (action === 'share') {
-        G('AD-MODAL').classList.add('hidden');
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText('Decouvre ETHER AI — une IA franche et honnete. https://ether-ai.app');
-            alert('Lien copie dans le presse-papier !');
-        }
-    } else if (action === 'custom') {
-        G('AD-MODAL').classList.add('hidden');
-        openCreateCustomMode();
-    } else if (action === 'creative' || action === 'teacher' || action === 'debate' || action === 'writer') {
-        G('AD-MODAL').classList.add('hidden');
-        var allMp = document.querySelectorAll('.mp');
-        for (var i = 0; i < allMp.length; i++) {
-            allMp[i].classList.remove('on');
-            if (allMp[i].getAttribute('data-m') === action) allMp[i].classList.add('on');
-        }
-        ETHER_ENGINE.currentMode = action;
-    } else if (url) {
-        if (window.etherDesktop) window.etherDesktop.openExternal(url);
-    }
-}
-
-function nextAd() {
-    currentAdIndex++;
-    displayAd();
-}
-
-// Charger les pubs au demarrage
-loadAds();
-
-var adInterval = null;
-function showAdModal() {
-    nextAd();
-    displayAd();
-    // Tracker l'impression
-    sSet('ad_impressions', (sGet('ad_impressions', 0) || 0) + 1);
-    var reward = getNextAdReward();
-    if (reward <= 0) return;
-    if (adInterval) clearInterval(adInterval);
-    G('AD-REWARD').textContent = reward;
-    G('AD-TIMER').textContent = '15';
-    var claimBtn = G('AD-CLAIM');
-    claimBtn.disabled = true;
-    claimBtn.style.opacity = '.4';
-    claimBtn.textContent = 'Patiente 15s...';
-    G('AD-MODAL').classList.remove('hidden');
-    var sec = 15;
-    adInterval = setInterval(function() {
-        sec--;
-        G('AD-TIMER').textContent = sec;
-        claimBtn.textContent = 'Patiente ' + sec + 's...';
-        if (sec <= 0) {
-            clearInterval(adInterval);
-            adInterval = null;
-            claimBtn.disabled = false;
-            claimBtn.style.opacity = '1';
-            claimBtn.textContent = 'Recuperer +' + reward + ' messages';
-        }
-    }, 1000);
-}
-
-function claimAdReward() {
-    var d = getDaily('msg');
-    var lvl = d.adLevel || 0;
-    if (lvl >= 3) return;
-    d.adLevel = lvl + 1;
-    sSet('daily_msg', d);
-    G('AD-MODAL').classList.add('hidden');
-    updQuotaUI();
-}
-
+// Affiche une seule fois par jour que la limite du serveur est atteinte.
+// Appele par platform-web.js quand le worker repond "Quota journalier atteint".
+var _quotaNoticeDay = '';
 function showQuotaExhausted() {
-    var reward = getNextAdReward();
+    var today = new Date().toISOString().slice(0, 10);
+    if (_quotaNoticeDay === today) return;
+    _quotaNoticeDay = today;
+    if (typeof hideThink === 'function') hideThink();
     var d = document.createElement('div');
     d.className = 'msg a';
-    if (reward > 0) {
-        d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Tu as utilise tous tes messages pour aujourd\'hui.</strong></p><p>Regarde une courte pub pour obtenir <strong>+' + reward + ' messages supplementaires</strong>.</p></div><div style="margin-top:10px"><button type="button" class="btn-p" style="font-size:.85rem" onclick="showAdModal()">Regarder la pub (+' + reward + ')</button></div></div>';
-    } else {
-        d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Tu as utilise tous tes messages pour aujourd\'hui.</strong></p><p>Reviens demain pour 30 nouveaux messages gratuits.</p></div></div>';
-    }
+    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Limite du jour atteinte.</strong></p>'
+        + '<p>Ce serveur accorde un nombre de requetes par jour et par personne. Reviens demain, '
+        + 'ou ajoute ta propre cle API dans Parametres &gt; Fournisseurs IA : tes messages ne seront alors plus limites.</p></div></div>';
     G('MG').appendChild(d);
     var av = d.querySelector('.mav');
     if (av) addMsgWave(av);
@@ -2545,7 +2431,6 @@ restoreFromPersist();
 
 var user=sGet('user',null), convs=sGet('convs',{}), projs=sGet('projs',{}), trash=sGet('trash',{});
 var curConv=null, curProj=null, thinking=false;
-isPro = sGet('pro', false); // Restaurer le statut Pro si deja active
 var isStreaming=false;
 
 // === QUOTAS JOURNALIERS ===
@@ -2584,39 +2469,8 @@ function canSearchWeb() {
     if (isPro) return true;
     return getDailyRemaining('web', 30) > 0;
 }
-function getAdLevel() {
-    var d = getDaily('msg');
-    return d.adLevel || 0;
-}
-function getNextAdReward() {
-    var lvl = getAdLevel();
-    if (lvl === 0) return 5;
-    if (lvl === 1) return 3;
-    if (lvl === 2) return 1;
-    return 0;
-}
-function updQuotaUI() {
-    var el = G('QUOTA-BAR');
-    if (!el) return;
-    if (isPro) { el.style.display = 'none'; return; }
-    el.style.display = 'flex';
-    var remain = getDailyRemaining('msg', 30);
-    var countEl = G('QUOTA-COUNT');
-    if (countEl) {
-        countEl.textContent = remain;
-        countEl.style.color = remain <= 5 ? '#ef4444' : remain <= 15 ? '#f59e0b' : '#22c55e';
-    }
-    var adBtn = G('QUOTA-AD-BTN');
-    if (adBtn) {
-        var reward = getNextAdReward();
-        if (remain <= 5 && reward > 0) {
-            adBtn.style.display = 'inline-block';
-            adBtn.textContent = 'Regarder une pub (+' + reward + ')';
-        } else {
-            adBtn.style.display = 'none';
-        }
-    }
-}
+// Plus de barre de quota cote client : la limite reelle est celle du serveur.
+function updQuotaUI() {}
 var theme=sGet('theme','auto');
 function applyTheme(t) {
     if (t === 'auto') {

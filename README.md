@@ -54,7 +54,7 @@ npm run dev                                     # http://localhost:8787
 
 ## Déployer ta propre instance
 
-Le guide complet (compte Cloudflare, KV, secrets, code d'invitation, Stripe) est dans **[DEPLOY.md](DEPLOY.md)**. En résumé :
+Le guide complet (compte Cloudflare, KV, secrets, code d'invitation) est dans **[DEPLOY.md](DEPLOY.md)**. En résumé :
 
 ```bash
 npx wrangler login
