@@ -22,7 +22,7 @@ Tout tourne sur un seul **Cloudflare Worker** : il sert le site, détient les cl
 - **Modes** — Teacher, Débat, Créatif, Écriture, et modes personnalisés qui **s'activent tout seuls** selon la demande, avec leurs propres documents de référence. Un assistant guide leur création et permet de les tester avant de les enregistrer.
 - **Synchronisation** — les conversations suivent le compte, sur tous tes appareils.
 - **Accès sur invitation** (optionnel) — un lien `?code=…` suffit pour inviter quelqu'un.
-- **Images, vision** (Gemini, ou Llama 4 Scout sur Workers AI), **dictée vocale**, thèmes Dark / Light / Midnight.
+- **Génération d'images avec FLUX** sur Workers AI (FLUX.1 [schnell] en carré, FLUX.2 [klein] en portrait/paysage), Pollinations en secours ; **vision** (Gemini, ou Llama 4 Scout) ; **dictée vocale**, thèmes Dark / Light / Midnight.
 
 ## Architecture
 
