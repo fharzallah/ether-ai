@@ -8,7 +8,7 @@
     'use strict';
 
     // === Config ===
-    var API_BASE = window.ETHER_API_BASE || 'https://ether-api.workers.dev';
+    var API_BASE = window.ETHER_API_BASE || location.origin;
     var TOKEN_KEY = 'ether_auth_token';
 
     function getToken() {
