@@ -7,7 +7,7 @@ Chaque instance a **ses propres clés API**, **son propre stockage** et **son pr
 ## 1. Prérequis
 
 - Node.js 18+ et un compte [Cloudflare](https://dash.cloudflare.com/sign-up) (gratuit)
-- Au moins une clé de fournisseur IA :
+- **Workers AI** fonctionne sans clé : le binding `AI` est déjà déclaré dans `worker/wrangler.toml` (quota gratuit quotidien de Cloudflare). Tu peux ajouter d'autres fournisseurs :
 
 | Fournisseur | Où créer la clé | Secret |
 |---|---|---|
@@ -30,7 +30,7 @@ npx wrangler login
 
 ## 3. Créer le stockage (Workers KV)
 
-Comptes, quotas et conversations vivent dans un namespace KV.
+Comptes (mots de passe hachés), quotas et conversations vivent dans un namespace KV. **Sans KV, personne ne peut créer de compte.**
 
 ```bash
 cd worker
@@ -45,7 +45,7 @@ Depuis `worker/`, chaque commande te demande la valeur. Elle est chiffrée chez 
 
 ```bash
 npx wrangler secret put JWT_SECRET       # OBLIGATOIRE : longue chaîne aléatoire
-npx wrangler secret put OPENROUTER_KEY   # au moins un fournisseur IA
+npx wrangler secret put OPENROUTER_KEY   # optionnel : Workers AI marche sans cle
 npx wrangler secret put GROQ_KEY         # optionnel, idem pour GEMINI_KEY, MISTRAL_KEY, CEREBRAS_KEY
 ```
 
@@ -55,7 +55,9 @@ Pour générer `JWT_SECRET` :
 openssl rand -base64 48
 ```
 
-**Sans `JWT_SECRET`, l'authentification est désactivée** et n'importe qui peut consommer tes clés. Ne déploie jamais sans.
+**Sans `JWT_SECRET`, personne ne peut se connecter.** Ne le change pas ensuite : ça déconnecterait tout le monde.
+
+Les utilisateurs peuvent aussi mettre **leur propre clé** dans les réglages : elle reste dans leur navigateur, le worker la relaie sans l'enregistrer, et leurs messages ne comptent pas dans le quota.
 
 ### Recherche web (optionnel)
 

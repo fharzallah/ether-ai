@@ -34,7 +34,7 @@ function detectComplexity(msg) {
 }
 
 // === HEALTH CHECK DES PROVIDERS ===
-var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true, openrouter: true };
+var providerHealth = { groq: true, gemini: true, mistral: true, cerebras: true, workersai: true, openrouter: true };
 function checkProvidersHealth() {
     if (!window.etherDesktop || !window.etherDesktop.testAllProviders) return;
     window.etherDesktop.testAllProviders().then(function(res) {
@@ -147,9 +147,9 @@ function testApiKey() {
 // pour les taches plus exigeantes. Chaque fournisseur y repond avec ce qu'il a.
 var CALLAI_MODELS = {
     groq: GROQ_MODELS, mistral: MISTRAL_MODELS, gemini: GEMINI_MODELS,
-    cerebras: CEREBRAS_MODELS, openrouter: OPENROUTER_MODELS,
+    cerebras: CEREBRAS_MODELS, workersai: WORKERSAI_MODELS, openrouter: OPENROUTER_MODELS,
     openai: { main: 'gpt-4o', fast: 'gpt-4o-mini' },
-    anthropic: { main: 'claude-opus-5', fast: 'claude-haiku-4-5' }
+    anthropic: { main: 'claude-sonnet-5', fast: 'claude-haiku-4-5' }
 };
 function callAIModel(provider, tier) {
     var m = CALLAI_MODELS[provider];
@@ -611,6 +611,8 @@ var ETHER_ENGINE = {
             { provider: 'gemini',   model: GEMINI_MODELS.main,   stream: window.etherDesktop.geminiStream },
             { provider: 'groq',     model: GROQ_MODELS.main,     stream: window.etherDesktop.groqStream },
             { provider: 'cerebras', model: CEREBRAS_MODELS.main, stream: window.etherDesktop.cerebrasStream },
+            // Workers AI : heberge par Cloudflare, sans cle, quota quotidien propre
+            { provider: 'workersai', model: WORKERSAI_MODELS.main, stream: window.etherDesktop.workersaiStream },
             // OpenRouter en dernier : routeur gratuit, quota independant des autres
             { provider: 'openrouter', model: OPENROUTER_MODELS.main, stream: window.etherDesktop.openrouterStream }
         ];
@@ -689,7 +691,11 @@ var ETHER_ENGINE = {
             var step = cascade[idx];
 
             // Skip si provider connu down (le custom n'est jamais dans le suivi de sante)
-            if (offCascade.indexOf(step.provider) === -1 && !providerHealth[step.provider]) {
+            // Un fournisseur choisi a la main est toujours essaye : l'etat de sante
+            // n'est qu'un indice, parfois perime (echec ponctuel mis en cache).
+            var manualPick = typeof selectedModelOverride !== 'undefined' && selectedModelOverride
+                && selectedModelOverride.provider === step.provider;
+            if (!manualPick && offCascade.indexOf(step.provider) === -1 && !providerHealth[step.provider]) {
                 console.log('[ENGINE] Skipping unhealthy provider:', step.provider);
                 return tryStream(idx + 1);
             }
