@@ -77,7 +77,7 @@ npm run deploy
 Bonnes premières contributions :
 
 - L'import de fichiers ne lit que le **texte brut** : PDF, Word et Excel ne sont pas encore extraits côté web.
-- Le quota est fixe (30 requêtes/jour/utilisateur, `DAILY_LIMIT` dans le worker) et compte aussi les tâches internes (titres, mémoire) : en pratique, moins de 30 messages.
+- Le quota est de 100 requêtes par jour et par utilisateur (`DAILY_LIMIT` dans le worker). Il compte aussi les tâches internes (titres, mémoire) : en pratique, une trentaine de messages.
 - Pas de réinitialisation par email : sans mot de passe ni code de secours, un compte est perdu.
 
 ## Contribuer
