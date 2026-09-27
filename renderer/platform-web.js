@@ -617,6 +617,7 @@
         // === Reseau / contenu ===
         fetchUrlContent: function(url) { return request('/api/fetch', { url: url }); },
         fetchImage:      function(url) { return request('/api/image', { url: url }); },
+        imagine:         function(d) { return request('/api/imagine', d); },
         webSearch:       function(q) { return request('/api/search', { query: q }); },
         transcribeAudio: function(buf) { return request('/api/transcribe', { audio: buf }); },
         sendEmail:       function(d) { return request('/api/email', d); },

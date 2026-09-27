@@ -139,17 +139,18 @@ function sendMsg(text){
         var warn='';
         for(var rp=0;rp<realP.length;rp++){if(message.toLowerCase().indexOf(realP[rp])!==-1){warn='<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.85rem;color:var(--t2)"><strong>Avertissement:</strong> La generation d\'images de personnes reelles est limitee par les modeles IA pour des raisons legales.</div>';break;}}
         showThink();
-        generateImage(message, function(imgUrl) {
+        generateImage(message, function(imgUrl, seed, provider) {
             hideThink();
+            var credit = imageCredit(provider);
             var remain = '';
             var imgId = 'img_' + Date.now();
             var resp = {
-                reasoning: { analyste: 'Generation d\'image IA.', critique: 'Image generee par Pollinations AI (modele Flux).', synthese: 'Prompt optimise automatiquement.' },
+                reasoning: { analyste: 'Generation d\'image IA.', critique: credit.critique, synthese: 'Prompt optimise automatiquement.' },
                 answer: warn
                     + '<p><strong>Image generee :</strong></p>'
                     + '<div id="' + imgId + '-wrap" style="margin:8px 0">'
                     + '<div id="' + imgId + '-loader" style="width:100%;max-width:512px;height:300px;background:var(--b3);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:center"><span style="color:var(--t3);font-size:.85rem">Chargement de l\'image...</span></div>'
-                    + '<img id="' + imgId + '" data-url="' + esc(imgUrl) + '" style="max-width:100%;border-radius:12px;display:none;cursor:pointer">'
+                    + '<img id="' + imgId + '" data-url="' + esc(imgUrl) + '" data-prompt="' + esc(message) + '" style="max-width:100%;border-radius:12px;display:none;cursor:pointer">'
                     + '<div id="' + imgId + '-actions" style="display:none;margin-top:8px;display:none;gap:6px">'
                     + '<button class="btn-s" onclick="downloadImage(document.getElementById(\'' + imgId + '\').src)">Telecharger</button>'
                     + '<button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Regenerer</button>'
@@ -157,7 +158,7 @@ function sendMsg(text){
                     + '<p style="font-size:.8rem;color:var(--t3)">Prompt : <em>' + esc(message) + '</em></p>'
                     ,
                 confidence: 'to-verify',
-                sources: ['Pollinations AI'],
+                sources: [credit.source],
                 _showBadge: false,
                 _noSuggestions: true
             };
@@ -363,51 +364,68 @@ var IMG_STYLES = {
 var currentImgSize = 'square';
 var currentImgStyle = 'none';
 
+// FLUX sur Workers AI (image generee par notre serveur, adresse permanente),
+// Pollinations en secours. Le prompt est d'abord traduit en anglais : ces
+// modeles comprennent beaucoup mieux l'anglais.
 function generateImage(prompt, callback) {
     var seed = Math.floor(Math.random() * 99999);
     var size = IMG_SIZES[currentImgSize] || IMG_SIZES.square;
     var styleSuffix = IMG_STYLES[currentImgStyle] || '';
     var called = false;
 
-    function buildUrl(p) {
+    function pollinationsUrl(p) {
         return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(p) + '?width=' + size.w + '&height=' + size.h + '&nologo=true&seed=' + seed + '&model=flux';
     }
-
-    function doCallback(url) {
+    function done(url, provider) {
         if (called) return;
         called = true;
-        callback(url, seed);
+        callback(url, seed, provider);
+    }
+    function render(p) {
+        var D = window.etherDesktop;
+        if (!D || !D.imagine) return done(pollinationsUrl(p), 'pollinations');
+        D.imagine({ prompt: p, width: size.w, height: size.h, seed: seed }).then(function(r) {
+            if (r && r.ok && r.url) return done(r.url, 'flux');
+            console.warn('[IMAGE] FLUX indisponible, repli Pollinations :', r && r.error);
+            done(pollinationsUrl(p), 'pollinations');
+        })['catch'](function() { done(pollinationsUrl(p), 'pollinations'); });
     }
 
-    if (window.etherDesktop) {
-        // Timeout: si Groq ne repond pas en 8s, on envoie directement
-        var timeout = setTimeout(function() {
-            doCallback(buildUrl(prompt + styleSuffix));
-        }, 8000);
+    translateImagePrompt(prompt).then(function(ep) { render(ep + styleSuffix); });
+}
 
-        window.etherDesktop.groqChat({
-            model: 'llama-3.1-8b-instant',
-            messages: [
-                { role: 'system', content: 'Translate and optimize this image generation prompt to English. Return ONLY the optimized prompt, nothing else. Keep it under 200 characters. Make it descriptive and visual.' + (styleSuffix ? ' Add style hint: ' + styleSuffix : '') },
-                { role: 'user', content: prompt }
-            ],
-            temperature: 0.3,
-            max_tokens: 100
-        }).then(function(res) {
-            clearTimeout(timeout);
-            var ep = prompt;
-            if (res.ok && res.text && res.text.length > 3 && res.text.length < 300) {
-                ep = res.text.replace(/^["'\s]+|["'\s]+$/g, '').replace(/\n/g, ' ').trim();
-            }
-            ep += styleSuffix;
-            doCallback(buildUrl(ep));
-        })['catch'](function() {
-            clearTimeout(timeout);
-            doCallback(buildUrl(prompt + styleSuffix));
-        });
-    } else {
-        doCallback(buildUrl(prompt + styleSuffix));
+// Traduction du prompt : Groq, puis Workers AI, sinon le texte d'origine.
+// max_tokens genereux : gpt-oss raisonne avant de repondre et renvoie un texte
+// vide si on le limite a 100.
+function translateImagePrompt(prompt) {
+    var D = window.etherDesktop;
+    if (!D) return Promise.resolve(prompt);
+    var req = {
+        model: GROQ_MODELS.fast,
+        messages: [
+            { role: 'system', content: 'Translate and optimize this image generation prompt to English. Return ONLY the optimized prompt, nothing else. Keep it under 200 characters. Make it descriptive and visual.' },
+            { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 400
+    };
+    function clean(res) {
+        var t = res && res.ok && res.text ? res.text.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^["'\s]+|["'\s]+$/g, '').replace(/\n/g, ' ').trim() : '';
+        return t.length > 3 && t.length < 400 ? t : null;
     }
+    var attempt = D.groqChat(req).then(clean)['catch'](function() { return null; }).then(function(t) {
+        if (t || !D.workersaiChat) return t;
+        return D.workersaiChat(Object.assign({}, req, { model: WORKERSAI_MODELS.fast })).then(clean)['catch'](function() { return null; });
+    });
+    var timeout = new Promise(function(r) { setTimeout(function() { r(null); }, 8000); });
+    return Promise.race([attempt, timeout]).then(function(t) { return t || prompt; });
+}
+
+// Libelles selon le fournisseur qui a vraiment produit l'image.
+function imageCredit(provider) {
+    return provider === 'flux'
+        ? { critique: 'Image generee par FLUX (Workers AI).', source: 'FLUX (Workers AI)' }
+        : { critique: 'Image generee par Pollinations AI.', source: 'Pollinations AI' };
 }
 
 function setImgSize(size, btn) {
@@ -448,7 +466,7 @@ function loadGenImage(imgId, imgUrl, attempt) {
                 if (span) span.textContent = 'Generation en cours... (tentative ' + (attempt + 2) + '/4)';
             }
             setTimeout(function() {
-                loadGenImage(imgId, imgUrl + '&retry=' + (attempt + 1), attempt + 1);
+                loadGenImage(imgId, imgUrl + (imgUrl.indexOf('?') === -1 ? '?' : '&') + 'retry=' + (attempt + 1), attempt + 1);
             }, delay);
         } else {
             if (loader) loader.innerHTML = '<div style="text-align:center;padding:16px"><p style="color:var(--t3);margin-bottom:10px">L\'image n\'a pas pu etre generee.</p><button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Reessayer</button></div>';
@@ -460,6 +478,7 @@ function loadGenImage(imgId, imgUrl, attempt) {
 // Cache d'images en base64 (stocke dans la conv active)
 function cacheImageBase64(imgUrl) {
     if (!window.etherDesktop || !window.etherDesktop.fetchImage) return;
+    if (/^\/api\/img\//.test(imgUrl)) return;   // image stockee par le serveur : deja permanente
     if (!curConv || !convs[curConv]) return;
     // Verifier si deja cache
     var msgs = convs[curConv].messages;
@@ -569,7 +588,15 @@ function retryImg(imgId) {
     img.style.display = 'none';
     if (loader) { loader.style.display = 'flex'; loader.innerHTML = '<span style="color:var(--t3);font-size:.85rem">Regeneration...</span>'; }
     if (actions) actions.style.display = 'none';
-    // Nouveau seed
+    var prompt = img.getAttribute('data-prompt');
+    if (prompt) {
+        generateImage(prompt, function(newUrl) {
+            img.setAttribute('data-url', newUrl);
+            loadGenImage(imgId, newUrl, 0);
+        });
+        return;
+    }
+    // Anciennes images Pollinations sans prompt enregistre : nouveau seed.
     var newUrl = origUrl.replace(/&seed=\d+/, '&seed=' + Math.floor(Math.random() * 99999));
     img.setAttribute('data-url', newUrl);
     loadGenImage(imgId, newUrl, 0);
@@ -588,15 +615,6 @@ function downloadImage(imgUrl) {
     setTimeout(function() { if (a.parentNode) document.body.removeChild(a); }, 100);
 }
 
-function regenerateImage(imgEl, prompt) {
-    var seed = Math.floor(Math.random() * 99999);
-    var size = IMG_SIZES[currentImgSize] || IMG_SIZES.square;
-    var oldSrc = imgEl.src;
-    imgEl.style.opacity = '0.5';
-    imgEl.src = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + '?width=' + size.w + '&height=' + size.h + '&nologo=true&seed=' + seed + '&model=flux';
-    imgEl.onload = function() { imgEl.style.opacity = '1'; };
-    imgEl.onerror = function() { imgEl.src = oldSrc; imgEl.style.opacity = '1'; };
-}
 
 // IMAGE COUNT
 function getImgCount(){var d=sGet('imgcount',{date:'',count:0});var n=new Date();var today=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');if(d.date!==today)return{date:today,count:0};return d;}
@@ -843,28 +861,29 @@ function regenResponse(btn) {
     // Detecter si c'etait une image (presence de Pollinations dans les sources ou d'une balise img)
     var wasImage = false;
     var oldData = msgEl._etherData;
-    if (oldData && oldData.sources && oldData.sources.indexOf('Pollinations AI') !== -1) wasImage = true;
-    if (!wasImage && msgEl.querySelector('img[data-url*="pollinations"]')) wasImage = true;
+    if (oldData && oldData.sources && (oldData.sources.indexOf('Pollinations AI') !== -1 || oldData.sources.indexOf('FLUX (Workers AI)') !== -1)) wasImage = true;
+    if (!wasImage && msgEl.querySelector('img[data-url*="pollinations"], img[data-url^="/api/img/"]')) wasImage = true;
 
     if (wasImage || ETHER_ENGINE.currentMode === 'image') {
         // Regenerer comme image
         showThink();
-        generateImage(originalPrompt, function(imgUrl) {
+        generateImage(originalPrompt, function(imgUrl, seed, provider) {
             hideThink();
+            var credit = imageCredit(provider);
             var imgId = 'img_' + Date.now();
             var resp = {
                 reasoning: { analyste: 'Regeneration d\'image.', critique: 'Nouveau seed.', synthese: 'Image regeneree.' },
                 answer: '<p><strong>Image regeneree :</strong></p>'
                     + '<div id="' + imgId + '-wrap" style="margin:8px 0">'
                     + '<div id="' + imgId + '-loader" style="width:100%;max-width:512px;height:300px;background:var(--b3);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:center"><span style="color:var(--t3);font-size:.85rem">Chargement...</span></div>'
-                    + '<img id="' + imgId + '" data-url="' + esc(imgUrl) + '" style="max-width:100%;border-radius:12px;display:none;cursor:pointer">'
+                    + '<img id="' + imgId + '" data-url="' + esc(imgUrl) + '" data-prompt="' + esc(originalPrompt) + '" style="max-width:100%;border-radius:12px;display:none;cursor:pointer">'
                     + '<div id="' + imgId + '-actions" style="display:none;margin-top:8px;display:none;gap:6px">'
                     + '<button class="btn-s" onclick="downloadImage(document.getElementById(\'' + imgId + '\').src)">Telecharger</button>'
                     + '<button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Regenerer</button>'
                     + '</div></div>'
                     + '<p style="font-size:.8rem;color:var(--t3)">Prompt : <em>' + esc(originalPrompt) + '</em></p>',
                 confidence: 'to-verify',
-                sources: ['Pollinations AI'],
+                sources: [credit.source],
                 _showBadge: false,
                 _noSuggestions: true
             };
