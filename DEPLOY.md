@@ -95,7 +95,7 @@ Depuis la racine du projet :
 npm run deploy
 ```
 
-Le script copie le site dans `worker/public/` puis lance `wrangler deploy`. L'URL finale s'affiche à la fin (`https://ether-api.<ton-sous-domaine>.workers.dev`). Pour changer le nom du worker, modifie `name` dans `worker/wrangler.toml`.
+Le script copie le site dans `worker/public/` puis lance `wrangler deploy`. L'URL finale s'affiche à la fin (`https://ether-ai.<ton-sous-domaine>.workers.dev`). Pour changer le nom du worker, modifie `name` dans `worker/wrangler.toml`.
 
 Vérifie ensuite quels fournisseurs répondent :
 
