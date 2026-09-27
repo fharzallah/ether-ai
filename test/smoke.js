@@ -233,6 +233,15 @@ test('quota Workers AI : comptage sans double du total de flux, coupure a 95 %',
   assert(/u\.prompt_tokens > 0 && u\.completion_tokens > 0\) total = u\.neurons/.test(workerSrc), 'Total de flux non distingue');
 });
 
+test('aucun nom personnel ni adresse d instance code en dur', () => {
+  const files = ['index.html', 'README.md', 'DEPLOY.md', 'worker/src/index.js', 'worker/wrangler.toml'].concat(rendererFiles.map(f => 'renderer/' + f));
+  files.forEach(f => {
+    const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    assert(!/***/i.test(src), 'Nom personnel dans ' + f);
+    assert(!/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev/i.test(src.replace(/<ton-[^>]+>/g, '')), 'Adresse d instance en dur dans ' + f);
+  });
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 
