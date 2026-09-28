@@ -8,9 +8,11 @@ Merci de ton intérêt ! Les issues comme les pull requests sont bienvenues, en 
 git clone https://github.com/fharzallah/ether-ai.git
 cd ether-ai
 npm install
-cp worker/.dev.vars.example worker/.dev.vars   # renseigne au moins une clé IA
-npm run dev                                     # http://localhost:8787
+cp worker/.dev.vars.example worker/.dev.vars
+npm run dev
 ```
+
+Ouvre ensuite `worker/.dev.vars` pour y mettre au moins une clé IA : le site tourne alors sur http://localhost:8787.
 
 ## Où se trouve quoi
 

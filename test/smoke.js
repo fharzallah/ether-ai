@@ -244,6 +244,16 @@ test('aucun nom personnel ni adresse d instance code en dur', () => {
   });
 });
 
+test('les blocs de commandes de la doc sont copiables tels quels (zsh)', () => {
+  // Sur macOS, zsh ne traite pas "#" comme un commentaire en mode interactif :
+  // "cp a b   # note" passe "#" et "note" a cp.
+  ['README.md', 'DEPLOY.md', 'CONTRIBUTING.md'].forEach(f => {
+    const md = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    const blocks = md.match(/```(?:bash|sh)?\n[\s\S]*?```/g) || [];
+    blocks.forEach(b => assert(!/(^|\s)#/.test(b.replace(/^```.*\n/, '').replace(/```$/, '')), 'Commentaire dans un bloc de ' + f));
+  });
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 

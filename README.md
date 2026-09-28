@@ -46,9 +46,11 @@ Prérequis : Node.js 18+ et un compte Cloudflare (gratuit). Workers AI marche sa
 git clone https://github.com/fharzallah/ether-ai.git
 cd ether-ai
 npm install
-cp worker/.dev.vars.example worker/.dev.vars   # puis renseigne tes clés
-npm run dev                                     # http://localhost:8787
+cp worker/.dev.vars.example worker/.dev.vars
+npm run dev
 ```
+
+Après la copie, ouvre `worker/.dev.vars` pour y mettre tes clés ; `npm run dev` lance le site sur http://localhost:8787.
 
 `worker/.dev.vars` est ignoré par git : tes clés ne quittent pas ta machine.
 
@@ -58,10 +60,12 @@ Le guide complet (compte Cloudflare, KV, secrets, code d'invitation) est dans **
 
 ```bash
 npx wrangler login
-npx wrangler kv namespace create ETHER_KV      # reporte l'id dans worker/wrangler.toml
+npx wrangler kv namespace create ETHER_KV
 cd worker && npx wrangler secret put JWT_SECRET && npx wrangler secret put OPENROUTER_KEY && cd ..
 npm run deploy
 ```
+
+La commande `kv namespace create` affiche un identifiant : reporte-le dans `worker/wrangler.toml` avant de déployer.
 
 ## Scripts
 
