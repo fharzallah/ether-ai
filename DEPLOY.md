@@ -44,10 +44,13 @@ La commande affiche un `id` : remplace celui de `[[kv_namespaces]]` dans `worker
 Depuis `worker/`, chaque commande te demande la valeur. Elle est chiffrée chez Cloudflare et n'apparaît jamais dans le code.
 
 ```bash
-npx wrangler secret put JWT_SECRET       # OBLIGATOIRE : longue chaîne aléatoire
-npx wrangler secret put OPENROUTER_KEY   # optionnel : Workers AI marche sans cle
-npx wrangler secret put GROQ_KEY         # optionnel, idem pour GEMINI_KEY, MISTRAL_KEY, CEREBRAS_KEY
+npx wrangler secret put JWT_SECRET
+npx wrangler secret put OPENROUTER_KEY
+npx wrangler secret put GROQ_KEY
 ```
+
+- `JWT_SECRET` est **obligatoire** : une longue chaîne aléatoire.
+- `OPENROUTER_KEY` et `GROQ_KEY` sont optionnelles (Workers AI marche sans clé). Même principe pour `GEMINI_KEY`, `MISTRAL_KEY` et `CEREBRAS_KEY`.
 
 Pour générer `JWT_SECRET` :
 
@@ -105,16 +108,25 @@ curl https://<ton-worker>.workers.dev/api/providers
 
 ## 6. Mettre à jour et revenir en arrière
 
+Pour mettre à jour ton instance :
+
 ```bash
-git pull && npm run deploy          # mettre à jour
-cd worker && npx wrangler rollback  # revenir à la version précédente
+git pull && npm run deploy
+```
+
+En cas de problème, pour revenir à la version précédente :
+
+```bash
+cd worker && npx wrangler rollback
 ```
 
 ## 7. Développement local
 
 ```bash
-cp worker/.dev.vars.example worker/.dev.vars   # ignoré par git
-npm run dev                                     # http://localhost:8787
+cp worker/.dev.vars.example worker/.dev.vars
+npm run dev
 ```
+
+`worker/.dev.vars` est ignoré par git. Le site tourne ensuite sur http://localhost:8787.
 
 En local, le KV est simulé et laisser `JWT_SECRET` vide désactive l'authentification.
