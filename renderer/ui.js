@@ -6,6 +6,10 @@ function scr(){var mg=G('MG');setTimeout(function(){mg.scrollTop=mg.scrollHeight
 function showThink(){thinking=true;logoThinking=true;var d=document.createElement('div');d.className='thi';d.id='THI';d.innerHTML='<div class="mav"></div><div class="thb"><div class="thd"><div class="thdd"></div><div class="thdd"></div><div class="thdd"></div></div><span class="tht">'+ETHER_ENGINE.getThinkingText()+'</span></div>';G('MG').appendChild(d);var av=d.querySelector('.mav');if(av)addMsgWave(av);scr();}
 function hideThink(){thinking=false;logoThinking=false;var e=G('THI');if(e&&e.parentNode)e.parentNode.removeChild(e);}
 
+// Quota : signale au serveur que l'appel IA suivant est un vrai message
+// de l'utilisateur. Les appels internes du meme tour ne comptent pas.
+function markUserMessage(){if(window.etherDesktop&&window.etherDesktop.markUserMessage)window.etherDesktop.markUserMessage();}
+
 function sendMsg(text){
     var hasFiles = stagedFiles && stagedFiles.length > 0;
     if((!text||!text.trim())&&!hasFiles||thinking)return;
@@ -15,6 +19,7 @@ function sendMsg(text){
     }
     var message=(text||'').trim(); uiEl.value=''; uiEl.style.height='auto'; sndEl.disabled=true;
     useDaily('msg');
+    markUserMessage();
     updQuotaUI();
     // Si un type de document est en attente, generer le document
     if(pendingDocFormat){
@@ -314,6 +319,7 @@ function sendDeepThink() {
     }
 
     var message = text;
+    markUserMessage();
     uiEl.value = '';
     uiEl.style.height = 'auto';
     sndEl.disabled = true;
@@ -896,6 +902,7 @@ function regenResponse(btn) {
     }
 
     // Regenerer en mode texte normal
+    markUserMessage();
     showThink();
     var regenRetry = 0;
     function attemptRegen() {

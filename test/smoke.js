@@ -233,6 +233,96 @@ test('quota Workers AI : comptage sans double du total de flux, coupure a 95 %',
   assert(/u\.prompt_tokens > 0 && u\.completion_tokens > 0\) total = u\.neurons/.test(workerSrc), 'Total de flux non distingue');
 });
 
+// Logique de quota extraite du worker et executee pour de vrai.
+function quotaLogic() {
+  const pick = re => { const m = workerSrc.match(re); assert(m, 'Introuvable : ' + re); return m[0]; };
+  const src = [
+    pick(/const DAILY_LIMIT = \d+;/), pick(/const DAILY_CALL_LIMIT = \d+;/), pick(/const TURN_TASK_LIMIT = \d+;/),
+    pick(/function cleanTurn\(v\) \{[\s\S]*?\n\}/), pick(/function parseQuota\(raw\) \{[\s\S]*?\n\}/),
+    pick(/function quotaNext\(q, turnId\) \{[\s\S]*?\n\}/)
+  ].join('\n');
+  return new Function(src + '\nreturn { DAILY_LIMIT, DAILY_CALL_LIMIT, TURN_TASK_LIMIT, parseQuota, quotaNext };')();
+}
+// Simule un client : enchaine les appels et renvoie l'etat final.
+function runCalls(Q, turns, start) {
+  let q = start || Q.parseQuota(null), served = 0, last = null;
+  for (const turn of turns) {
+    last = Q.quotaNext(q, turn);
+    if (!last.ok) break;
+    q = last.q; served++;
+  }
+  return { q, served, last };
+}
+const tid = i => 'tour' + String(i).padStart(8, '0');
+
+test('quota : un tour = 1 message, ses taches internes sont gratuites', () => {
+  const Q = quotaLogic();
+  assert(Q.DAILY_LIMIT === 100 && Q.DAILY_CALL_LIMIT === 400 && Q.TURN_TASK_LIMIT === 12, 'Limites inattendues');
+  // 100 tours, chacun : 1 message + 2 taches (resume, memoire).
+  const calls = [];
+  for (let i = 0; i < 100; i++) calls.push(tid(i), tid(i), tid(i));
+  const r = runCalls(Q, calls);
+  assert(r.served === 300 && r.q.m === 100 && r.q.t === 300, '100 messages attendus, obtenu ' + r.q.m);
+  const next = Q.quotaNext(r.q, tid(100));
+  assert(!next.ok && next.reason === 'messages', 'Le 101e message doit etre refuse');
+});
+
+test('quota : un client qui etiquette tout en « task » paie chaque appel comme un message', () => {
+  const Q = quotaLogic();
+  const src = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'index.js'), 'utf8');
+  assert(!/body\.kind/.test(src), 'Le serveur ne doit plus lire d etiquette envoyee par le client');
+  // Sans identifiant de tour, ou avec un nouveau tour a chaque appel : tout compte.
+  const sansTour = runCalls(Q, new Array(150).fill(undefined));
+  assert(sansTour.served === 100 && sansTour.last.reason === 'messages', 'Sans tour, 100 appels maximum');
+  const toursNeufs = runCalls(Q, Array.from({ length: 150 }, (_, i) => tid(i)));
+  assert(toursNeufs.served === 100, 'Un tour neuf par appel : 100 appels maximum');
+  assert(Q.quotaNext(Q.parseQuota(null), 'x').q.turn === null, 'Identifiant invalide ignore');
+});
+
+test('quota : reutiliser toujours le meme tour ne donne que 12 taches gratuites', () => {
+  const Q = quotaLogic();
+  const r = runCalls(Q, new Array(500).fill(tid(1)));
+  // 1 message, 12 taches gratuites, puis chaque appel compte : 100 messages au total.
+  assert(r.q.m === 100 && r.served === 100 + Q.TURN_TASK_LIMIT, 'Obtenu ' + r.served + ' appels, ' + r.q.m + ' messages');
+  assert(r.last.reason === 'messages', 'Doit s arreter sur la limite de messages');
+});
+
+test('quota : une reflexion approfondie (5 etapes + replis) reste sous le plafond de taches', () => {
+  const Q = quotaLogic();
+  // Decomposition (message), analyse avec 2 replis, critique avec 1 repli,
+  // synthese avec 1 repli, resume de l'historique et extraction de memoire.
+  const t = tid(7);
+  const tour = [t, t, t, t, t, t, t, t, t, t, t];
+  const r = runCalls(Q, tour);
+  assert(r.served === tour.length && r.q.m === 1, 'Un tour de Deep Think doit couter 1 message, obtenu ' + r.q.m);
+  assert(r.q.tt === tour.length - 1 && r.q.tt <= Q.TURN_TASK_LIMIT, 'Plafond de taches depasse');
+});
+
+test('quota : plafond global de 400 appels, ancien format relu sans erreur', () => {
+  const Q = quotaLogic();
+  const r = runCalls(Q, [tid(1)], { m: 10, t: 400, turn: tid(1), tt: 0 });
+  assert(r.served === 0 && r.last.reason === 'calls', 'Le plafond global doit bloquer meme une tache');
+  const legacy = Q.parseQuota('42');
+  assert(legacy.m === 0 && legacy.t === 42 && legacy.turn === null && legacy.tt === 0, 'Ancien entier mal relu');
+  const cur = Q.parseQuota(JSON.stringify({ m: 7, t: 20, turn: tid(3), tt: 4 }));
+  assert(cur.m === 7 && cur.t === 20 && cur.turn === tid(3) && cur.tt === 4, 'Format JSON mal relu');
+  assert(Q.parseQuota('pas du json').t === 0, 'Valeur illisible non toleree');
+});
+
+test('quota : une seule ecriture KV par requete, le client envoie un tour aleatoire', () => {
+  const fn = workerSrc.slice(workerSrc.indexOf('async function quotaConsume'));
+  const body = fn.slice(0, fn.indexOf('\n}\n'));
+  assert((body.match(/ETHER_KV\.put/g) || []).length === 1, 'Une seule ecriture KV par requete');
+  assert(workerSrc.includes('quotaConsume(request, env, body.turn)'), '/api/chat doit transmettre le tour');
+  assert(/turn: turn,/.test(shimSrc) && shimSrc.includes('crypto.getRandomValues(b)'), 'Le client doit envoyer un tour aleatoire');
+  assert(/_turnGate\.then/.test(shimSrc), 'Les appels paralleles doivent attendre le premier appel du tour');
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'ui.js'), 'utf8');
+  ['function sendMsg', 'function sendDeepThink', 'function regenResponse'].forEach(f => {
+    const b = ui.slice(ui.indexOf(f), ui.indexOf('\n}\n', ui.indexOf(f)));
+    assert(b.includes('markUserMessage();'), f + ' doit ouvrir un tour');
+  });
+});
+
 test('aucun nom personnel ni adresse d instance code en dur', () => {
   // Le nom est encode pour ne pas l'ecrire en clair dans le depot.
   const NAME = new RegExp(Buffer.from('aGljaGVt', 'base64').toString(), 'i');

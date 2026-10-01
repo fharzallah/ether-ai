@@ -105,7 +105,7 @@ export default {
         // Quota impose ici : un client ne peut pas le contourner en sautant
         // /api/quota/use. Avec sa propre cle, l'utilisateur paie : pas de quota.
         if (!userKey) {
-          const q = await quotaConsume(request, env);
+          const q = await quotaConsume(request, env, body.turn);
           if (!q.ok) return json(q, 429, env);
         }
 
@@ -372,30 +372,71 @@ async function bearerPayload(request, env) {
 
 // === QUOTAS ===
 // Sans KV, le quota reste indicatif. Avec le binding ETHER_KV il devient reel.
+// Tout tient dans une seule cle (une seule ecriture par requete) :
+//   m    : vrais messages de l'utilisateur, limites a DAILY_LIMIT ;
+//   t    : tous les appels IA, limites a DAILY_CALL_LIMIT ;
+//   turn : identifiant du tour du dernier message compte ;
+//   tt   : appels gratuits (taches) deja servis dans ce tour.
+// Le client envoie un identifiant aleatoire par action de l'utilisateur.
+// Le serveur ne fait confiance a aucune etiquette : un appel n'est gratuit
+// que s'il appartient au tour d'un message deja compte, dans la limite de
+// TURN_TASK_LIMIT taches (resume, memoire, etapes de Deep Think, replis).
 const DAILY_LIMIT = 100;
+const DAILY_CALL_LIMIT = 400;
+const TURN_TASK_LIMIT = 12;
 
 function quotaKey(user) {
   const day = new Date().toISOString().slice(0, 10);
   return `quota:${(user && user.email) || 'anon'}:${day}`;
 }
 
+function cleanTurn(v) {
+  return (typeof v === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(v)) ? v : null;
+}
+
+// Ancien format : un simple entier qui comptait tous les appels. On le garde
+// comme total ; les messages repartent de zero (l'ancien compte etait faux).
+function parseQuota(raw) {
+  const empty = { m: 0, t: 0, turn: null, tt: 0 };
+  if (!raw) return empty;
+  if (/^\d+$/.test(raw)) return { ...empty, t: parseInt(raw, 10) };
+  try {
+    const q = JSON.parse(raw);
+    return { m: Math.max(0, q.m | 0), t: Math.max(0, q.t | 0), turn: cleanTurn(q.turn), tt: Math.max(0, q.tt | 0) };
+  } catch (e) { return empty; }
+}
+
+// Decision pure (testee par les tests de fumee) : refuse ou renvoie l'etat suivant.
+function quotaNext(q, turnId) {
+  const turn = cleanTurn(turnId);
+  if (q.t >= DAILY_CALL_LIMIT) return { ok: false, reason: 'calls' };
+  // Tache gratuite : meme tour que le dernier message compte, sous le plafond.
+  if (turn && turn === q.turn && q.tt < TURN_TASK_LIMIT) {
+    return { ok: true, task: true, q: { m: q.m, t: q.t + 1, turn, tt: q.tt + 1 } };
+  }
+  if (q.m >= DAILY_LIMIT) return { ok: false, reason: 'messages' };
+  // Nouveau tour : le compteur de taches repart de zero. Meme tour au-dela du
+  // plafond : chaque appel compte comme un message, sans rouvrir de taches.
+  const sameTurn = turn && turn === q.turn;
+  return { ok: true, task: false, q: { m: q.m + 1, t: q.t + 1, turn, tt: sameTurn ? q.tt : 0 } };
+}
+
 async function quotaRead(request, env) {
   const user = await currentUser(request, env);
   if (!env.ETHER_KV) return { ok: true, remaining: DAILY_LIMIT, limit: DAILY_LIMIT, tracked: false };
-  const raw = await env.ETHER_KV.get(quotaKey(user));
-  const used = raw ? parseInt(raw, 10) : 0;
-  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), limit: DAILY_LIMIT, tracked: true };
+  const q = parseQuota(await env.ETHER_KV.get(quotaKey(user)));
+  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - q.m), limit: DAILY_LIMIT, tracked: true };
 }
 
-async function quotaConsume(request, env) {
+// turnId : identifiant du tour envoye par le client (absent = nouveau message).
+async function quotaConsume(request, env, turnId) {
   const user = await currentUser(request, env);
   if (!env.ETHER_KV) return { ok: true, tracked: false };
   const k = quotaKey(user);
-  const raw = await env.ETHER_KV.get(k);
-  const used = (raw ? parseInt(raw, 10) : 0) + 1;
-  if (used > DAILY_LIMIT) return { ok: false, error: 'Quota journalier atteint', remaining: 0 };
-  await env.ETHER_KV.put(k, String(used), { expirationTtl: 172800 });
-  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), tracked: true };
+  const next = quotaNext(parseQuota(await env.ETHER_KV.get(k)), turnId);
+  if (!next.ok) return { ok: false, error: 'Quota journalier atteint', limit: true, reason: next.reason, remaining: 0 };
+  await env.ETHER_KV.put(k, JSON.stringify(next.q), { expirationTtl: 172800 });
+  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - next.q.m), tracked: true };
 }
 
 // === PROXY DE CONTENU (garde SSRF) ===

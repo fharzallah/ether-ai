@@ -57,7 +57,7 @@ ETHER tourne sur le palier gratuit de Cloudflare. Le modèle **Workers AI** (Lla
 
 Les limites à connaître :
 
-- Chaque utilisateur a **100 requêtes par jour**. Les tâches internes (titres, mémoire) comptent aussi : cela représente environ **30 vrais messages**.
+- Chaque utilisateur a **100 messages par jour**. Seuls les messages que tu envoies comptent : les tâches internes (résumé de la conversation, mémoire, étapes de la réflexion approfondie) n'entament pas ce quota, dans la limite de 12 par message. Un plafond plus large sur l'ensemble des appels protège le serveur des abus.
 - Le budget quotidien de Workers AI est partagé par tous les utilisateurs d'une instance. À 95 %, ETHER passe sur un autre fournisseur.
 - Avec **ta propre clé API**, tes messages ne comptent plus dans le quota.
 
@@ -161,14 +161,12 @@ Ouvre ensuite `worker/.dev.vars` pour y mettre tes clés. Le site tourne sur htt
 
 - L'import de fichiers ne lit que le **texte brut**. PDF, Word et Excel ne sont pas encore extraits côté web.
 - Pas de réinitialisation par email : sans mot de passe ni code de secours, un compte est perdu.
-- Le quota de 100 requêtes par jour compte aussi les tâches internes.
 
 ## Feuille de route
 
 Pas encore disponible, mais prévu :
 
 - Mode d'essai sans compte, avec conversations gardées dans ton navigateur.
-- Quota basé sur les vrais messages uniquement.
 - Déploiement en un clic sur Cloudflare.
 
 ## Contribuer
