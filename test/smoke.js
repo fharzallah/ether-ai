@@ -638,6 +638,158 @@ async function runPublicRouteTests() {
   }
 }
 
+// === 7d. MODE INVITE : CHAT AVEC SA CLE, RIEN D'AUTRE ===
+async function runGuestTests() {
+  console.log('\n\x1b[36m7d. Mode invite\x1b[0m');
+  // Delai reduit pour tester la coupure sans attendre une minute.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'index.js'), 'utf8')
+    .replace('const GUEST_TIMEOUT_MS = 60000;', 'const GUEST_TIMEOUT_MS = 150;');
+  assert(/GUEST_TIMEOUT_MS = 150/.test(src), 'Constante GUEST_TIMEOUT_MS introuvable');
+  let n = 0;
+  const freshWorker = async () => (await import('data:text/javascript,' + encodeURIComponent(src + '\n//guest' + (++n)))).default;
+  const ctx = { waitUntil() {} };
+  const seen = { fetch: [], ai: 0, put: 0 };
+  let hang = false;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    seen.fetch.push({ url: String(url), headers: (init && init.headers) || {}, body: init && init.body });
+    if (hang) return new Promise(() => {});
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  const env = (over) => {
+    const kv = memoryKV();
+    const put = kv.put;
+    kv.put = async (k, v, o) => { seen.put++; return put(k, v, o); };
+    return Object.assign({
+      JWT_SECRET: 'secret-de-test-0123456789abcdef', ETHER_KV: kv, GROQ_KEY: 'cle-serveur-groq',
+      AI: { run: async () => { seen.ai++; return { response: 'ok' }; } }
+    }, over || {});
+  };
+  const reset = () => { seen.fetch = []; seen.ai = 0; seen.put = 0; hang = false; };
+  const guestCall = (w, p, body, e, extra) => w.fetch(new Request('http://localhost' + p, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json', 'X-Provider-Key': 'cle-perso-invite', 'X-Evil': 'relaie-moi' }, extra || {}),
+    body: typeof body === 'string' ? body : JSON.stringify(body)
+  }), e || env(), ctx);
+  const msg = { messages: [{ role: 'user', content: 'bonjour' }] };
+
+  try {
+    await testAsync('invite : chat de base avec sa cle, relaye a Groq sans cle serveur ni en-tete arbitraire', async () => {
+      const w = await freshWorker(); reset();
+      const r = await guestCall(w, '/api/chat', Object.assign({ provider: 'groq', max_tokens: 999999 }, msg));
+      assert(r.status === 200, 'HTTP ' + r.status);
+      assert(seen.fetch.length === 1 && seen.fetch[0].url.startsWith('https://api.groq.com/'), 'Appel inattendu : ' + JSON.stringify(seen.fetch.map(f => f.url)));
+      const h = JSON.stringify(seen.fetch[0].headers);
+      assert(h.includes('Bearer cle-perso-invite') && !h.includes('cle-serveur-groq'), 'La cle de l invite doit etre la seule cle relayee');
+      assert(!/X-Evil|relaie-moi/i.test(h), 'En-tete arbitraire relaye');
+      assert(JSON.parse(seen.fetch[0].body).max_tokens <= 4000, 'max_tokens non plafonne');
+      // Defense en profondeur : l'invite ne recoit ni cles serveur, ni KV, ni Workers AI.
+      assert(/const args = \[guestEnv\(env, provider, userKey\),/.test(src), 'Le chat invite doit utiliser guestEnv');
+      assert(/function guestEnv\(env, provider, userKey\) \{\s*return \{ CORS_ORIGIN: env\.CORS_ORIGIN, CTX: env\.CTX, \[PROVIDERS\[provider\]\.key\]: userKey \};/.test(src), 'guestEnv ne doit transmettre que la cle de l invite');
+    });
+
+    await testAsync('invite : aucune ecriture KV ni Workers AI, en chat comme en flux', async () => {
+      const w = await freshWorker(); reset();
+      for (const p of ['groq', 'gemini', 'mistral', 'openai', 'anthropic']) {
+        await guestCall(w, '/api/chat', Object.assign({ provider: p }, msg));
+        const s = await guestCall(w, '/api/chat/stream', Object.assign({ provider: p }, msg));
+        if (s.body) await s.text().catch(() => '');
+      }
+      assert(seen.put === 0, seen.put + ' ecritures KV en mode invite');
+      assert(seen.ai === 0, 'Workers AI appele en mode invite');
+    });
+
+    await testAsync('invite : URL personnalisee et fournisseurs du serveur refuses (403), sans aucun appel', async () => {
+      const w = await freshWorker(); reset();
+      for (const p of ['custom', 'workersai', 'openrouter', 'cerebras', 'pollinations', 'inconnu']) {
+        const r = await guestCall(w, '/api/chat', Object.assign({ provider: p, baseUrl: 'https://169.254.169.254/latest' }, msg));
+        assert(r.status === 403, p + ' : HTTP ' + r.status);
+        const s = await guestCall(w, '/api/chat/stream', Object.assign({ provider: p, baseUrl: 'https://exemple.test/v1' }, msg));
+        assert(s.status === 403, p + ' (flux) : HTTP ' + s.status);
+      }
+      assert(seen.fetch.length === 0 && seen.ai === 0, 'Appel sortant pour un fournisseur interdit');
+    });
+
+    await testAsync('invite : corps trop gros (413), delai depasse (504), sans cle (401), serveur mal configure (503)', async () => {
+      const w = await freshWorker(); reset();
+      const big = JSON.stringify(Object.assign({ provider: 'groq' }, { messages: [{ role: 'user', content: 'x'.repeat(140 * 1024) }] }));
+      assert((await guestCall(w, '/api/chat', big)).status === 413, 'Corps trop gros accepte');
+      assert(seen.fetch.length === 0, 'Corps trop gros relaye');
+      hang = true;
+      const t = await guestCall(w, '/api/chat', Object.assign({ provider: 'groq' }, msg));
+      assert(t.status === 504, 'Delai non applique (HTTP ' + t.status + ')');
+      const ts = await guestCall(w, '/api/chat/stream', Object.assign({ provider: 'groq' }, msg));
+      assert(ts.status === 504, 'Delai du flux non applique (HTTP ' + ts.status + ')');
+      hang = false;
+      const nokey = await guestCall(w, '/api/chat', Object.assign({ provider: 'groq' }, msg), env(), { 'X-Provider-Key': '' });
+      assert(nokey.status === 401, 'Sans cle ni compte : HTTP ' + nokey.status);
+      const closed = await guestCall(w, '/api/chat', Object.assign({ provider: 'groq' }, msg), env({ JWT_SECRET: '' }));
+      assert(closed.status === 503, 'Instance mal configuree : HTTP ' + closed.status);
+    });
+
+    await testAsync('invite : avec une cle mais sans jeton, chaque route sensible refuse (401)', async () => {
+      const w = await freshWorker(); reset();
+      for (const p of ['/api/fetch', '/api/imagine', '/api/persist', '/api/search', '/api/account/export', '/api/account/delete',
+                       '/api/diag', '/api/providers/test', '/api/quota', '/api/quota/use', '/api/vision', '/api/transcribe', '/api/usage', '/api/image']) {
+        const r = await guestCall(w, p, { url: 'https://example.com', query: 'x', provider: 'groq' });
+        assert(r.status === 401, p + ' : HTTP ' + r.status);
+      }
+      assert(seen.fetch.length === 0 && seen.put === 0, 'Une route sensible a travaille pour un invite');
+    });
+
+    await testAsync('pas de coffre « anonyme » partage : le stockage exige toujours un compte', async () => {
+      assert(!/persist:'\s*\+\s*\(\(user && user\.email\) \|\| 'anon/.test(src), 'Coffre anonyme reintroduit');
+      assert(/function persistKey\(user\) \{\s*return 'persist:' \+ user\.email;/.test(src), 'persistKey doit dependre du compte');
+      const w = await freshWorker();
+      const r = await w.fetch(new Request('http://localhost/api/persist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"data":{}}' }), env(), ctx);
+      assert(r.status === 401, '/api/persist sans compte : HTTP ' + r.status);
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  // Cote client : platform-web.js execute dans un navigateur simule.
+  await testAsync('client invite : aucun appel a /api/persist ni aux routes de compte, rien dans le cache de synchro', async () => {
+    const vm = require('vm');
+    const store = new Map([['ether_guest_mode', '1'], ['etherx_provider_keys', JSON.stringify({ groq: 'cle-perso' })]]);
+    const calls = [];
+    const win = {
+      ETHER_API_BASE: 'http://localhost', location: { origin: 'http://localhost', href: 'http://localhost/' },
+      history: { replaceState() {} }, addEventListener() {}, dispatchEvent() {},
+      localStorage: {
+        getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)),
+        removeItem: k => store.delete(k), key: i => [...store.keys()][i], get length() { return store.size; }
+      },
+      fetch: async (url) => { calls.push(String(url)); return new Response('{"ok":true,"providers":[]}', { status: 200 }); },
+      console, setTimeout, clearTimeout, URL, Promise, JSON, Uint8Array, TextDecoder, Event: class { constructor(t) { this.type = t; } },
+      crypto: require('crypto').webcrypto,
+      document: {
+        readyState: 'complete', addEventListener() {}, getElementById: () => null, querySelector: () => null,
+        createElement: () => ({ style: {}, setAttribute() {}, appendChild() {}, addEventListener() {} }),
+        body: { appendChild() {} }, head: { appendChild() {} }, documentElement: { setAttribute() {} }
+      }
+    };
+    win.window = win; win.self = win;
+    vm.createContext(win);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'renderer', 'platform-web.js'), 'utf8'), win);
+    const D = win.etherDesktop;
+    assert(D && D.isGuest() === true, 'Le mode invite doit etre actif');
+    await D.persistSet('convs', { c1: { title: 'x' } });
+    await D.persistWrite({ convs: {} });
+    await D.persistRead();
+    await D.persistGet('convs');
+    const blocked = await Promise.all([D.accountExport(), D.aiUsage(), D.quotaCheck(), D.quotaUse(), D.accountDelete('x')]);
+    assert(blocked.every(r => r && r.ok === false && r.guest), 'Les routes de compte doivent etre refusees cote client');
+    await new Promise(r => setTimeout(r, 1700));
+    assert(!calls.some(u => /\/api\/(persist|account|usage|quota)/.test(u)), 'Appel interdit : ' + calls.join(', '));
+    const cache = store.get('ether__sync_cache');
+    assert(!cache || !/c1/.test(cache), 'Les donnees de l invite ne doivent pas entrer dans le cache de synchronisation');
+    const custom = await D.customChat({ providerId: 'x', messages: [{ role: 'user', content: 'x' }] });
+    assert(custom && custom.ok === false, 'Fournisseur personnalise accepte pour un invite');
+    assert(!calls.some(u => /\/api\/chat/.test(u)), 'Un fournisseur personnalise a ete relaye pour un invite');
+  });
+}
+
 // === 8. API TESTS (si le worker local tourne) ===
 console.log('\n\x1b[36m8. API live tests\x1b[0m');
 
@@ -665,7 +817,8 @@ async function runApiTests() {
   });
 
   const providers = await httpGet('http://localhost:8787/api/providers');
-  if (providers && providers.providers) {
+  // Sans compte, la liste est vide par conception (pas de sonde en direct).
+  if (providers && providers.providers && providers.live !== false) {
     test('Au moins 1 provider actif', () => {
       const ok = providers.providers.filter(p => p.ok);
       assert(ok.length > 0, 'Aucun provider actif');
@@ -678,6 +831,9 @@ runAuthTests().catch(e => {
   failed++;
 }).then(() => runPublicRouteTests().catch(e => {
   console.log('  \x1b[31m✗\x1b[0m tests des routes publiques interrompus — ' + e.message);
+  failed++;
+})).then(() => runGuestTests().catch(e => {
+  console.log('  \x1b[31m✗\x1b[0m tests du mode invite interrompus — ' + e.message);
   failed++;
 })).then(runApiTests).then(() => {
   // === RESUME ===

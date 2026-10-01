@@ -42,6 +42,10 @@
 </form>
 <a href="#" id="L-FORGOT" class="login-link ls-in">Mot de passe oublie ?</a>
 <a href="#" id="L-BACK" class="login-link ls-rec">Retour a la connexion</a>
+<div class="login-guest ls-in ls-up">
+<button type="button" id="L-GUEST" class="btn-s">Essayer sans compte</button>
+<p>Avec ta propre cle API, sans mot de passe. Tes conversations restent sur cet appareil.</p>
+</div>
 </div>
 <div id="RC-CARD" class="login-card hidden">
 <h1 style="font-size:1.2rem;letter-spacing:1px">Ton code de secours</h1>
@@ -241,6 +245,10 @@
 </div>
 </div>
 <!-- BANDEAU EPHEMERE -->
+<div id="GUEST-BAR" class="guest-bar hidden" role="status">
+<span>Mode invite : tes conversations restent sur cet appareil et disparaissent si tu vides ton navigateur.</span>
+<button type="button" id="GUEST-SIGNUP">Creer un compte</button>
+</div>
 <div id="EPH-BAR" class="hidden" style="max-width:680px;margin:0 auto 8px;padding:8px 14px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:20px;font-size:.8rem;color:#f59e0b;display:flex;align-items:center;justify-content:space-between;animation:fi .3s ease">
 <span data-i18n="ephemeral_on">Discussion ephemere activee</span>
 <button onclick="G('EPH-BAR').classList.add('hidden')" style="background:none;border:none;color:#f59e0b;cursor:pointer;font-size:1.1rem;line-height:1;padding:0 2px;opacity:.6">&times;</button>

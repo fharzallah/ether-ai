@@ -27,6 +27,12 @@ body{display:flex;height:100vh;overflow:hidden;background:var(--b1);color:var(--
 .login-info{background:var(--gl);border:1px solid var(--ac);color:var(--t1)!important;border-radius:10px;padding:10px 12px;font-size:.8rem!important;margin-bottom:14px!important;text-align:left}
 .login-link{display:inline-block;margin-top:14px;font-size:.78rem;color:var(--t3);text-decoration:none}
 .login-link:hover{color:var(--ac)}
+.login-guest{margin-top:22px;padding-top:18px;border-top:1px solid var(--bd)}
+.login-guest .btn-s{width:100%}
+.login-guest p{margin:8px 0 0;font-size:.74rem;color:var(--t3);line-height:1.5}
+.guest-bar{max-width:680px;margin:0 auto 8px;padding:7px 8px 7px 14px;background:var(--b2);border:1px solid var(--bd);border-radius:20px;font-size:.76rem;color:var(--t2);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.guest-bar button{flex-shrink:0;background:var(--ac);color:#fff;border:0;border-radius:14px;padding:5px 12px;font-size:.74rem;cursor:pointer}
+.guest-card{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 #LS .ls-up,#LS .ls-rec,#LS .ls-in{display:none}
 #LS[data-mode="signup"] .ls-up,#LS[data-mode="recover"] .ls-rec,#LS[data-mode="login"] .ls-in{display:block}
 #LS[data-mode="recover"] .login-tabs{display:none}
