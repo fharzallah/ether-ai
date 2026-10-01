@@ -396,6 +396,17 @@ test('build:web copie les fichiers PWA, la CSP autorise le SW sans s affaiblir',
   assert(/\/sw\.js\n\s+Cache-Control: no-cache/.test(h), 'sw.js ne doit pas etre mis en cache longtemps');
 });
 
+test('la doc dit que JWT_SECRET est obligatoire en local et explique comment le generer', () => {
+  const ex = fs.readFileSync(root('worker/.dev.vars.example'), 'utf8');
+  assert(/^JWT_SECRET=$/m.test(ex), 'JWT_SECRET doit etre present et vide dans .dev.vars.example');
+  assert(/OBLIGATOIRE/.test(ex) && !/laisse tout passer/.test(ex), 'Commentaire de .dev.vars.example perime');
+  ['README.md', 'DEPLOY.md'].forEach(f => {
+    const md = fs.readFileSync(root(f), 'utf8');
+    assert(!/vide d[ée]sactive l'authentification/.test(md), f + ' dit encore que JWT_SECRET vide desactive l auth');
+    assert(md.includes('randomBytes(32)') && md.includes('worker/.dev.vars'), f + ' : commande de generation absente');
+  });
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 
