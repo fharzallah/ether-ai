@@ -8,7 +8,14 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="ETHER — assistant IA franc et open-source">
 <meta property="og:description" content="Un assistant IA qui challenge tes idées au lieu de les valider. Open-source, auto-hébergeable gratuitement sur Cloudflare.">
-<meta name="theme-color" content="#c0392b">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ETHER">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <!-- CSS extrait vers style.css -->
@@ -708,4 +715,12 @@
 <script src="renderer/skill-creator.js"></script>
 <script src="renderer/docgen.js"></script>
 <script src="renderer/app-main.js"></script>
+<script>
+// PWA : installation et page hors-ligne. Le service worker ne met jamais /api/* en cache.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function (e) { console.warn('[ETHER] service worker :', e && e.message); });
+  });
+}
+</script>
 </body></html>
