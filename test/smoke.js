@@ -210,7 +210,7 @@ test('BLOCKED_HOSTS bloque les adresses internes, pas les domaines publics', () 
 });
 
 test('images : FLUX via /api/imagine (auth), lecture /api/img/<id> par identifiant aleatoire', () => {
-  assert(workerSrc.includes("path.startsWith('/api/imagine')"), '/api/imagine doit exiger une session');
+  assert(workerSrc.includes("path === '/api/imagine'") && !/PUBLIC_ROUTES = \[[^\]]*imagine/.test(workerSrc), '/api/imagine doit exiger une session');
   assert(workerSrc.includes('flux-1-schnell') && workerSrc.includes('flux-2-klein'), 'Modeles FLUX absents');
   assert(/\[0-9a-f\]\{32\}/.test(workerSrc), 'Identifiant d image non contraint');
   assert(shimSrc.includes("request('/api/imagine'"), 'Front : appel /api/imagine absent');
@@ -407,6 +407,14 @@ test('la doc dit que JWT_SECRET est obligatoire en local et explique comment le 
   });
 });
 
+test('aucune doc ne dit que l authentification peut etre desactivee', () => {
+  ['README.md', 'DEPLOY.md', 'SECURITY.md', 'CONTRIBUTING.md', 'worker/wrangler.toml', 'worker/.dev.vars.example'].forEach(f => {
+    const src = fs.readFileSync(root(f), 'utf8');
+    assert(!/(auth\w*|verifyAuth)[^\n]{0,40}(d[ée]sactiv|laisse tout passer)|d[ée]sactive l'auth/i.test(src), f + ' : phrase sur une auth desactivable');
+    assert(!/quotas? (ne bloquent personne|ne sont qu'indicatifs)/i.test(src), f + ' : phrase sur un KV facultatif');
+  });
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 
@@ -422,6 +430,117 @@ test('worker contient les routes API', () => {
   assert(worker.includes('/api/search'), 'Missing /api/search');
   assert(worker.includes('/api/persist'), 'Missing /api/persist');
 });
+
+// === 7b. AUTH : FERMETURE PAR DEFAUT (le vrai worker, execute dans Node) ===
+// Le handler fetch du worker est importe tel quel et appele sans reseau :
+// chaque route protegee doit repondre avant d'atteindre un fournisseur.
+async function testAsync(name, fn) {
+  try { await fn(); console.log('  \x1b[32m✓\x1b[0m ' + name); passed++; }
+  catch (e) { console.log('  \x1b[31m✗\x1b[0m ' + name + ' — ' + e.message); failed++; }
+}
+
+// Liste blanche documentee : la modifier oblige a modifier ce test.
+const EXPECTED_PUBLIC = ['/api/health', '/api/auth/signup', '/api/auth/login', '/api/auth/recover',
+  '/api/verify', '/api/register', '/api/email', '/api/models', '/api/providers'];
+
+function memoryKV(seed) {
+  const m = new Map(Object.entries(seed || {}));
+  return {
+    get: async (k, type) => { const v = m.has(k) ? m.get(k) : null; return v !== null && type === 'json' ? JSON.parse(v) : v; },
+    put: async (k, v) => { m.set(k, v); },
+    delete: async k => { m.delete(k); }
+  };
+}
+
+function signToken(payload, secret) {
+  const b64 = x => Buffer.from(x).toString('base64url');
+  const data = b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' })) + '.' + b64(JSON.stringify(payload));
+  return data + '.' + require('crypto').createHmac('sha256', secret).update(data).digest('base64url');
+}
+
+async function runAuthTests() {
+  console.log('\n\x1b[36m7b. Auth : fermeture par defaut\x1b[0m');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'index.js'), 'utf8');
+  const worker = (await import('data:text/javascript,' + encodeURIComponent(src))).default;
+  const ctx = { waitUntil() {} };
+  const call = (p, env, headers) => worker.fetch(new Request('http://localhost' + p, {
+    method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, headers || {}), body: '{}'
+  }), env, ctx);
+  const SECRET = 'secret-de-test-0123456789abcdef';
+  const EMAIL = 'test@example.com';
+  const kvWithUser = () => memoryKV({ ['user:' + EMAIL]: JSON.stringify({ email: EMAIL, name: 'Test', tv: 1 }) });
+
+  // Routes declarees dans le routeur du worker.
+  const handler = src.slice(src.indexOf('async fetch(request, env, ctx)'), src.indexOf('// === CORS ==='));
+  const declared = [...new Set([...handler.matchAll(/path (?:===|\.startsWith\() ?'(\/api\/[^']+)'/g)].map(m => m[1]))];
+  const pubMatch = src.match(/const PUBLIC_ROUTES = (\[[\s\S]*?\]);/);
+  const publicInSrc = pubMatch ? eval(pubMatch[1].replace(/\/\/.*$/gm, '')) : [];
+
+  await testAsync('la liste des routes publiques est exactement celle documentee', async () => {
+    assert(JSON.stringify(publicInSrc.slice().sort()) === JSON.stringify(EXPECTED_PUBLIC.slice().sort()),
+      'Routes publiques du worker : ' + publicInSrc.join(', '));
+    assert(!/if \(!env\.JWT_SECRET\) return null/.test(src), 'Il reste une exception « dev local »');
+  });
+
+  await testAsync('toute route declaree hors liste publique refuse une requete sans jeton (401)', async () => {
+    const prot = declared.filter(p => !publicInSrc.includes(p));
+    assert(prot.length >= 15, 'Trop peu de routes trouvees : ' + prot.length);
+    for (const p of prot) {
+      const r = await call(p, { JWT_SECRET: SECRET, ETHER_KV: kvWithUser() });
+      assert(r.status === 401, p + ' est publique sans etre dans la liste (HTTP ' + r.status + ')');
+    }
+    const r = await call('/api/route-qui-nexiste-pas-encore', { JWT_SECRET: SECRET, ETHER_KV: kvWithUser() });
+    assert(r.status === 401, 'Une nouvelle route doit etre protegee par defaut (HTTP ' + r.status + ')');
+  });
+
+  const SENSITIVE = ['/api/fetch', '/api/imagine', '/api/search', '/api/persist', '/api/chat', '/api/chat/stream',
+    '/api/account/export', '/api/account/delete', '/api/diag', '/api/providers/test'];
+
+  await testAsync('sans JWT_SECRET, les routes sensibles repondent 503 et jamais 200', async () => {
+    for (const p of SENSITIVE) {
+      const r = await call(p, { ETHER_KV: kvWithUser() }, { Authorization: 'Bearer ' + signToken({ email: EMAIL, tv: 1 }, 'x') });
+      const body = await r.json();
+      assert(r.status === 503 && /JWT_SECRET absent/.test(body.error), p + ' : HTTP ' + r.status);
+    }
+  });
+
+  await testAsync('sans le binding ETHER_KV, les routes sensibles repondent 503, meme avec un jeton signe', async () => {
+    const tok = signToken({ email: EMAIL, tv: 1, exp: Date.now() + 60000 }, SECRET);
+    for (const p of SENSITIVE) {
+      const r = await call(p, { JWT_SECRET: SECRET }, { Authorization: 'Bearer ' + tok });
+      assert(r.status === 503, p + ' : HTTP ' + r.status);
+    }
+  });
+
+  await testAsync('jeton invalide, expire, mal signe ou revoque : 401, jamais un passage', async () => {
+    const env = () => ({ JWT_SECRET: SECRET, ETHER_KV: kvWithUser() });
+    const bad = {
+      'jeton illisible': 'pas-un-jwt',
+      'jeton expire': signToken({ email: EMAIL, tv: 1, exp: Date.now() - 1000 }, SECRET),
+      'autre secret': signToken({ email: EMAIL, tv: 1, exp: Date.now() + 60000 }, 'un-autre-secret'),
+      'version revoquee': signToken({ email: EMAIL, tv: 0, exp: Date.now() + 60000 }, SECRET),
+      'compte inexistant': signToken({ email: 'inconnu@example.com', tv: 1, exp: Date.now() + 60000 }, SECRET)
+    };
+    for (const [why, tok] of Object.entries(bad)) {
+      for (const p of ['/api/fetch', '/api/persist', '/api/chat']) {
+        const r = await call(p, env(), { Authorization: 'Bearer ' + tok });
+        assert(r.status === 401, why + ' sur ' + p + ' : HTTP ' + r.status);
+      }
+    }
+    // Controle positif : un vrai jeton passe la garde.
+    const ok = await worker.fetch(new Request('http://localhost/api/quota', {
+      headers: { Authorization: 'Bearer ' + signToken({ email: EMAIL, tv: 1, exp: Date.now() + 60000 }, SECRET) }
+    }), env(), ctx);
+    assert(ok.status === 200, 'Un jeton valide doit passer (HTTP ' + ok.status + ')');
+  });
+
+  await testAsync('les routes publiques restent accessibles sans jeton', async () => {
+    const r = await worker.fetch(new Request('http://localhost/api/health'), {}, ctx);
+    assert(r.status === 200, '/api/health : HTTP ' + r.status);
+    const img = await worker.fetch(new Request('http://localhost/api/img/' + '0'.repeat(32) + '.jpg'), { JWT_SECRET: SECRET, ETHER_KV: memoryKV() }, ctx);
+    assert(img.status !== 401 && img.status !== 503, 'Image publique bloquee (HTTP ' + img.status + ')');
+  });
+}
 
 // === 8. API TESTS (si le worker local tourne) ===
 console.log('\n\x1b[36m8. API live tests\x1b[0m');
@@ -458,7 +577,10 @@ async function runApiTests() {
   }
 }
 
-runApiTests().then(() => {
+runAuthTests().catch(e => {
+  console.log('  \x1b[31m✗\x1b[0m tests d auth interrompus — ' + e.message);
+  failed++;
+}).then(runApiTests).then(() => {
   // === RESUME ===
   console.log('\n\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m');
   console.log('\x1b[1m  ' + passed + ' passed, ' + failed + ' failed\x1b[0m');

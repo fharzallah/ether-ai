@@ -47,6 +47,29 @@ function checkProvider(provider, env, userKey) {
   return null;
 }
 
+// === ROUTES PUBLIQUES (liste blanche) ===
+// Tout ce qui n'est pas ici exige un compte. Une nouvelle route est donc
+// protegee par defaut : pour la rendre publique, il faut l'ajouter ici et
+// dans le test de fumee qui verifie cette liste.
+const PUBLIC_ROUTES = [
+  '/api/health',        // sonde de disponibilite (CI, supervision)
+  '/api/auth/signup',   // on ne peut pas exiger un compte pour en creer un
+  '/api/auth/login',
+  '/api/auth/recover',  // code de secours : l'utilisateur a perdu son mot de passe
+  '/api/verify',        // le front teste son jeton ; repond 401 lui-meme
+  '/api/register',      // ancienne inscription, fermee : repond 410
+  '/api/email',         // bouchon, repond 501
+  '/api/models',        // catalogue des modeles, lu avant la connexion
+  '/api/providers'      // etat des fournisseurs (cache 5 min), lu avant la connexion
+];
+// Images generees : l'identifiant aleatoire (128 bits) fait office de secret,
+// sinon <img src> ne pourrait pas les afficher.
+const PUBLIC_PATTERNS = [/^\/api\/img\/[0-9a-f]{32}\.jpg$/];
+
+function isPublicRoute(path) {
+  return PUBLIC_ROUTES.includes(path) || PUBLIC_PATTERNS.some(re => re.test(path));
+}
+
 export default {
   async fetch(request, env, ctx) {
     // ctx sert a finir un travail apres la reponse (comptage d'usage d'un stream).
@@ -64,12 +87,9 @@ export default {
         return json({ status: 'ok', name: 'ETHER API', version: '2.2', providers: configuredProviders(env) }, 200, env);
       }
 
-      // --- AUTH sur les routes protegees ---
-      if (path.startsWith('/api/chat') || path.startsWith('/api/quota') ||
-          path.startsWith('/api/vision') || path.startsWith('/api/transcribe') ||
-          path.startsWith('/api/fetch') || path.startsWith('/api/image') ||
-          path.startsWith('/api/search') || path.startsWith('/api/diag') ||
-          path.startsWith('/api/providers/test') || path.startsWith('/api/imagine')) {
+      // --- AUTH : tout ce qui n'est pas public exige un compte valide ---
+      // Fermeture par defaut : sans JWT_SECRET ou sans KV, rien ne passe.
+      if (!isPublicRoute(path)) {
         const authErr = await verifyAuth(request, env);
         if (authErr) return authErr;
       }
@@ -217,8 +237,6 @@ export default {
       }
       // --- USAGE WORKERS AI (estimation du jour) ---
       if (path === '/api/usage' && request.method === 'GET') {
-        const authErr = await verifyAuth(request, env);
-        if (authErr) return authErr;
         const u = await aiUsage(env);
         return json({ ok: true, day: aiDay(), limit: AI_FREE_NEURONS, cutoff: AI_SAFETY, resetsAt: '00:00 UTC', ...u }, 200, env);
       }
@@ -230,8 +248,6 @@ export default {
 
       // --- PERSISTANCE UTILISATEUR (synchronisation multi-appareils) ---
       if (path === '/api/persist') {
-        const authErr = await verifyAuth(request, env);
-        if (authErr) return authErr;
         const user = await currentUser(request, env);
         if (request.method === 'GET')  return json(await persistRead(env, user), 200, env);
         if (request.method === 'POST') return json(await persistWrite(env, user, await request.json()), 200, env);
@@ -340,8 +356,15 @@ async function verifyJWT(token, secret) {
 
 // Verifie REELLEMENT le token. L'ancienne version acceptait n'importe quel
 // Bearer non vide, ce qui laissait les quotas ouverts a tout le monde.
+// Fermeture par defaut : une instance mal configuree refuse au lieu de
+// laisser passer. Aucune exception, pas meme en local.
 async function verifyAuth(request, env) {
-  if (!env.JWT_SECRET) return null; // dev local sans secret
+  if (!env.JWT_SECRET) {
+    return json({ ok: false, error: 'JWT_SECRET absent sur le serveur', hint: 'npx wrangler secret put JWT_SECRET' }, 503, env);
+  }
+  if (!env.ETHER_KV) {
+    return json({ ok: false, error: 'Stockage KV absent : comptes impossibles', hint: 'Ajouter [[kv_namespaces]] ETHER_KV dans wrangler.toml' }, 503, env);
+  }
   const auth = request.headers.get('Authorization');
   if (!auth || !auth.startsWith('Bearer ')) {
     return json({ ok: false, error: 'Authorization required' }, 401, env);
