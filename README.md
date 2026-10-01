@@ -57,7 +57,7 @@ ETHER tourne sur le palier gratuit de Cloudflare. Le modèle **Workers AI** (Lla
 
 Les limites à connaître :
 
-- Chaque utilisateur a **100 messages par jour**. Seuls les messages que tu envoies comptent : les tâches internes (résumé de la conversation, mémoire, étapes de la réflexion approfondie) n'entament pas ce quota. Un plafond plus large sur l'ensemble des appels protège le serveur des abus.
+- Chaque utilisateur a **100 messages par jour**. Seuls les messages que tu envoies comptent : les tâches internes (résumé de la conversation, mémoire, étapes de la réflexion approfondie) n'entament pas ce quota, dans la limite de 12 par message. Un plafond plus large sur l'ensemble des appels protège le serveur des abus.
 - Le budget quotidien de Workers AI est partagé par tous les utilisateurs d'une instance. À 95 %, ETHER passe sur un autre fournisseur.
 - Avec **ta propre clé API**, tes messages ne comptent plus dans le quota.
 

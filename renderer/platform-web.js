@@ -249,19 +249,29 @@
         return Promise.resolve({ key: userKeys()[provider] || '' });
     }
 
-    // Quota : seul le premier appel IA qui suit une action de l'utilisateur
-    // compte comme un vrai message. Les autres appels du meme tour (resume,
-    // memoire, etapes de la reflexion approfondie, replis) sont des taches.
-    var _turnPending = false;
-    function takeKind() {
-        if (!_turnPending) return 'task';
-        _turnPending = false;
-        return 'message';
+    // Quota : chaque action de l'utilisateur ouvre un tour, avec un identifiant
+    // aleatoire envoye a chaque appel IA. Le serveur compte le premier appel du
+    // tour comme un vrai message ; les suivants (resume, memoire, etapes de la
+    // reflexion approfondie, replis) sont gratuits dans la limite qu'il fixe.
+    // Le premier appel part seul : les appels paralleles du meme tour attendent
+    // sa reponse, sinon chacun serait compte comme un nouveau message.
+    var _turn = null, _turnStarted = false, _turnGate = null;
+    function newTurnId() {
+        var b = new Uint8Array(16);
+        crypto.getRandomValues(b);
+        return Array.prototype.map.call(b, function(x) { return ('0' + x.toString(16)).slice(-2); }).join('');
     }
-    // Message refuse pour quota : le tour reste ouvert, sinon un repli
-    // passerait en « tache » et contournerait la limite.
-    function releaseTurn(kind, res) {
-        if (kind === 'message' && res && res.ok === false && res.limit) _turnPending = true;
+    function enterTurn() {
+        var noop = function() {};
+        if (!_turn) return Promise.resolve({ turn: null, release: noop });
+        var turn = _turn;
+        if (!_turnStarted) {
+            _turnStarted = true;
+            var release;
+            _turnGate = new Promise(function(r) { release = r; setTimeout(r, 15000); });
+            return Promise.resolve({ turn: turn, release: release });
+        }
+        return _turnGate.then(function() { return { turn: turn, release: noop }; });
     }
 
     function chatHeaders(ctx) {
@@ -270,10 +280,10 @@
         return h;
     }
 
-    function chatBody(provider, data, ctx, kind) {
+    function chatBody(provider, data, ctx, turn) {
         return JSON.stringify({
             provider: provider,
-            kind: kind,
+            turn: turn,
             model: ctx.model || (data && data.model),
             messages: data && data.messages,
             temperature: data && data.temperature,
@@ -284,23 +294,24 @@
 
     function stream(provider, data) {
         var full = '';
-        var kind = null;
         _abort = new AbortController();
+        var signal = _abort.signal;
 
         return providerContext(provider, data).then(function(ctx) {
             if (ctx.error) throw new Error(ctx.error);
-            kind = takeKind();
-            return fetch(API_BASE + '/api/chat/stream', {
-                method: 'POST',
-                headers: chatHeaders(ctx),
-                signal: _abort.signal,
-                body: chatBody(provider, data, ctx, kind)
+            return enterTurn().then(function(tr) {
+                return fetch(API_BASE + '/api/chat/stream', {
+                    method: 'POST',
+                    headers: chatHeaders(ctx),
+                    signal: signal,
+                    body: chatBody(provider, data, ctx, tr.turn)
+                })['finally'](tr.release);
             });
         }).then(function(resp) {
             if (resp.status === 401) authRequired();
             if (!resp.ok || !resp.body) {
                 return resp.text().then(function(t) {
-                    try { var err = JSON.parse(t); releaseTurn(kind, err); checkQuota(err); } catch (e) {}
+                    try { checkQuota(JSON.parse(t)); } catch (e) {}
                     throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 200));
                 });
             }
@@ -338,13 +349,13 @@
     function chat(provider, data) {
         return providerContext(provider, data).then(function(ctx) {
             if (ctx.error) return { ok: false, error: ctx.error };
-            var kind = takeKind();
-            return fetch(API_BASE + '/api/chat', {
-                method: 'POST', headers: chatHeaders(ctx), body: chatBody(provider, data, ctx, kind)
+            return enterTurn().then(function(tr) {
+                return fetch(API_BASE + '/api/chat', {
+                    method: 'POST', headers: chatHeaders(ctx), body: chatBody(provider, data, ctx, tr.turn)
+                })['finally'](tr.release);
             }).then(function(r) {
                 return r.json().catch(function() { return { ok: false, error: 'Reponse illisible (HTTP ' + r.status + ')' }; });
             }).then(function(res) {
-                releaseTurn(kind, res);
                 if (isAuthError(res)) authRequired(res.error);
                 return checkQuota(res);
             });
@@ -494,7 +505,7 @@
 
         groqTest:  function() { return request('/api/providers'); },
         // A appeler a chaque action de l'utilisateur qui produit une reponse.
-        markUserMessage: function() { _turnPending = true; },
+        markUserMessage: function() { _turn = newTurnId(); _turnStarted = false; _turnGate = null; },
         groqStop:  function() { if (_abort) _abort.abort(); return Promise.resolve({ ok: true }); },
         getModels: function() { return request('/api/models'); },
         testAllProviders: function() { return request('/api/providers'); },

@@ -2463,7 +2463,7 @@ function getDailyRemaining(key, base) {
 }
 function canSendMessage() {
     if (isPro) return true;
-    return getDailyRemaining('msg', 30) > 0;
+    return getDailyRemaining('msg', 100) > 0;
 }
 function canSearchWeb() {
     if (isPro) return true;
