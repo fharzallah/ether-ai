@@ -12,8 +12,11 @@ CEREBRAS_KEY=your_cerebras_key_here
 # Tavily (tvly-...), Brave (BSA...) ou Serper, detecte automatiquement.
 SEARCH_KEY=
 
-# Sans JWT_SECRET, verifyAuth laisse tout passer (pratique en local, jamais en prod).
-JWT_SECRET=change_me_to_a_random_secret
+# OBLIGATOIRE, meme en local : sans lui, inscription et connexion repondent 503
+# ("JWT_SECRET absent sur le serveur"). Generation (voir DEPLOY.md, section 7) :
+# la commande "node -e ..." remplit cette ligne avec 64 caracteres aleatoires.
+# En production : npx wrangler secret put JWT_SECRET
+JWT_SECRET=
 
 # Code d'invitation (optionnel). Vide = inscription ouverte.
 # Le lien a partager devient https://ton-worker.workers.dev/?code=CE_CODE

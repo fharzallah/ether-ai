@@ -143,10 +143,11 @@ git clone https://github.com/fharzallah/ether-ai.git
 cd ether-ai
 npm install
 cp worker/.dev.vars.example worker/.dev.vars
+node -e 'const fs=require("fs"),f="worker/.dev.vars";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/^JWT_SECRET=.*$/m,"JWT_SECRET="+require("crypto").randomBytes(32).toString("hex")))'
 npm run dev
 ```
 
-Ouvre ensuite `worker/.dev.vars` pour y mettre tes clés. Le site tourne sur http://localhost:8787. Ce fichier est ignoré par git : tes clés ne quittent pas ta machine.
+La commande `node -e …` génère le `JWT_SECRET` dans `worker/.dev.vars`. Il est obligatoire, même en local : sans lui, impossible de créer un compte ou de se connecter (erreur 503). Ouvre ensuite `worker/.dev.vars` pour y mettre tes clés. Le site tourne sur http://localhost:8787. Ce fichier est ignoré par git : tes clés ne quittent pas ta machine.
 
 ## Commandes utiles
 

@@ -124,9 +124,10 @@ cd worker && npx wrangler rollback
 
 ```bash
 cp worker/.dev.vars.example worker/.dev.vars
+node -e 'const fs=require("fs"),f="worker/.dev.vars";fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/^JWT_SECRET=.*$/m,"JWT_SECRET="+require("crypto").randomBytes(32).toString("hex")))'
 npm run dev
 ```
 
-`worker/.dev.vars` est ignoré par git. Le site tourne ensuite sur http://localhost:8787.
+La deuxième commande écrit un `JWT_SECRET` aléatoire dans `worker/.dev.vars`. Il est **obligatoire, même en local** : sans lui, l'inscription et la connexion répondent `503` (« JWT_SECRET absent sur le serveur ») et tu ne peux pas créer de compte. La relancer génère un nouveau secret et déconnecte les sessions locales.
 
-En local, le KV est simulé et laisser `JWT_SECRET` vide désactive l'authentification.
+`worker/.dev.vars` est ignoré par git. Ajoute-y au moins une clé de fournisseur IA. Le site tourne ensuite sur http://localhost:8787. En local, le KV est simulé : les comptes créés n'existent que sur ta machine.
