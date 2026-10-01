@@ -233,6 +233,64 @@ test('quota Workers AI : comptage sans double du total de flux, coupure a 95 %',
   assert(/u\.prompt_tokens > 0 && u\.completion_tokens > 0\) total = u\.neurons/.test(workerSrc), 'Total de flux non distingue');
 });
 
+// Logique de quota extraite du worker et executee pour de vrai.
+function quotaLogic() {
+  const pick = re => { const m = workerSrc.match(re); assert(m, 'Introuvable : ' + re); return m[0]; };
+  const src = [
+    pick(/const DAILY_LIMIT = \d+;/), pick(/const DAILY_CALL_LIMIT = \d+;/),
+    pick(/function parseQuota\(raw\) \{[\s\S]*?\n\}/), pick(/function quotaNext\(q, kind\) \{[\s\S]*?\n\}/)
+  ].join('\n');
+  return new Function(src + '\nreturn { DAILY_LIMIT, DAILY_CALL_LIMIT, parseQuota, quotaNext };')();
+}
+
+test('quota : seuls les vrais messages comptent dans les 100, les taches non', () => {
+  const Q = quotaLogic();
+  assert(Q.DAILY_LIMIT === 100, 'DAILY_LIMIT doit rester 100');
+  assert(Q.DAILY_CALL_LIMIT > Q.DAILY_LIMIT, 'Le plafond total doit etre plus large');
+  let q = { m: 0, t: 0 };
+  // Un tour typique : 1 message + 3 taches internes (resume, memoire, repli).
+  for (let i = 0; i < 100; i++) {
+    let r = Q.quotaNext(q, 'message'); assert(r.ok, 'Message ' + (i + 1) + ' refuse'); q = r.q;
+    if (q.t + 3 <= Q.DAILY_CALL_LIMIT) for (let j = 0; j < 3; j++) { r = Q.quotaNext(q, 'task'); assert(r.ok, 'Tache refusee'); q = r.q; }
+  }
+  assert(q.m === 100, '100 vrais messages attendus, obtenu ' + q.m);
+  const r = Q.quotaNext(q, 'message');
+  assert(!r.ok && r.reason === 'messages', 'Le 101e message doit etre refuse');
+});
+
+test('quota : le plafond total arrete un client qui etiquette tout en tache', () => {
+  const Q = quotaLogic();
+  let q = { m: 0, t: 0 }, n = 0, r;
+  while ((r = Q.quotaNext(q, 'task')).ok) { q = r.q; n++; assert(n <= 10000, 'Boucle sans fin'); }
+  assert(n === Q.DAILY_CALL_LIMIT && r.reason === 'calls', 'Plafond total non applique');
+  assert(!Q.quotaNext(q, 'message').ok, 'Un message doit aussi etre refuse au plafond total');
+  assert(Q.quotaNext({ m: 0, t: 0 }, undefined).q.m === 1, 'Sans etiquette, l appel compte comme un message');
+});
+
+test('quota : les deux compteurs vivent dans une seule cle KV, ancien format accepte', () => {
+  const Q = quotaLogic();
+  const legacy = Q.parseQuota('42');
+  assert(legacy.m === 0 && legacy.t === 42, 'Ancien entier mal relu');
+  const cur = Q.parseQuota(JSON.stringify({ m: 7, t: 20 }));
+  assert(cur.m === 7 && cur.t === 20, 'Format JSON mal relu');
+  assert(Q.parseQuota('pas du json').t === 0 && Q.parseQuota(null).m === 0, 'Valeur illisible non toleree');
+  const fn = workerSrc.slice(workerSrc.indexOf('async function quotaConsume'));
+  const body = fn.slice(0, fn.indexOf('\n}\n'));
+  assert((body.match(/ETHER_KV\.put/g) || []).length === 1, 'Une seule ecriture KV par requete');
+  assert(/quotaConsume\(request, env, body\.kind === 'task' \? 'task' : 'message'\)/.test(workerSrc), '/api/chat doit lire l etiquette');
+});
+
+test('quota : le client etiquette le premier appel du tour, un refus garde le tour ouvert', () => {
+  assert(/kind: kind,/.test(shimSrc), 'chatBody doit envoyer kind');
+  assert(/markUserMessage: function\(\) \{ _turnPending = true; \}/.test(shimSrc), 'markUserMessage absent');
+  assert(/kind === 'message' && res && res\.ok === false && res\.limit\) _turnPending = true/.test(shimSrc), 'Un message refuse doit garder le tour ouvert');
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'ui.js'), 'utf8');
+  ['function sendMsg', 'function sendDeepThink', 'function regenResponse'].forEach(f => {
+    const body = ui.slice(ui.indexOf(f), ui.indexOf('\n}\n', ui.indexOf(f)));
+    assert(body.includes('markUserMessage();'), f + ' doit marquer un vrai message');
+  });
+});
+
 test('aucun nom personnel ni adresse d instance code en dur', () => {
   // Le nom est encode pour ne pas l'ecrire en clair dans le depot.
   const NAME = new RegExp(Buffer.from('aGljaGVt', 'base64').toString(), 'i');

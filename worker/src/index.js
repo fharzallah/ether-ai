@@ -105,7 +105,7 @@ export default {
         // Quota impose ici : un client ne peut pas le contourner en sautant
         // /api/quota/use. Avec sa propre cle, l'utilisateur paie : pas de quota.
         if (!userKey) {
-          const q = await quotaConsume(request, env);
+          const q = await quotaConsume(request, env, body.kind === 'task' ? 'task' : 'message');
           if (!q.ok) return json(q, 429, env);
         }
 
@@ -372,30 +372,55 @@ async function bearerPayload(request, env) {
 
 // === QUOTAS ===
 // Sans KV, le quota reste indicatif. Avec le binding ETHER_KV il devient reel.
+// Deux compteurs dans la meme cle (une seule ecriture par requete) :
+//   m : vrais messages de l'utilisateur, limites a DAILY_LIMIT ;
+//   t : tous les appels IA, taches internes comprises (resume, memoire,
+//       etapes de la reflexion approfondie, replis), limites a DAILY_CALL_LIMIT.
+// Le client etiquette chaque appel ('message' ou 'task'). Un client qui
+// mentirait n'obtient rien de plus que DAILY_CALL_LIMIT appels par jour.
 const DAILY_LIMIT = 100;
+const DAILY_CALL_LIMIT = 400;
 
 function quotaKey(user) {
   const day = new Date().toISOString().slice(0, 10);
   return `quota:${(user && user.email) || 'anon'}:${day}`;
 }
 
+// Ancien format : un simple entier qui comptait tous les appels. On le garde
+// comme total ; les messages repartent de zero (l'ancien compte etait faux).
+function parseQuota(raw) {
+  if (!raw) return { m: 0, t: 0 };
+  if (/^\d+$/.test(raw)) return { m: 0, t: parseInt(raw, 10) };
+  try {
+    const q = JSON.parse(raw);
+    return { m: Math.max(0, q.m | 0), t: Math.max(0, q.t | 0) };
+  } catch (e) { return { m: 0, t: 0 }; }
+}
+
+// Decision pure (testee par les tests de fumee) : refuse ou renvoie les compteurs suivants.
+function quotaNext(q, kind) {
+  const isMsg = kind !== 'task';
+  if (isMsg && q.m >= DAILY_LIMIT) return { ok: false, reason: 'messages' };
+  if (q.t >= DAILY_CALL_LIMIT) return { ok: false, reason: 'calls' };
+  return { ok: true, q: { m: q.m + (isMsg ? 1 : 0), t: q.t + 1 } };
+}
+
 async function quotaRead(request, env) {
   const user = await currentUser(request, env);
   if (!env.ETHER_KV) return { ok: true, remaining: DAILY_LIMIT, limit: DAILY_LIMIT, tracked: false };
-  const raw = await env.ETHER_KV.get(quotaKey(user));
-  const used = raw ? parseInt(raw, 10) : 0;
-  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), limit: DAILY_LIMIT, tracked: true };
+  const q = parseQuota(await env.ETHER_KV.get(quotaKey(user)));
+  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - q.m), limit: DAILY_LIMIT, tracked: true };
 }
 
-async function quotaConsume(request, env) {
+// kind : 'message' (par defaut, y compris pour un ancien client) ou 'task'.
+async function quotaConsume(request, env, kind) {
   const user = await currentUser(request, env);
   if (!env.ETHER_KV) return { ok: true, tracked: false };
   const k = quotaKey(user);
-  const raw = await env.ETHER_KV.get(k);
-  const used = (raw ? parseInt(raw, 10) : 0) + 1;
-  if (used > DAILY_LIMIT) return { ok: false, error: 'Quota journalier atteint', remaining: 0 };
-  await env.ETHER_KV.put(k, String(used), { expirationTtl: 172800 });
-  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - used), tracked: true };
+  const next = quotaNext(parseQuota(await env.ETHER_KV.get(k)), kind);
+  if (!next.ok) return { ok: false, error: 'Quota journalier atteint', limit: true, reason: next.reason, remaining: 0 };
+  await env.ETHER_KV.put(k, JSON.stringify(next.q), { expirationTtl: 172800 });
+  return { ok: true, remaining: Math.max(0, DAILY_LIMIT - next.q.m), tracked: true };
 }
 
 // === PROXY DE CONTENU (garde SSRF) ===

@@ -2411,7 +2411,7 @@ function showQuotaExhausted() {
     var d = document.createElement('div');
     d.className = 'msg a';
     d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Limite du jour atteinte.</strong></p>'
-        + '<p>Ce serveur accorde un nombre de requetes par jour et par personne. Reviens demain, '
+        + '<p>Ce serveur accorde 100 messages par jour et par personne. Reviens demain, '
         + 'ou ajoute ta propre cle API dans Parametres &gt; Fournisseurs IA : tes messages ne seront alors plus limites.</p></div></div>';
     G('MG').appendChild(d);
     var av = d.querySelector('.mav');

@@ -278,6 +278,7 @@ var SKILL_CREATOR = {
             + (this.wizardData.avoid ? ' et une section des interdits' : '') + '.>';
 
         if (typeof ETHER_ENGINE !== 'undefined') {
+            markUserMessage();
             ETHER_ENGINE.generateResponse(prompt).then(function(res) {
                 var raw = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
                 var parsed = self.parseSynthesis(raw);
@@ -318,6 +319,7 @@ var SKILL_CREATOR = {
             + 'en respectant strictement ces instructions :\n\n' + this.proposedPrompt
             + '\n\nCommence par "Question testée :" puis ta reponse.';
         if (typeof ETHER_ENGINE !== 'undefined') {
+            markUserMessage();
             ETHER_ENGINE.generateResponse(q).then(function(res) {
                 var out = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
                 self.addWizardMsg('ia', "Voici ce que donnerait ce mode :\n\n---\n\n" + out
@@ -338,6 +340,7 @@ var SKILL_CREATOR = {
             + 'DESCRIPTION: <phrase de declenchement commencant par "Quand", max 200 caracteres>\n'
             + 'PROMPT:\n<le system prompt revise>';
         if (typeof ETHER_ENGINE !== 'undefined') {
+            markUserMessage();
             ETHER_ENGINE.generateResponse(prompt).then(function(res) {
                 var raw = (res.raw || res.answer || '').replace(/<[^>]+>/g, '').trim();
                 var parsed = self.parseSynthesis(raw);
