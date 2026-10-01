@@ -177,7 +177,8 @@ const shimSrc = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'platform
 
 test('les routes de compte existent et l ancienne inscription est fermee', () => {
   ['/api/auth/signup', '/api/auth/login', '/api/auth/recover'].forEach(r => assert(workerSrc.includes(r), 'Missing ' + r));
-  assert(/path === '\/api\/register'\)\s*\{\s*return json\(\{ ok: false/.test(workerSrc), '/api/register doit refuser');
+  // L'ancienne inscription par simple email n'existe plus : route inconnue, donc protegee.
+  assert(!workerSrc.includes("'/api/register'"), '/api/register ne doit plus exister');
 });
 
 test('mots de passe haches avec PBKDF2 et sel aleatoire', () => {
@@ -441,7 +442,7 @@ async function testAsync(name, fn) {
 
 // Liste blanche documentee : la modifier oblige a modifier ce test.
 const EXPECTED_PUBLIC = ['/api/health', '/api/auth/signup', '/api/auth/login', '/api/auth/recover',
-  '/api/verify', '/api/register', '/api/email', '/api/models', '/api/providers'];
+  '/api/verify', '/api/models', '/api/providers'];
 
 function memoryKV(seed) {
   const m = new Map(Object.entries(seed || {}));
@@ -542,6 +543,101 @@ async function runAuthTests() {
   });
 }
 
+// === 7c. ROUTES PUBLIQUES : AUCUN APPEL EXTERNE, CACHE DE L'ISOLATE ===
+async function runPublicRouteTests() {
+  console.log('\n\x1b[36m7c. Routes publiques : aucun appel externe, cache\x1b[0m');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'index.js'), 'utf8');
+  let n = 0;
+  // Chaque import est un module neuf, donc un cache d'isolate vide.
+  const freshWorker = async () => (await import('data:text/javascript,' + encodeURIComponent(src + '\n//' + (++n)))).default;
+  const ctx = { waitUntil() {} };
+  const SECRET = 'secret-de-test-0123456789abcdef';
+  const EMAIL = 'test@example.com';
+  const counters = { fetch: 0, ai: 0, put: 0, keys: [] };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    counters.fetch++;
+    return new Response(JSON.stringify({ data: [{ id: 'modele-test' }], choices: [{ message: { content: 'ok' } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  const env = () => {
+    const kv = memoryKV({ ['user:' + EMAIL]: JSON.stringify({ email: EMAIL, name: 'Test', tv: 1 }) });
+    const put = kv.put;
+    kv.put = async (k, v, o) => { counters.put++; counters.keys.push(k); return put(k, v, o); };
+    return {
+      JWT_SECRET: SECRET, ETHER_KV: kv, GROQ_KEY: 'x', MISTRAL_KEY: 'x', CEREBRAS_KEY: 'x', OPENROUTER_KEY: 'x', GEMINI_KEY: 'x',
+      AI: { run: async () => { counters.ai++; return { response: 'ok' }; } }
+    };
+  };
+  const reset = () => { counters.fetch = 0; counters.ai = 0; counters.put = 0; counters.keys = []; };
+  const auth = { Authorization: 'Bearer ' + signToken({ email: EMAIL, tv: 1, exp: Date.now() + 60000 }, SECRET) };
+  const get = (w, p, e, h) => w.fetch(new Request('http://localhost' + p, { headers: h || {} }), e, ctx);
+
+  try {
+    await testAsync('sans compte, aucune route publique n appelle un fournisseur ni n ecrit dans KV', async () => {
+      const w = await freshWorker();
+      const e = env();
+      reset();
+      for (const p of EXPECTED_PUBLIC) {
+        await get(w, p, e);
+        await w.fetch(new Request('http://localhost' + p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }), e, ctx);
+      }
+      await get(w, '/api/img/' + '0'.repeat(32) + '.jpg', e);
+      assert(counters.fetch === 0 && counters.ai === 0, 'Appels externes : fetch=' + counters.fetch + ', AI=' + counters.ai);
+      assert(counters.put === 0, 'Ecritures KV : ' + counters.put);
+      const prov = await (await get(w, '/api/providers', e)).json();
+      assert(Array.isArray(prov.providers) && prov.providers.length === 0 && prov.live === false, '/api/providers anonyme doit etre vide');
+      const models = await (await get(w, '/api/models', e)).json();
+      assert(models.models && models.models.groq && !('configured' in models), '/api/models anonyme : catalogue statique, sans configuration');
+    });
+
+    await testAsync('/api/health ne revele aucun detail de configuration', async () => {
+      const w = await freshWorker();
+      const body = await (await get(w, '/api/health', env())).text();
+      const parsed = JSON.parse(body);
+      assert(JSON.stringify(Object.keys(parsed).sort()) === JSON.stringify(['name', 'status', 'version']), 'Champs inattendus : ' + body);
+      assert(!/groq|gemini|mistral|cerebras|openrouter|workersai|KEY|SECRET/i.test(body), 'Detail de configuration : ' + body);
+    });
+
+    await testAsync('deux appels rapproches de /api/models (connecte) ne declenchent qu une interrogation', async () => {
+      const w = await freshWorker();
+      const e = env();
+      reset();
+      await Promise.all([get(w, '/api/models', e, auth), get(w, '/api/models', e, auth)]);
+      const once = counters.fetch;
+      assert(once > 0, 'Avec un compte, /api/models doit interroger les fournisseurs');
+      await get(w, '/api/models', e, auth);
+      assert(counters.fetch === once, 'Appels fournisseurs : ' + counters.fetch + ' au lieu de ' + once);
+      const r = await (await get(w, '/api/models', e, auth)).json();
+      assert(r.live === true && Array.isArray(r.models.groq), 'Reponse en direct attendue');
+    });
+
+    await testAsync('/api/providers (connecte) : sondes en cache dans l isolate, aucune ecriture KV', async () => {
+      const w = await freshWorker();
+      const e = env();
+      reset();
+      await Promise.all([get(w, '/api/providers', e, auth), get(w, '/api/providers', e, auth)]);
+      const once = counters.fetch + counters.ai;
+      assert(once > 0, 'Avec un compte, les fournisseurs doivent etre sondes');
+      const r = await (await get(w, '/api/providers', e, auth)).json();
+      assert(counters.fetch + counters.ai === once, 'Sondes repetees : ' + (counters.fetch + counters.ai) + ' au lieu de ' + once);
+      assert(r.live === true && r.providers.length > 0, 'Resultats en direct attendus');
+      // Seule ecriture admise : le budget Workers AI, que la sonde consomme vraiment.
+      const cacheWrites = counters.keys.filter(k => !/^aiusage:/.test(k));
+      assert(cacheWrites.length === 0, 'Le cache ne doit plus ecrire dans KV : ' + cacheWrites.join(', '));
+    });
+
+    await testAsync('les routes mortes /api/register et /api/email ont disparu', async () => {
+      assert(!/'\/api\/register'|'\/api\/email'/.test(src), 'Route morte encore declaree');
+      assert(!/api\/email/.test(fs.readFileSync(path.join(__dirname, '..', 'renderer', 'platform-web.js'), 'utf8')), 'Le front appelle encore /api/email');
+      const w = await freshWorker();
+      const r = await w.fetch(new Request('http://localhost/api/register', { method: 'POST', body: '{}' }), env(), ctx);
+      assert(r.status === 401, '/api/register doit etre traitee comme une route inconnue protegee (HTTP ' + r.status + ')');
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 // === 8. API TESTS (si le worker local tourne) ===
 console.log('\n\x1b[36m8. API live tests\x1b[0m');
 
@@ -580,7 +676,10 @@ async function runApiTests() {
 runAuthTests().catch(e => {
   console.log('  \x1b[31m✗\x1b[0m tests d auth interrompus — ' + e.message);
   failed++;
-}).then(runApiTests).then(() => {
+}).then(() => runPublicRouteTests().catch(e => {
+  console.log('  \x1b[31m✗\x1b[0m tests des routes publiques interrompus — ' + e.message);
+  failed++;
+})).then(runApiTests).then(() => {
   // === RESUME ===
   console.log('\n\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m');
   console.log('\x1b[1m  ' + passed + ' passed, ' + failed + ' failed\x1b[0m');

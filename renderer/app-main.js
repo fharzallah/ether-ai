@@ -2357,12 +2357,15 @@ function checkApiStatus() {
         })['catch'](function() { setApiStatus('disconnected', 'Injoignable'); });
         return;
     }
-    window.etherDesktop.testAllProviders().then(function(results) {
+    window.etherDesktop.testAllProviders().then(function(res) {
+        // Le serveur renvoie { providers: [...] } ; sans compte, la liste est vide.
+        var results = (res && res.providers) || [];
         var ok = [];
         var fail = [];
         for (var i = 0; i < results.length; i++) {
             var r = results[i];
             providerStatus[r.provider] = r.ok;
+            if (typeof providerHealth !== 'undefined') providerHealth[r.provider] = r.ok;
             if (r.ok) ok.push(r.provider.charAt(0).toUpperCase() + r.provider.slice(1));
             else fail.push(r.provider);
         }
