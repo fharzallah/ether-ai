@@ -57,11 +57,31 @@ const PUBLIC_ROUTES = [
   '/api/auth/login',
   '/api/auth/recover',  // code de secours : l'utilisateur a perdu son mot de passe
   '/api/verify',        // le front teste son jeton ; repond 401 lui-meme
-  '/api/register',      // ancienne inscription, fermee : repond 410
-  '/api/email',         // bouchon, repond 501
-  '/api/models',        // catalogue des modeles, lu avant la connexion
-  '/api/providers'      // etat des fournisseurs (cache 5 min), lu avant la connexion
+  // Lues avant la connexion. Sans compte : reponse statique, aucun appel
+  // a un fournisseur. Avec un compte : donnees en direct, cache de l'isolate.
+  '/api/models',
+  '/api/providers'
 ];
+
+// === CACHE DE L'ISOLATE ===
+// Memoire locale a l'isolate : aucune ecriture KV, perdue au redemarrage,
+// non partagee entre centres de donnees. Suffisant pour limiter les appels
+// aux fournisseurs. Deux appels simultanes partagent la meme promesse.
+const ISOLATE_CACHE = new Map();
+async function isolateCached(key, okTtlMs, failTtlMs, isOk, fn) {
+  const hit = ISOLATE_CACHE.get(key);
+  if (hit && (hit.pending || hit.exp > Date.now())) return hit.pending || hit.value;
+  const pending = (async () => fn())();
+  ISOLATE_CACHE.set(key, { pending });
+  try {
+    const value = await pending;
+    ISOLATE_CACHE.set(key, { value, exp: Date.now() + (isOk(value) ? okTtlMs : failTtlMs) });
+    return value;
+  } catch (e) {
+    ISOLATE_CACHE.delete(key);
+    throw e;
+  }
+}
 // Images generees : l'identifiant aleatoire (128 bits) fait office de secret,
 // sinon <img src> ne pourrait pas les afficher.
 const PUBLIC_PATTERNS = [/^\/api\/img\/[0-9a-f]{32}\.jpg$/];
@@ -83,8 +103,9 @@ export default {
 
     try {
       // --- HEALTH ---
+      // Aucun detail de configuration : ni fournisseurs, ni secrets.
       if (path === '/api/health') {
-        return json({ status: 'ok', name: 'ETHER API', version: '2.2', providers: configuredProviders(env) }, 200, env);
+        return json({ status: 'ok', name: 'ETHER API', version: '2.2' }, 200, env);
       }
 
       // --- AUTH : tout ce qui n'est pas public exige un compte valide ---
@@ -137,20 +158,22 @@ export default {
       }
 
       // --- MODELS : catalogue par provider ---
+      // Sans compte : catalogue statique. Avec un compte : liste vivante (evite
+      // les identifiants perimes), en cache dans l'isolate 5 min (1 min si echec).
       if (path === '/api/models') {
-        // Liste vivante : evite que des identifiants de modeles perimes
-        // provoquent des 404 silencieux comme avant.
-        let models = MODELS;
-        try {
-          const live = await diagnose(env);
-          const merged = {};
-          for (const p of Object.keys(PROVIDERS)) {
-            const l = live[p];
-            merged[p] = (l && l.models && l.models.length) ? l.models : (MODELS[p] || []);
-          }
-          models = merged;
-        } catch (e) { /* repli sur le catalogue statique */ }
-        return json({ ok: true, models, configured: configuredProviders(env) }, 200, env);
+        if (!(await currentUser(request, env))) return json({ ok: true, models: MODELS, live: false }, 200, env);
+        const models = await isolateCached('models', 300000, 60000, r => r.live, async () => {
+          try {
+            const live = await diagnose(env);
+            const merged = {};
+            for (const p of Object.keys(PROVIDERS)) {
+              const l = live[p];
+              merged[p] = (l && l.models && l.models.length) ? l.models : (MODELS[p] || []);
+            }
+            return { models: merged, live: true };
+          } catch (e) { return { models: MODELS, live: false }; }
+        });
+        return json({ ok: true, models: models.models, live: models.live, configured: configuredProviders(env) }, 200, env);
       }
 
       // --- VISION (Gemini) ---
@@ -190,17 +213,7 @@ export default {
         return json(await webSearch(env, String(query).slice(0, 300)), 200, env);
       }
 
-      // --- EMAIL : pas de service configure ---
-      if (path === '/api/email') {
-        return json({ ok: false, error: 'Envoi d email non configure', hint: 'Necessite un service type Resend : npx wrangler secret put RESEND_KEY' }, 501, env);
-      }
-
       // --- COMPTES ---
-      // L'ancienne inscription par simple email donnait l'acces a n'importe quel
-      // compte a qui connaissait l'adresse. Elle est fermee.
-      if (path === '/api/register') {
-        return json({ ok: false, error: 'Recharge la page : la connexion se fait maintenant avec un mot de passe.', authRequired: true }, 410, env);
-      }
       if (path === '/api/auth/signup' && request.method === 'POST') {
         const [body, status] = await authSignup(request, env);
         return json(body, status, env);
@@ -254,8 +267,11 @@ export default {
       }
 
       // --- PROVIDERS STATUS ---
+      // Sans compte : aucune sonde, aucun detail. Le front garde ses valeurs par
+      // defaut et refait le test apres la connexion.
       if (path === '/api/providers') {
-        return json({ ok: true, providers: await testProviders(env) }, 200, env);
+        if (!(await currentUser(request, env))) return json({ ok: true, providers: [], live: false }, 200, env);
+        return json({ ok: true, providers: await testProviders(env), live: true }, 200, env);
       }
       if (path === '/api/providers/test' && request.method === 'POST') {
         const body = await request.json();
@@ -659,17 +675,12 @@ const MODELS = {
 // Chaque test envoie une vraie requete a chaque fournisseur. Le resultat est
 // garde 5 minutes : sans ce cache, chaque chargement de page consommait les
 // quotas des fournisseurs pour rien.
+// Sondes en direct, reservees aux comptes. Cache de l'isolate : plus aucune
+// ecriture KV (l'ancien cache KV coutait jusqu'a 1 440 ecritures par jour).
 async function testProviders(env) {
-  const CACHE = 'cache:providers';
-  if (env.ETHER_KV) {
-    const cached = await env.ETHER_KV.get(CACHE, 'json').catch(() => null);
-    if (cached) return cached;
-  }
-  const results = await testProvidersNow(env);
-  // Un echec peut etre ponctuel : on le garde moins longtemps qu'un succes.
-  const ttl = results.every(r => r.ok || r.error === 'non configure') ? 300 : 60;
-  if (env.ETHER_KV) await env.ETHER_KV.put(CACHE, JSON.stringify(results), { expirationTtl: ttl }).catch(() => {});
-  return results;
+  return isolateCached('providers', 300000, 60000,
+    results => results.every(r => r.ok || r.error === 'non configure'),
+    () => testProvidersNow(env));
 }
 
 async function testProvidersNow(env) {

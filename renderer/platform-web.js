@@ -675,7 +675,6 @@
         imagine:         function(d) { return request('/api/imagine', d); },
         webSearch:       function(q) { return request('/api/search', { query: q }); },
         transcribeAudio: function(buf) { return request('/api/transcribe', { audio: buf }); },
-        sendEmail:       function(d) { return request('/api/email', d); },
 
         // === Quotas (cote serveur) ===
         quotaCheck:     function() { return request('/api/quota'); },
