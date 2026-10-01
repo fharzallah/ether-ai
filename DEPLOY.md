@@ -37,7 +37,7 @@ cd worker
 npx wrangler kv namespace create ETHER_KV
 ```
 
-La commande affiche un `id` : remplace celui de `[[kv_namespaces]]` dans `worker/wrangler.toml`. Sans ce binding, les quotas ne bloquent personne et rien n'est synchronisé.
+La commande affiche un `id` : remplace celui de `[[kv_namespaces]]` dans `worker/wrangler.toml`. Sans ce binding, l'API se ferme : les routes protégées répondent `503`.
 
 ## 4. Poser les secrets
 

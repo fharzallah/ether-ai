@@ -20,7 +20,7 @@ Chaque instance auto-hébergée est sous la responsabilité de la personne qui l
 
 ## Bonnes pratiques pour les instances auto-hébergées
 
-- Pose toujours `JWT_SECRET` : sans lui, l'authentification est désactivée.
+- Pose toujours `JWT_SECRET` : sans lui, l'instance se ferme. Toutes les routes protégées répondent `503` et personne ne peut se connecter. Il en va de même sans le binding `ETHER_KV`.
 - Ne commite jamais `worker/.dev.vars` ni aucune clé.
 - Utilise `INVITE_CODE` si ton instance n'est pas destinée au public.
 - En cas de fuite d'une clé, révoque-la chez le fournisseur puis repose-la avec `wrangler secret put`.

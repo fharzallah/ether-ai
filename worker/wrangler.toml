@@ -9,14 +9,14 @@ CORS_ORIGIN = "*"
 
 # Les cles API sont des secrets, jamais dans ce fichier.
 # Liste complete et guide : DEPLOY.md. Par exemple :
-#   npx wrangler secret put JWT_SECRET      <- OBLIGATOIRE : sans lui l'auth est desactivee
+#   npx wrangler secret put JWT_SECRET      <- OBLIGATOIRE : sans lui l'API repond 503
 #   npx wrangler secret put GROQ_KEY        (au moins un fournisseur IA)
 #   npx wrangler secret put OPENROUTER_KEY
 #   npx wrangler secret put SEARCH_KEY      (optionnel : Tavily / Brave / Serper)
 #   npx wrangler secret put INVITE_CODE     (optionnel : acces sur invitation)
 
-# Quotas reels par utilisateur. Sans ce binding, les quotas ne sont
-# qu'indicatifs et ne bloquent personne.
+# Comptes, quotas et conversations. OBLIGATOIRE : sans ce binding, les
+# routes protegees repondent 503 et personne ne peut creer de compte.
 # Fork : cree ton propre namespace (npx wrangler kv namespace create ETHER_KV)
 # et remplace l'id ci-dessous par celui qu'affiche la commande.
 [[kv_namespaces]]
