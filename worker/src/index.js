@@ -90,6 +90,50 @@ function isPublicRoute(path) {
   return PUBLIC_ROUTES.includes(path) || PUBLIC_PATTERNS.some(re => re.test(path));
 }
 
+// === MODE INVITE ===
+// Seule exception a la liste blanche : le chat de base, sans compte, avec la
+// cle personnelle de l'invite. Le serveur ne fait que relayer vers un
+// fournisseur connu : aucun quota, aucune cle serveur, aucune ecriture KV.
+// Pas d'URL personnalisee (sinon le worker deviendrait un relais ouvert).
+const GUEST_PROVIDERS = ['groq', 'gemini', 'mistral', 'openai', 'anthropic'];
+const GUEST_MAX_BODY = 128 * 1024;   // octets : historique court et prompt systeme
+const GUEST_MAX_TOKENS = 4000;
+const GUEST_TIMEOUT_MS = 60000;
+
+function isGuestChat(request, path) {
+  return (path === '/api/chat' || path === '/api/chat/stream') && request.method === 'POST' &&
+    !request.headers.get('Authorization') && !!(request.headers.get('X-Provider-Key') || '').trim();
+}
+
+// Meme fermeture par defaut que pour un compte : une instance mal configuree
+// ne relaie rien, pas meme pour un invite.
+function guestPrereq(env) {
+  if (!env.JWT_SECRET) return json({ ok: false, error: 'JWT_SECRET absent sur le serveur' }, 503, env);
+  if (!env.ETHER_KV) return json({ ok: false, error: 'Stockage KV absent : comptes impossibles' }, 503, env);
+  return null;
+}
+
+// L'invite ne recoit que sa propre cle : ni cles serveur, ni KV, ni Workers AI.
+function guestEnv(env, provider, userKey) {
+  return { CORS_ORIGIN: env.CORS_ORIGIN, CTX: env.CTX, [PROVIDERS[provider].key]: userKey };
+}
+
+function withTimeout(promise, ms) {
+  let t;
+  const timeout = new Promise(resolve => { t = setTimeout(() => resolve({ ok: false, error: 'Delai depasse', timeout: true }), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+}
+
+// Coupe un flux trop long : le client recoit une reponse tronquee.
+function streamWithDeadline(resp, ms) {
+  if (!resp || !resp.body) return resp;
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ms);
+  const ts = new TransformStream();
+  resp.body.pipeTo(ts.writable, { signal: ac.signal }).catch(() => {}).finally(() => clearTimeout(t));
+  return new Response(ts.readable, { status: resp.status, headers: resp.headers });
+}
+
 export default {
   async fetch(request, env, ctx) {
     // ctx sert a finir un travail apres la reponse (comptage d'usage d'un stream).
@@ -110,8 +154,9 @@ export default {
 
       // --- AUTH : tout ce qui n'est pas public exige un compte valide ---
       // Fermeture par defaut : sans JWT_SECRET ou sans KV, rien ne passe.
+      const guest = isGuestChat(request, path);
       if (!isPublicRoute(path)) {
-        const authErr = await verifyAuth(request, env);
+        const authErr = guest ? guestPrereq(env) : await verifyAuth(request, env);
         if (authErr) return authErr;
       }
 
@@ -129,10 +174,34 @@ export default {
 
       // --- CHAT (reponse complete ou streaming SSE) ---
       if ((path === '/api/chat' || path === '/api/chat/stream') && request.method === 'POST') {
-        const body = await request.json();
+        if (guest && Number(request.headers.get('Content-Length') || 0) > GUEST_MAX_BODY) {
+          return json({ ok: false, error: 'Requete trop volumineuse' }, 413, env);
+        }
+        const raw = await request.text();
+        if (guest && raw.length > GUEST_MAX_BODY) return json({ ok: false, error: 'Requete trop volumineuse' }, 413, env);
+        let body;
+        try { body = JSON.parse(raw); } catch (e) { return json({ ok: false, error: 'JSON invalide' }, 400, env); }
         const provider = body.provider || 'groq';
         // Cle personnelle : relayee au fournisseur, jamais stockee ni journalisee.
         const userKey = (request.headers.get('X-Provider-Key') || '').trim().slice(0, 500);
+
+        if (guest) {
+          if (!GUEST_PROVIDERS.includes(provider)) {
+            return json({ ok: false, guest: true, error: 'Sans compte, seuls Groq, Gemini, Mistral, OpenAI et Anthropic sont disponibles' }, 403, env);
+          }
+          const messages = body.messages;
+          if (!Array.isArray(messages) || !messages.length) return json({ ok: false, error: 'Messages required' }, 400, env);
+          const maxTokens = Math.min(Math.max(1, Number(body.max_tokens) || GUEST_MAX_TOKENS), GUEST_MAX_TOKENS);
+          const temperature = Math.min(Math.max(0, Number(body.temperature ?? 0.7)), 2);
+          const args = [guestEnv(env, provider, userKey), body.model, messages, temperature, maxTokens];
+          if (path === '/api/chat/stream') {
+            const sr = await withTimeout(PROVIDERS[provider].stream(...args), GUEST_TIMEOUT_MS);
+            if (sr && sr.timeout) return json(sr, 504, env);
+            return streamWithDeadline(sr, GUEST_TIMEOUT_MS);
+          }
+          const result = await withTimeout(PROVIDERS[provider].chat(...args), GUEST_TIMEOUT_MS);
+          return json(result, result.ok ? 200 : (result.timeout ? 504 : 502), env);
+        }
 
         const bad = checkProvider(provider, env, userKey);
         if (bad) return bad;
@@ -644,8 +713,10 @@ function streamOpenAICompat(env, hostname, apiKey, model, messages, temperature,
 }
 
 function sseResponse(resp, env) {
+  // Un 401/403 du fournisseur (cle refusee) n'est pas une session expiree :
+  // le relayer tel quel renvoyait l'utilisateur a l'ecran de connexion.
   return new Response(resp.body, {
-    status: resp.ok ? 200 : resp.status,
+    status: resp.ok ? 200 : (resp.status === 401 || resp.status === 403 ? 502 : resp.status),
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

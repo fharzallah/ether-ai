@@ -66,6 +66,7 @@ C'est pour cela qu'ETHER est pensé pour être auto-hébergé : chaque instance 
 ## Confidentialité et sécurité
 
 - **Tes clés API restent côté serveur.** Elles ne sont jamais envoyées au navigateur.
+- **Mode invité : rien côté serveur.** Sans compte, le serveur se contente de relayer ta requête vers le fournisseur choisi, avec ta clé. Il n'écrit rien, n'utilise aucune de ses propres clés et refuse toute adresse personnalisée.
 - **Ta clé personnelle n'est jamais stockée.** Elle reste dans ton navigateur et passe par un en-tête, que le serveur relaie sans l'enregistrer. Le code est public : tu peux le vérifier.
 - **Mots de passe hachés** (PBKDF2), blocage après 10 échecs, sessions révoquées après une réinitialisation.
 - **Code de secours** remis à l'inscription : aucun service d'email nécessaire.
@@ -99,6 +100,15 @@ navigateur ──► Cloudflare Worker (worker/src/index.js)
 | Ton propre ETHER, en ligne | Déploie-le sur Cloudflare (ci-dessous) |
 | Essayer en local | Lance-le sur ta machine (ci-dessous) |
 | Utiliser l'instance de quelqu'un d'autre | Ouvre son lien. Si l'accès est sur invitation, le lien se termine par `?code=…` |
+| Essayer sans créer de compte | Sur l'écran de connexion, clique sur **Essayer sans compte** et ajoute ta propre clé API |
+
+### Essayer sans compte
+
+Le mode invité ne demande ni email ni mot de passe. Il fonctionne avec **ta propre clé** Groq, Gemini, Mistral, OpenAI ou Anthropic (Paramètres > Fournisseurs IA).
+
+- Tes conversations restent **uniquement dans ton navigateur** : rien n'est envoyé au stockage du serveur, et elles disparaissent si tu vides ton navigateur.
+- Seul le chat de base est disponible. La recherche web, la réflexion approfondie, les images, les modes personnalisés et la synchronisation demandent un compte gratuit.
+- En créant un compte, ETHER te propose d'importer les conversations du mode invité.
 
 ### Installer ETHER comme une app
 
@@ -167,7 +177,7 @@ La commande `node -e …` génère le `JWT_SECRET` dans `worker/.dev.vars`. Il e
 
 Pas encore disponible, mais prévu :
 
-- Mode d'essai sans compte, avec conversations gardées dans ton navigateur.
+- Démo sans clé ni compte : quelques messages par jour, pour essayer avant d'ajouter une clé.
 - Déploiement en un clic sur Cloudflare.
 
 ## Contribuer

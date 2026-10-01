@@ -18,6 +18,39 @@
         try { localStorage.setItem(TOKEN_KEY, t); } catch (e) {}
     }
 
+    // === MODE INVITE ===
+    // Sans compte, avec sa propre cle : tout reste dans ce navigateur. Aucun
+    // appel a /api/persist, aucune synchronisation, rien d'ecrit cote serveur.
+    var GUEST_KEY = 'ether_guest_mode';
+    var GUEST_IMPORT_KEY = 'ether_guest_import';
+    var GUEST_PROVIDERS = ['groq', 'gemini', 'mistral', 'openai', 'anthropic'];
+    // Seules routes utiles a un invite (le chat passe par chat() et stream()).
+    var GUEST_ROUTES = ['/api/models', '/api/providers', '/api/health'];
+    function isGuest() {
+        try { return !getToken() && localStorage.getItem(GUEST_KEY) === '1'; } catch (e) { return false; }
+    }
+    var GUEST_ONLY_ACCOUNTS = 'Reserve aux comptes : cree un compte gratuit pour utiliser cette fonction.';
+    function guestHasKey(provider) {
+        var k = userKeys();
+        if (provider) return GUEST_PROVIDERS.indexOf(provider) !== -1 && !!k[provider];
+        return GUEST_PROVIDERS.some(function(p) { return !!k[p]; });
+    }
+    // Passage d'invite a compte : les conversations locales sont mises de cote
+    // pour etre proposees a l'import, puis le cache de synchronisation repart
+    // de zero, sinon les donnees de l'invite, plus recentes, ecraseraient
+    // celles d'un compte existant sur le serveur.
+    function leaveGuestForAccount() {
+        try {
+            if (localStorage.getItem(GUEST_KEY) !== '1') return;
+            var convs = localStorage.getItem('ether_convs');
+            if (convs && convs !== '{}' && convs !== 'null') localStorage.setItem(GUEST_IMPORT_KEY, convs);
+            localStorage.removeItem(GUEST_KEY);
+            localStorage.removeItem('ether_convs');
+            localStorage.removeItem(CACHE_KEY);
+        } catch (e) {}
+        _syncData = {}; _syncTimes = {};
+    }
+
     function headers() {
         var h = { 'Content-Type': 'application/json' };
         var t = getToken();
@@ -102,7 +135,7 @@
 
     function authCall(path, body) {
         return rawRequest(path, body).then(function(r) {
-            if (r && r.token) { setToken(r.token); _loginShown = false; }
+            if (r && r.token) { leaveGuestForAccount(); setToken(r.token); _loginShown = false; }
             else if (r && r.needCode) {
                 try { localStorage.removeItem(INVITE_KEY); } catch (e) {}
                 showInviteError(inviteCode()
@@ -127,6 +160,9 @@
     }
 
     function rawRequest(path, body, method) {
+        if (isGuest() && GUEST_ROUTES.indexOf(path) === -1 && path.indexOf('/api/auth/') !== 0) {
+            return Promise.resolve({ ok: false, guest: true, error: GUEST_ONLY_ACCOUNTS });
+        }
         return fetch(API_BASE + path, {
             method: method || (body ? 'POST' : 'GET'),
             headers: headers(),
@@ -232,7 +268,10 @@
         try { return JSON.parse(localStorage.getItem(USER_KEYS) || '{}') || {}; } catch (e) { return {}; }
     }
     function saveUserKeys(o) {
-        try { localStorage.setItem(USER_KEYS, JSON.stringify(o)); return true; } catch (e) { return false; }
+        try { localStorage.setItem(USER_KEYS, JSON.stringify(o)); } catch (e) { return false; }
+        // Le mode invite recalcule les fournisseurs utilisables.
+        try { window.dispatchEvent(new Event('ether-keys-changed')); } catch (e) {}
+        return true;
     }
 
     // Ce qu'il faut ajouter a une requete pour ce fournisseur : la cle perso,
@@ -274,6 +313,18 @@
         return _turnGate.then(function() { return { turn: turn, release: noop }; });
     }
 
+    function guestNoKeyError(provider) {
+        return GUEST_PROVIDERS.indexOf(provider) === -1
+            ? 'Sans compte, ' + provider + ' n est pas disponible : utilise Groq, Gemini, Mistral, OpenAI ou Anthropic avec ta cle.'
+            : 'Mode invite : ajoute ta cle ' + provider + ' dans Parametres > Fournisseurs IA.';
+    }
+
+    // Invite : un echec du fournisseur vient presque toujours de sa cle.
+    function guestProviderError(provider, detail) {
+        if (!isGuest()) return;
+        try { window.dispatchEvent(new CustomEvent('ether-guest-provider-error', { detail: { provider: provider, error: detail } })); } catch (e) {}
+    }
+
     function chatHeaders(ctx) {
         var h = headers();
         if (ctx.key) h['X-Provider-Key'] = ctx.key;
@@ -299,6 +350,7 @@
 
         return providerContext(provider, data).then(function(ctx) {
             if (ctx.error) throw new Error(ctx.error);
+            if (isGuest() && !guestHasKey(provider)) throw new Error(guestNoKeyError(provider));
             return enterTurn().then(function(tr) {
                 return fetch(API_BASE + '/api/chat/stream', {
                     method: 'POST',
@@ -311,6 +363,7 @@
             if (resp.status === 401) authRequired();
             if (!resp.ok || !resp.body) {
                 return resp.text().then(function(t) {
+                    guestProviderError(provider, 'HTTP ' + resp.status);
                     try { checkQuota(JSON.parse(t)); } catch (e) {}
                     throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 200));
                 });
@@ -349,6 +402,7 @@
     function chat(provider, data) {
         return providerContext(provider, data).then(function(ctx) {
             if (ctx.error) return { ok: false, error: ctx.error };
+            if (isGuest() && !guestHasKey(provider)) return { ok: false, guestNoKey: true, error: guestNoKeyError(provider) };
             return enterTurn().then(function(tr) {
                 return fetch(API_BASE + '/api/chat', {
                     method: 'POST', headers: chatHeaders(ctx), body: chatBody(provider, data, ctx, tr.turn)
@@ -356,6 +410,7 @@
             }).then(function(r) {
                 return r.json().catch(function() { return { ok: false, error: 'Reponse illisible (HTTP ' + r.status + ')' }; });
             }).then(function(res) {
+                if (res && res.ok === false) guestProviderError(provider, res.error);
                 if (isAuthError(res)) authRequired(res.error);
                 return checkQuota(res);
             });
@@ -592,6 +647,7 @@
         // n'importe quel ordinateur. Voir syncPull/syncPush plus bas.
         persistRead:  syncPull,
         persistWrite: function(d) {
+            if (isGuest()) return Promise.resolve({ ok: true, local: true });
             _syncData = d || {};
             var now = Date.now();
             for (var k in _syncData) { if (_syncData.hasOwnProperty(k)) _syncTimes[k] = now; }
@@ -600,6 +656,7 @@
         },
         persistGet:   function(k) { return syncPull().then(function(v) { return (v || {})[k]; }); },
         persistSet:   function(k, val) {
+            if (isGuest()) return Promise.resolve({ ok: true, local: true });
             _syncData[k] = val;
             _syncTimes[k] = Date.now();
             saveLocalCache();
@@ -737,6 +794,24 @@
             });
         },
         authToken: getToken,
+
+        // === Mode invite ===
+        isGuest:       isGuest,
+        guestEnter:    function() { try { localStorage.setItem(GUEST_KEY, '1'); } catch (e) {} },
+        // Quitter le mode invite sans rien effacer : les conversations restent ici.
+        guestExit:     function() { try { localStorage.removeItem(GUEST_KEY); } catch (e) {} },
+        guestHasKey:   guestHasKey,
+        guestProviders: function() { return GUEST_PROVIDERS.slice(); },
+        guestImportTake: function() {
+            try {
+                var raw = localStorage.getItem(GUEST_IMPORT_KEY);
+                localStorage.removeItem(GUEST_IMPORT_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { return null; }
+        },
+        guestImportPeek: function() {
+            try { var raw = localStorage.getItem(GUEST_IMPORT_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+        },
 
         // === Heritage desktop : sans objet dans un navigateur ===
         installUpdate:     unavailable('installUpdate'),
