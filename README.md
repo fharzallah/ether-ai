@@ -100,6 +100,19 @@ navigateur ──► Cloudflare Worker (worker/src/index.js)
 | Essayer en local | Lance-le sur ta machine (ci-dessous) |
 | Utiliser l'instance de quelqu'un d'autre | Ouvre son lien. Si l'accès est sur invitation, le lien se termine par `?code=…` |
 
+### Installer ETHER comme une app
+
+ETHER est une PWA : il s'installe depuis le navigateur, sans magasin d'applications. Il s'ouvre ensuite dans sa propre fenêtre, avec son icône.
+
+| Appareil | Comment faire |
+|---|---|
+| Mac (Safari) | Menu **Fichier > Ajouter au Dock** |
+| Mac, Windows, Linux (Chrome ou Edge) | Icône d'installation à droite de la barre d'adresse |
+| iPhone, iPad (Safari) | Bouton **Partager > Sur l'écran d'accueil** |
+| Android (Chrome) | Menu **⋮ > Installer l'application** |
+
+L'app a toujours besoin d'Internet pour répondre. Hors ligne, une page l'indique clairement. Le cache de l'app ne contient que l'interface : aucune réponse de l'API (conversations, compte, quota) n'y est stockée.
+
 ### Déployer ta propre instance
 
 Prérequis : Node.js 18+ et un compte [Cloudflare](https://dash.cloudflare.com/sign-up) gratuit.
@@ -153,7 +166,6 @@ Ouvre ensuite `worker/.dev.vars` pour y mettre tes clés. Le site tourne sur htt
 
 Pas encore disponible, mais prévu :
 
-- Installation en un clic comme application (PWA), sur ordinateur et téléphone.
 - Mode d'essai sans compte, avec conversations gardées dans ton navigateur.
 - Déploiement en un clic sur Cloudflare.
 

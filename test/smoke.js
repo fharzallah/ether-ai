@@ -344,6 +344,58 @@ test('les blocs de commandes de la doc sont copiables tels quels (zsh)', () => {
   });
 });
 
+// === 6d. PWA ===
+console.log('\n\x1b[36m6d. PWA (installation)\x1b[0m');
+const root = f => path.join(__dirname, '..', f);
+
+test('manifest.webmanifest est un JSON valide avec ses champs obligatoires', () => {
+  const m = JSON.parse(fs.readFileSync(root('manifest.webmanifest'), 'utf8'));
+  ['name', 'short_name', 'start_url', 'display', 'lang', 'theme_color', 'background_color'].forEach(k => assert(m[k], 'Champ absent : ' + k));
+  assert(m.display === 'standalone', 'display doit etre standalone');
+  assert(m.lang === 'fr', 'lang doit etre fr');
+  assert(m.start_url === '/', 'start_url doit etre /');
+  const sizes = m.icons.map(i => i.sizes);
+  assert(sizes.includes('192x192') && sizes.includes('512x512'), 'Icones 192 et 512 requises');
+  assert(m.icons.some(i => /maskable/.test(i.purpose || '')), 'Icone maskable absente');
+});
+
+test('les icones du manifeste et apple-touch-icon existent (vrais PNG)', () => {
+  const m = JSON.parse(fs.readFileSync(root('manifest.webmanifest'), 'utf8'));
+  m.icons.map(i => i.src.replace(/^\//, '')).concat(['icons/apple-touch-icon.png']).forEach(f => {
+    assert(fs.existsSync(root(f)), 'Icone absente : ' + f);
+    assert(fs.readFileSync(root(f)).slice(0, 4).toString('hex') === '89504e47', 'Pas un PNG : ' + f);
+  });
+});
+
+test('sw.js ne met jamais /api en cache et supprime les anciens caches', () => {
+  const sw = fs.readFileSync(root('sw.js'), 'utf8');
+  assert(/url\.pathname\.startsWith\('\/api\/'\)\) return false/.test(sw), 'Exclusion de /api absente');
+  assert(/headers\.has\('Authorization'\)\) return false/.test(sw), 'Exclusion des requetes authentifiees absente');
+  assert(!/['"]\/api\//.test(sw.replace(/startsWith\('\/api\/'\)/, '')), '/api ne doit pas figurer dans la coque');
+  assert(/caches\.delete/.test(sw) && /CACHE_VERSION/.test(sw), 'Cache non versionne ou jamais nettoye');
+  assert(sw.includes("'/offline'") && fs.existsSync(root('offline.html')), 'Page hors-ligne absente');
+  // Cloudflare redirige les URL en .html : une reponse redirigee casse la navigation.
+  const shell = sw.slice(sw.indexOf('const SHELL'), sw.indexOf('];'));
+  assert(!/\.html'/.test(shell), 'La coque doit utiliser des URL canoniques (sans .html)');
+});
+
+test('index.html relie le manifeste et enregistre le service worker', () => {
+  const html = fs.readFileSync(root('index.html'), 'utf8');
+  assert(html.includes('rel="manifest"'), 'Lien manifeste absent');
+  assert(html.includes('rel="apple-touch-icon"'), 'apple-touch-icon absent');
+  assert(html.includes('name="theme-color"'), 'theme-color absent');
+  assert(html.includes("serviceWorker.register('/sw.js')"), 'Enregistrement du SW absent');
+});
+
+test('build:web copie les fichiers PWA, la CSP autorise le SW sans s affaiblir', () => {
+  const build = JSON.parse(fs.readFileSync(root('package.json'), 'utf8')).scripts['build:web'];
+  ['sw.js', 'manifest.webmanifest', 'offline.html', 'icons'].forEach(f => assert(build.includes(f), 'build:web ne copie pas ' + f));
+  const h = fs.readFileSync(root('_headers'), 'utf8');
+  assert(h.includes("worker-src 'self'"), "worker-src 'self' absent");
+  assert(h.includes("frame-ancestors 'none'"), "frame-ancestors 'none' absent");
+  assert(/\/sw\.js\n\s+Cache-Control: no-cache/.test(h), 'sw.js ne doit pas etre mis en cache longtemps');
+});
+
 // === 7. WORKER ===
 console.log('\n\x1b[36m7. Worker (backend)\x1b[0m');
 
