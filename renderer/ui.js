@@ -32,7 +32,7 @@ function sendMsg(text){
         pendingDocFormat=null;
         uiEl.placeholder='Envoie un message...';
         var badge=G('DOC-BADGE'); if(badge)badge.classList.add('hidden');
-        addUserMsg('Genere un document '+fmt+' : '+message);
+        addUserMsg('Génère un document '+fmt+' : '+message);
         genDoc(fmt, message);
         return;
     }
@@ -71,7 +71,7 @@ function sendMsg(text){
             window.etherDesktop.geminiVision({
                 base64: rawBase64,
                 mime: imgMime,
-                prompt: message || 'Analyse cette image en detail. Decris ce que tu vois.',
+                prompt: message || 'Analyse cette image en détail. Decris ce que tu vois.',
                 systemPrompt: 'Tu es ETHER AI. Analyse cette image avec precision. Decris ce que tu vois, identifie les elements importants, donne du contexte si possible. Reponds en Markdown.'
             }).then(function(vRes) {
                 hideThink();
@@ -86,7 +86,7 @@ function sendMsg(text){
                     if (curConv && !isEphemeral) { convs[curConv].messages.push({ r: 'a', d: result, ts: Date.now() }); sSet('convs', convs); }
                     scr();
                 } else {
-                    addAIMsg({ reasoning: null, answer: '<p><strong>L\'analyse d\'image a echoue.</strong> Reessaie ou decris l\'image manuellement.</p>', confidence: 'unverified', sources: [], _showBadge: false, _noSuggestions: true });
+                    addAIMsg({ reasoning: null, answer: '<p><strong>L\'analyse d\'image a echoue.</strong> Réessaie ou decris l\'image manuellement.</p>', confidence: 'unverified', sources: [], _showBadge: false, _noSuggestions: true });
                 }
             })['catch'](function() {
                 hideThink();
@@ -142,12 +142,12 @@ function sendMsg(text){
 
     if(isImg){
         var imgD=getImgCount();
-        if(!isPro&&imgD.count>=5){addAIMsg({reasoning:null,answer:'<p><strong>Limite atteinte !</strong> 5 generations d\'images par jour en gratuit.</p><p style="font-size:.85rem;color:var(--t3)">Reviens demain ou passe au forfait Pro pour un acces illimite.</p>',confidence:'unverified',sources:[],_showBadge:false,_noSuggestions:true});return;}
+        if(!isPro&&imgD.count>=5){addAIMsg({reasoning:null,answer:'<p><strong>Limite atteinte !</strong> 5 générations d\'images par jour en gratuit.</p><p style="font-size:.85rem;color:var(--t3)">Reviens demain ou passe au forfait Pro pour un accès illimité.</p>',confidence:'unverified',sources:[],_showBadge:false,_noSuggestions:true});return;}
         if(!isPro)useImg();
         // Person warning
         var realP=['poutine','putin','macron','trump','biden','musk','obama','merkel','zelensky','beyonce','ronaldo','messi','mbappe','zidane'];
         var warn='';
-        for(var rp=0;rp<realP.length;rp++){if(message.toLowerCase().indexOf(realP[rp])!==-1){warn='<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.85rem;color:var(--t2)"><strong>Avertissement:</strong> La generation d\'images de personnes reelles est limitee par les modeles IA pour des raisons legales.</div>';break;}}
+        for(var rp=0;rp<realP.length;rp++){if(message.toLowerCase().indexOf(realP[rp])!==-1){warn='<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.85rem;color:var(--t2)"><strong>Avertissement:</strong> La generation d\'images de personnes reelles est limitee par les modèles IA pour des raisons legales.</div>';break;}}
         showThink();
         generateImage(message, function(imgUrl, seed, provider) {
             hideThink();
@@ -157,12 +157,12 @@ function sendMsg(text){
             var resp = {
                 reasoning: { analyste: 'Generation d\'image IA.', critique: credit.critique, synthese: 'Prompt optimise automatiquement.' },
                 answer: warn
-                    + '<p><strong>Image generee :</strong></p>'
+                    + '<p><strong>Image générée :</strong></p>'
                     + '<div id="' + imgId + '-wrap" style="margin:8px 0">'
                     + '<div id="' + imgId + '-loader" style="width:100%;max-width:512px;height:300px;background:var(--b3);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:center"><span style="color:var(--t3);font-size:.85rem">Chargement de l\'image...</span></div>'
                     + '<img id="' + imgId + '" data-url="' + esc(imgUrl) + '" data-prompt="' + esc(message) + '" style="max-width:100%;border-radius:12px;display:none;cursor:pointer">'
                     + '<div id="' + imgId + '-actions" style="display:none;margin-top:8px;display:none;gap:6px">'
-                    + '<button class="btn-s" onclick="downloadImage(document.getElementById(\'' + imgId + '\').src)">Telecharger</button>'
+                    + '<button class="btn-s" onclick="downloadImage(document.getElementById(\'' + imgId + '\').src)">Télécharger</button>'
                     + '<button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Regenerer</button>'
                     + '</div></div>'
                     + '<p style="font-size:.8rem;color:var(--t3)">Prompt : <em>' + esc(message) + '</em></p>'
@@ -220,9 +220,9 @@ function doGenerate(prompt) {
         if (typeof selectedModelOverride !== 'undefined' && selectedModelOverride) {
             hideThink();
             addAIMsg({ reasoning: null,
-                answer: '<p><strong>Le fournisseur selectionne n\'a pas repondu.</strong> '
-                    + 'Verifie sa configuration dans les reglages, ou repasse en mode Auto. '
-                    + 'Rien n\'a ete envoye a un autre fournisseur.</p>',
+                answer: '<p><strong>Le fournisseur sélectionné n\'a pas répondu.</strong> '
+                    + 'Vérifie sa configuration dans les réglages, ou repasse en mode Auto. '
+                    + 'Rien n\'a été envoyé à un autre fournisseur.</p>',
                 confidence: 'unverified', sources: [], _showBadge: false, _noSuggestions: true });
             return;
         }
@@ -237,7 +237,7 @@ function doGenerate(prompt) {
         function tryEmergency(idx) {
             if (idx >= fallbacks.length) {
                 hideThink();
-                addAIMsg({ reasoning: null, answer: '<p><strong>Tous les serveurs sont temporairement indisponibles.</strong> Reessaie dans quelques secondes.</p>', confidence: 'unverified', sources: [], _showBadge: false, _noSuggestions: true });
+                addAIMsg({ reasoning: null, answer: '<p><strong>Tous les serveurs sont temporairement indisponibles.</strong> Réessaie dans quelques secondes.</p>', confidence: 'unverified', sources: [], _showBadge: false, _noSuggestions: true });
                 return;
             }
             var fb = fallbacks[idx];
@@ -311,13 +311,13 @@ function updDeepThinkBtn() {
 function sendDeepThink() {
     var text = uiEl.value.trim();
     if (!text || thinking) return;
-    if (typeof isGuestMode === 'function' && isGuestMode()) { showGuestAccountOnly('La reflexion approfondie'); return; }
+    if (typeof isGuestMode === 'function' && isGuestMode()) { showGuestAccountOnly('La réflexion approfondie'); return; }
 
     var remaining = getDeepThinkRemaining();
     if (!isPro && remaining <= 0) {
         addAIMsg({
             reasoning: null,
-            answer: '<p><strong>Reflexion approfondie epuisee pour aujourd\'hui.</strong></p><p>Tu as utilise tes 3 reflexions approfondies du jour. Elles se rechargent a minuit.</p><p style="font-size:.85rem;color:var(--t3)">En attendant, tu peux poser ta question normalement — ETHER repondra avec le mode standard.</p>',
+            answer: '<p><strong>Réflexion approfondie épuisée pour aujourd\'hui.</strong></p><p>Tu as utilisé tes 3 réflexions approfondies du jour. Elles se rechargent à minuit.</p><p style="font-size:.85rem;color:var(--t3)">En attendant, tu peux poser ta question normalement : ETHER repondra avec le mode standard.</p>',
             confidence: 'unverified', sources: [], _showBadge: false, _noSuggestions: true
         });
         scr();
@@ -436,8 +436,8 @@ function translateImagePrompt(prompt) {
 // Libelles selon le fournisseur qui a vraiment produit l'image.
 function imageCredit(provider) {
     return provider === 'flux'
-        ? { critique: 'Image generee par FLUX (Workers AI).', source: 'FLUX (Workers AI)' }
-        : { critique: 'Image generee par Pollinations AI.', source: 'Pollinations AI' };
+        ? { critique: 'Image générée par FLUX (Workers AI).', source: 'FLUX (Workers AI)' }
+        : { critique: 'Image générée par Pollinations AI.', source: 'Pollinations AI' };
 }
 
 function setImgSize(size, btn) {
@@ -481,7 +481,7 @@ function loadGenImage(imgId, imgUrl, attempt) {
                 loadGenImage(imgId, imgUrl + (imgUrl.indexOf('?') === -1 ? '?' : '&') + 'retry=' + (attempt + 1), attempt + 1);
             }, delay);
         } else {
-            if (loader) loader.innerHTML = '<div style="text-align:center;padding:16px"><p style="color:var(--t3);margin-bottom:10px">L\'image n\'a pas pu etre generee.</p><button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Reessayer</button></div>';
+            if (loader) loader.innerHTML = '<div style="text-align:center;padding:16px"><p style="color:var(--t3);margin-bottom:10px">L\'image n\'a pas pu être générée.</p><button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Réessayer</button></div>';
         }
     };
     img.src = imgUrl;
@@ -559,7 +559,7 @@ function restorePollinationsImages(msgEl) {
                     if (loader) {
                         loader.innerHTML = '<div style="text-align:center;padding:16px">'
                             + '<svg viewBox="0 0 24 24" width="40" height="40" style="color:var(--t3);margin-bottom:8px"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>'
-                            + '<p style="color:var(--t3);font-size:.82rem;margin-bottom:10px">Image expiree</p>'
+                            + '<p style="color:var(--t3);font-size:.82rem;margin-bottom:10px">Image expirée</p>'
                             + '<button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Regenerer</button>'
                             + '</div>';
                     }
@@ -582,7 +582,7 @@ function openImagePreview(imgSrc) {
     overlay.innerHTML = '<div class="img-preview-content">'
         + '<img src="' + escAttr(imgSrc) + '" class="img-preview-img">'
         + '<div class="img-preview-actions">'
-        + '<button class="btn-s" onclick="downloadImage(\'' + escAttr(imgSrc) + '\')"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>Telecharger</button>'
+        + '<button class="btn-s" onclick="downloadImage(\'' + escAttr(imgSrc) + '\')"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>Télécharger</button>'
         + '<button class="btn-s" onclick="this.closest(\'.img-preview-overlay\').remove()">Fermer</button>'
         + '</div></div>';
     overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
@@ -598,7 +598,7 @@ function retryImg(imgId) {
     var loader = document.getElementById(imgId + '-loader');
     var actions = document.getElementById(imgId + '-actions');
     img.style.display = 'none';
-    if (loader) { loader.style.display = 'flex'; loader.innerHTML = '<span style="color:var(--t3);font-size:.85rem">Regeneration...</span>'; }
+    if (loader) { loader.style.display = 'flex'; loader.innerHTML = '<span style="color:var(--t3);font-size:.85rem">Régénération...</span>'; }
     if (actions) actions.style.display = 'none';
     var prompt = img.getAttribute('data-prompt');
     if (prompt) {
@@ -884,13 +884,13 @@ function regenResponse(btn) {
             var credit = imageCredit(provider);
             var imgId = 'img_' + Date.now();
             var resp = {
-                reasoning: { analyste: 'Regeneration d\'image.', critique: 'Nouveau seed.', synthese: 'Image regeneree.' },
+                reasoning: { analyste: 'Régénération d\'image.', critique: 'Nouveau seed.', synthese: 'Image regeneree.' },
                 answer: '<p><strong>Image regeneree :</strong></p>'
                     + '<div id="' + imgId + '-wrap" style="margin:8px 0">'
                     + '<div id="' + imgId + '-loader" style="width:100%;max-width:512px;height:300px;background:var(--b3);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:center"><span style="color:var(--t3);font-size:.85rem">Chargement...</span></div>'
                     + '<img id="' + imgId + '" data-url="' + esc(imgUrl) + '" data-prompt="' + esc(originalPrompt) + '" style="max-width:100%;border-radius:12px;display:none;cursor:pointer">'
                     + '<div id="' + imgId + '-actions" style="display:none;margin-top:8px;display:none;gap:6px">'
-                    + '<button class="btn-s" onclick="downloadImage(document.getElementById(\'' + imgId + '\').src)">Telecharger</button>'
+                    + '<button class="btn-s" onclick="downloadImage(document.getElementById(\'' + imgId + '\').src)">Télécharger</button>'
                     + '<button class="btn-s" onclick="retryImg(\'' + imgId + '\')">Regenerer</button>'
                     + '</div></div>'
                     + '<p style="font-size:.8rem;color:var(--t3)">Prompt : <em>' + esc(originalPrompt) + '</em></p>',
@@ -921,7 +921,7 @@ function regenResponse(btn) {
             regenRetry++;
             if (regenRetry < 2) { attemptRegen(); return; }
             hideThink();
-            addAIMsg({ reasoning: null, answer: '<p><strong>La regeneration a echoue.</strong> Le serveur est temporairement indisponible. Reessaie dans quelques secondes.</p>', confidence: 'unverified', sources: [], _showBadge: false });
+            addAIMsg({ reasoning: null, answer: '<p><strong>La régénération a echoue.</strong> Le serveur est temporairement indisponible. Réessaie dans quelques secondes.</p>', confidence: 'unverified', sources: [], _showBadge: false });
         });
     }
     attemptRegen();
@@ -986,7 +986,7 @@ function analyzeImageWithVision(base64, mime, fileName, callback) {
     }).then(function(res) {
         if (res.ok) callback(res.text || 'Impossible d\'analyser l\'image.');
         else callback('Erreur API vision.');
-    })['catch'](function() { callback('Erreur reseau.'); });
+    })['catch'](function() { callback('Erreur réseau.'); });
 }
 
 // === FEATURE 1: STOP GENERATION ===
@@ -1137,7 +1137,7 @@ function generateFollowUpSuggestions(answer, streamEl, userQuestion) {
 G('SUMMARY-BTN').onclick = function() {
     G('TOOLS-DROP').classList.add('hidden');
     if (!curConv || !convs[curConv] || !convs[curConv].messages.length) {
-        alert('Aucune conversation a resumer.');
+        alert('Aucune conversation à résumer.');
         return;
     }
     var c = convs[curConv];
@@ -1174,7 +1174,7 @@ G('SUMMARY-BTN').onclick = function() {
         scr();
     })['catch'](function() {
         hideThink();
-        alert('Erreur lors du resume.');
+        alert('Erreur : le résumé a échoué. Réessaie.');
     });
 };
 
@@ -1198,7 +1198,7 @@ function exportPDF() {
         } else if (m.d) {
             var answer = (m.d.answer || '').replace(/<img[^>]*>/g, '[Image]');
             var conf = m.d.confidence || 'unverified';
-            var confLabels = { verified: 'Verifie', 'to-verify': 'A verifier', unverified: 'Non verifie' };
+            var confLabels = { verified: 'Vérifié', 'to-verify': 'À vérifier', unverified: 'Non vérifié' };
             var confColors = { verified: '#22c55e', 'to-verify': '#f59e0b', unverified: '#ef4444' };
             messagesHtml += '<div style="margin:16px 0;padding:14px 16px;background:#f8f8f8;border-radius:12px;border-left:4px solid #c94a3f"><div style="font-size:14px;line-height:1.7;color:#222">' + answer + '</div><div style="margin-top:8px;font-size:11px;color:' + (confColors[conf] || '#999') + '">' + (confLabels[conf] || '') + '</div></div>';
         }

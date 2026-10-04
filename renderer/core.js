@@ -153,18 +153,18 @@ function restoreFromPersist() {
 // === I18N TRANSLATIONS ===
 var TRANSLATIONS = {
 fr: {
-login_sub:'IA franche, mesuree et transparente',login_name:'Prenom',login_lastname:'Nom (facultatif)',login_email:'Adresse email',login_start:'Commencer',
-welc_help:'Comment puis-je vous aider?',
-chip_relativity:'La relativite simplement',chip_remote:'Pour/contre le teletravail',chip_app:"Developper une idee d'app",chip_sleep:'Mieux dormir',
-mode_ether:'ETHER',mode_teacher:'Teacher',mode_debate:'Debat',mode_creative:'Creatif',mode_writer:'Ecriture',mode_image:'Image',mode_custom:'Mes modes',
+login_sub:'IA franche, mesurée et transparente',login_name:'Prénom',login_lastname:'Nom (facultatif)',login_email:'Adresse e-mail',login_start:'Commencer',
+welc_help:'Expose une idée. Je cherche ce qui casse.',
+chip_relativity:'La relativité simplement',chip_remote:'Pour ou contre le télétravail',chip_app:"Développer une idée d'app",chip_sleep:'Mieux dormir',
+mode_ether:'ETHER',mode_teacher:'Tuteur',mode_debate:'Débat',mode_creative:'Créatif',mode_writer:'Écriture',mode_image:'Image',mode_custom:'Mes modes',
 input_placeholder:'Envoie un message...',
 sb_chats:'Discussions',sb_projects:'Projets',sb_content:'Bibliothèques',sb_trash:'Corbeille',sb_search:'Rechercher...',sb_no_chats:'Aucune discussion',sb_no_projects:'Aucun projet',sb_no_content:'Bibliothèque vide',sb_trash_empty:'Corbeille vide',sb_new_project:'+ Nouveau projet',
-set_title:'Parametres',set_theme:'Theme',set_lang:'Langue',set_profession:'Profession',set_profession_ph:'Ex : Developpeur, Etudiant...',set_instructions:'Instructions personnalisees',set_instructions_desc:'Dis comment ETHER doit se comporter.',set_instructions_ph:'Ex : Tutoie-moi. Sois concis...',set_memory:'Memoire',set_memory_desc:'Ce qu ETHER a retenu sur toi.',set_memory_ph:'Ajouter un souvenir...',set_no_memory:'Aucun souvenir',set_subscription:'Abonnement',set_providers:'Fournisseurs IA',set_api:'API Developpeurs',set_account:'Compte',set_data:'Donnees',
-btn_copy:'Copier',btn_regen:'Regenerer',btn_good:'Bien',btn_bad:'Pas bien',btn_listen:'Ecouter',btn_save:'Sauvegarder',btn_delete:'Supprimer',btn_add:'Ajouter',btn_create:'Creer',btn_cancel:'Annuler',btn_test:'Tester',
+set_title:'Paramètres',set_theme:'Thème',set_lang:'Langue',set_profession:'Profession',set_profession_ph:'Ex. : développeur, étudiant',set_instructions:'Instructions personnalisées',set_instructions_desc:'Dis comment ETHER doit se comporter.',set_instructions_ph:'Ex. : sois encore plus direct, donne toujours un exemple.',set_memory:'Mémoire',set_memory_desc:"Ce qu'ETHER a retenu sur toi.",set_memory_ph:'Ajouter un souvenir...',set_no_memory:'Aucun souvenir',set_subscription:'Abonnement',set_providers:'Fournisseurs IA',set_api:'API développeurs',set_account:'Compte',set_data:'Données',
+btn_copy:'Copier',btn_regen:'Régénérer',btn_good:'Bien',btn_bad:'Pas bien',btn_listen:'Écouter',btn_save:'Sauvegarder',btn_delete:'Supprimer',btn_add:'Ajouter',btn_create:'Créer',btn_cancel:'Annuler',btn_test:'Tester',
 quota_remaining:'messages restants',quota_ad:'Regarder une pub (+5)',
-badge_verified:'Info verifiee',badge_to_verify:'Info a verifier',badge_unverified:'Info non verifiee',
-think_base:'Analyse en cours...',think_teacher:'Preparation de la question...',think_debate:'Construction du contre-argument...',think_creative:"Generation d'idees...",think_writer:'Redaction en cours...',
-new_chat:'Nouveau chat',reasoning:'Raisonnement',ephemeral_on:'Discussion ephemere activee',create_mode:'Creer un mode',custom_modes_title:'MODES PERSONNALISES',
+badge_verified:'Info vérifiée',badge_to_verify:'Info à vérifier',badge_unverified:'Info non vérifiée',
+think_base:'Analyse en cours...',think_teacher:'Préparation de la question...',think_debate:'Construction du contre-argument...',think_creative:"Génération d'idées...",think_writer:'Rédaction en cours...',
+new_chat:'Nouvelle discussion',reasoning:'Raisonnement',ephemeral_on:'Discussion éphémère activée',create_mode:'Créer un mode',custom_modes_title:'Modes personnalisés',
 greeting_morning:'Bonjour',greeting_evening:'Bonsoir',
 hist_today:"Aujourd'hui",hist_yesterday:'Hier',hist_week:'Cette semaine',hist_month:'30 derniers jours',hist_older:'Plus ancien',hist_show_all:'Voir toutes les discussions',btn_rename:'Renommer'
 },
@@ -172,7 +172,7 @@ en: {
 login_sub:'Honest, measured and transparent AI',login_name:'First name',login_lastname:'Last name (optional)',login_email:'Email address',login_start:'Get started',
 welc_help:'How can I help you?',
 chip_relativity:'Relativity simply explained',chip_remote:'Pros/cons of remote work',chip_app:'Develop an app idea',chip_sleep:'Sleep better',
-mode_ether:'ETHER',mode_teacher:'Teacher',mode_debate:'Debate',mode_creative:'Creative',mode_writer:'Writing',mode_image:'Image',mode_custom:'My modes',
+mode_ether:'ETHER',mode_teacher:'Tutor',mode_debate:'Debate',mode_creative:'Creative',mode_writer:'Writing',mode_image:'Image',mode_custom:'My modes',
 input_placeholder:'Send a message...',
 sb_chats:'Chats',sb_projects:'Projects',sb_content:'Libraries',sb_trash:'Trash',sb_search:'Search...',sb_no_chats:'No chats',sb_no_projects:'No projects',sb_no_content:'Library is empty',sb_trash_empty:'Trash is empty',sb_new_project:'+ New project',
 set_title:'Settings',set_theme:'Theme',set_lang:'Language',set_profession:'Profession',set_profession_ph:'Ex: Developer, Student...',set_instructions:'Custom instructions',set_instructions_desc:'Tell ETHER how to behave.',set_instructions_ph:'Ex: Be concise...',set_memory:'Memory',set_memory_desc:'What ETHER remembers about you.',set_memory_ph:'Add a memory...',set_no_memory:'No memories',set_subscription:'Subscription',set_providers:'AI Providers',set_api:'Developer API',set_account:'Account',set_data:'Data',
@@ -188,7 +188,7 @@ es: {
 login_sub:'IA franca, mesurada y transparente',login_name:'Nombre',login_lastname:'Apellido (opcional)',login_email:'Correo electronico',login_start:'Comenzar',
 welc_help:'Como puedo ayudarte?',
 chip_relativity:'La relatividad simplemente',chip_remote:'Pros/contras del teletrabajo',chip_app:'Desarrollar una idea de app',chip_sleep:'Dormir mejor',
-mode_ether:'ETHER',mode_teacher:'Teacher',mode_debate:'Debate',mode_creative:'Creativo',mode_writer:'Escritura',mode_image:'Imagen',mode_custom:'Mis modos',
+mode_ether:'ETHER',mode_teacher:'Tutor',mode_debate:'Debate',mode_creative:'Creativo',mode_writer:'Escritura',mode_image:'Imagen',mode_custom:'Mis modos',
 input_placeholder:'Envia un mensaje...',
 sb_chats:'Conversaciones',sb_projects:'Proyectos',sb_content:'Bibliotecas',sb_trash:'Papelera',sb_search:'Buscar...',sb_no_chats:'Sin conversaciones',sb_no_projects:'Sin proyectos',sb_no_content:'Biblioteca vacía',sb_trash_empty:'Papelera vacia',sb_new_project:'+ Nuevo proyecto',
 set_title:'Ajustes',set_theme:'Tema',set_lang:'Idioma',set_profession:'Profesion',set_profession_ph:'Ej: Desarrollador, Estudiante...',set_instructions:'Instrucciones personalizadas',set_instructions_desc:'Indica como debe comportarse ETHER.',set_instructions_ph:'Ej: Tuteame. Se conciso...',set_memory:'Memoria',set_memory_desc:'Lo que ETHER recuerda de ti.',set_memory_ph:'Anadir un recuerdo...',set_no_memory:'Sin recuerdos',set_subscription:'Suscripcion',set_providers:'Proveedores IA',set_api:'API Desarrolladores',set_account:'Cuenta',set_data:'Datos',
@@ -218,7 +218,7 @@ de: {
 login_sub:'Ehrliche, ausgewogene und transparente KI',login_name:'Vorname',login_lastname:'Nachname (optional)',login_email:'E-Mail-Adresse',login_start:'Starten',
 welc_help:'Wie kann ich Ihnen helfen?',
 chip_relativity:'Relativitaet einfach erklaert',chip_remote:'Vor-/Nachteile Homeoffice',chip_app:'App-Idee entwickeln',chip_sleep:'Besser schlafen',
-mode_ether:'ETHER',mode_teacher:'Teacher',mode_debate:'Debatte',mode_creative:'Kreativ',mode_writer:'Schreiben',mode_image:'Bild',mode_custom:'Meine Modi',
+mode_ether:'ETHER',mode_teacher:'Tutor',mode_debate:'Debatte',mode_creative:'Kreativ',mode_writer:'Schreiben',mode_image:'Bild',mode_custom:'Meine Modi',
 input_placeholder:'Nachricht senden...',
 sb_chats:'Chats',sb_projects:'Projekte',sb_content:'Bibliotheken',sb_trash:'Papierkorb',sb_search:'Suchen...',sb_no_chats:'Keine Chats',sb_no_projects:'Keine Projekte',sb_no_content:'Bibliothek leer',sb_trash_empty:'Papierkorb leer',sb_new_project:'+ Neues Projekt',
 set_title:'Einstellungen',set_theme:'Design',set_lang:'Sprache',set_profession:'Beruf',set_profession_ph:'Z.B.: Entwickler, Student...',set_instructions:'Eigene Anweisungen',set_instructions_desc:'Sag ETHER wie es sich verhalten soll.',set_instructions_ph:'Z.B.: Duze mich. Sei knapp...',set_memory:'Gedaechtnis',set_memory_desc:'Was ETHER ueber dich weiss.',set_memory_ph:'Erinnerung hinzufuegen...',set_no_memory:'Keine Erinnerungen',set_subscription:'Abonnement',set_providers:'KI-Anbieter',set_api:'Entwickler-API',set_account:'Konto',set_data:'Daten',
@@ -233,7 +233,7 @@ it: {
 login_sub:'IA onesta, misurata e trasparente',login_name:'Nome',login_lastname:'Cognome (facoltativo)',login_email:'Indirizzo email',login_start:'Inizia',
 welc_help:'Come posso aiutarti?',
 chip_relativity:'La relativita semplicemente',chip_remote:'Pro/contro del telelavoro',chip_app:"Sviluppare un'idea di app",chip_sleep:'Dormire meglio',
-mode_ether:'ETHER',mode_teacher:'Teacher',mode_debate:'Dibattito',mode_creative:'Creativo',mode_writer:'Scrittura',mode_image:'Immagine',mode_custom:'I miei modi',
+mode_ether:'ETHER',mode_teacher:'Tutor',mode_debate:'Dibattito',mode_creative:'Creativo',mode_writer:'Scrittura',mode_image:'Immagine',mode_custom:'I miei modi',
 input_placeholder:'Invia un messaggio...',
 sb_chats:'Conversazioni',sb_projects:'Progetti',sb_content:'Biblioteche',sb_trash:'Cestino',sb_search:'Cerca...',sb_no_chats:'Nessuna conversazione',sb_no_projects:'Nessun progetto',sb_no_content:'Biblioteca vuota',sb_trash_empty:'Cestino vuoto',sb_new_project:'+ Nuovo progetto',
 set_title:'Impostazioni',set_theme:'Tema',set_lang:'Lingua',set_profession:'Professione',set_profession_ph:'Es: Sviluppatore, Studente...',set_instructions:'Istruzioni personalizzate',set_instructions_desc:'Di a ETHER come comportarsi.',set_instructions_ph:'Es: Dammi del tu. Sii conciso...',set_memory:'Memoria',set_memory_desc:'Cosa ETHER ricorda di te.',set_memory_ph:'Aggiungi un ricordo...',set_no_memory:'Nessun ricordo',set_subscription:'Abbonamento',set_providers:'Fornitori IA',set_api:'API Sviluppatori',set_account:'Account',set_data:'Dati',
@@ -248,7 +248,7 @@ pt: {
 login_sub:'IA franca, equilibrada e transparente',login_name:'Nome',login_lastname:'Sobrenome (opcional)',login_email:'Endereco de email',login_start:'Comecar',
 welc_help:'Como posso ajudar?',
 chip_relativity:'A relatividade simplesmente',chip_remote:'Pros/contras do teletrabalho',chip_app:'Desenvolver uma ideia de app',chip_sleep:'Dormir melhor',
-mode_ether:'ETHER',mode_teacher:'Teacher',mode_debate:'Debate',mode_creative:'Criativo',mode_writer:'Escrita',mode_image:'Imagem',mode_custom:'Meus modos',
+mode_ether:'ETHER',mode_teacher:'Tutor',mode_debate:'Debate',mode_creative:'Criativo',mode_writer:'Escrita',mode_image:'Imagem',mode_custom:'Meus modos',
 input_placeholder:'Envie uma mensagem...',
 sb_chats:'Conversas',sb_projects:'Projetos',sb_content:'Bibliotecas',sb_trash:'Lixeira',sb_search:'Pesquisar...',sb_no_chats:'Sem conversas',sb_no_projects:'Sem projetos',sb_no_content:'Biblioteca vazia',sb_trash_empty:'Lixeira vazia',sb_new_project:'+ Novo projeto',
 set_title:'Configuracoes',set_theme:'Tema',set_lang:'Idioma',set_profession:'Profissao',set_profession_ph:'Ex: Desenvolvedor, Estudante...',set_instructions:'Instrucoes personalizadas',set_instructions_desc:'Diga como ETHER deve se comportar.',set_instructions_ph:'Ex: Me tuteia. Seja conciso...',set_memory:'Memoria',set_memory_desc:'O que ETHER lembra de voce.',set_memory_ph:'Adicionar uma lembranca...',set_no_memory:'Sem lembrancas',set_subscription:'Assinatura',set_providers:'Provedores IA',set_api:'API Desenvolvedores',set_account:'Conta',set_data:'Dados',
@@ -452,9 +452,8 @@ var logoList = [];
 var logoThinking = false;
 
 function getLogoColor() {
-    var t = document.documentElement.getAttribute('data-theme') || 'dark';
-    var m = { dark: '#c94a3f', light: '#c94a3f', midnight: '#7c5cf8', ocean: '#0d9de6', forest: '#1eb854', sunset: '#f59e0b', rose: '#ec4899', arctic: '#3b82f6' };
-    return m[t] || '#e74c3c';
+    // Rouge du logo (token brand), identique dans tous les thèmes.
+    return '#ef4136';
 }
 
 function drawLogo(cv, frame, isThinking) {

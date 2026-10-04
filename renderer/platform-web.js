@@ -29,7 +29,7 @@
     function isGuest() {
         try { return !getToken() && localStorage.getItem(GUEST_KEY) === '1'; } catch (e) { return false; }
     }
-    var GUEST_ONLY_ACCOUNTS = 'Reserve aux comptes : cree un compte gratuit pour utiliser cette fonction.';
+    var GUEST_ONLY_ACCOUNTS = 'Réservé aux comptes : crée un compte gratuit pour utiliser cette fonction.';
     function guestHasKey(provider) {
         var k = userKeys();
         if (provider) return GUEST_PROVIDERS.indexOf(provider) !== -1 && !!k[provider];
@@ -93,7 +93,7 @@
         box.innerHTML = '<div style="background:#fff;color:#111;max-width:420px;' +
             'border-radius:16px;padding:28px;text-align:center;line-height:1.6">' +
             '<div style="font-size:2rem;margin-bottom:8px">🔒</div>' +
-            '<div style="font-weight:700;font-size:1.1rem;margin-bottom:10px">Acces sur invitation</div>' +
+            '<div style="font-weight:700;font-size:1.1rem;margin-bottom:10px">Accès sur invitation</div>' +
             '<div style="font-size:.9rem;color:#555">' + message + '</div></div>';
         document.body.appendChild(box);
     }
@@ -123,7 +123,7 @@
             email: p && p.email,
             legacy: legacy,
             message: legacy
-                ? 'ETHER a maintenant des mots de passe. Cree le tien pour retrouver tes conversations.'
+                ? 'ETHER a maintenant des mots de passe. Crée le tien pour retrouver tes conversations.'
                 : (getToken() ? 'Ta session a expire, reconnecte-toi.' : '')
         };
         var show = function() {
@@ -139,8 +139,8 @@
             else if (r && r.needCode) {
                 try { localStorage.removeItem(INVITE_KEY); } catch (e) {}
                 showInviteError(inviteCode()
-                    ? 'Le code de votre lien n est pas valide. Demandez un lien a jour.'
-                    : 'Ether AI est sur invitation. Ouvrez le lien qui vous a ete transmis, il contient le code d acces.');
+                    ? "Le code de ton lien n'est pas valide. Demande un lien à jour."
+                    : 'Ether AI est sur invitation. Ouvre le lien qu\'on t\'a transmis : il contient le code d\'accès.');
             }
             return r;
         });
@@ -168,9 +168,9 @@
             headers: headers(),
             body: body ? JSON.stringify(body) : undefined
         }).then(function(r) {
-            return r.json().catch(function() { return { ok: false, error: 'Reponse illisible (HTTP ' + r.status + ')' }; });
+            return r.json().catch(function() { return { ok: false, error: 'Réponse illisible (HTTP ' + r.status + ')' }; });
         }).catch(function(e) {
-            return { ok: false, error: 'Reseau indisponible : ' + e.message };
+            return { ok: false, error: 'Réseau indisponible : ' + e.message };
         });
     }
 
@@ -281,7 +281,7 @@
             return idbGet('customProviders').then(function(list) {
                 var id = data && data.providerId, found = null;
                 for (var i = 0; i < (list || []).length; i++) if (list[i].id === id) found = list[i];
-                if (!found) return { error: 'Fournisseur personnalise introuvable' };
+                if (!found) return { error: 'Fournisseur personnalisé introuvable' };
                 return { key: found.apiKey || '', baseUrl: found.baseUrl, model: (data && data.model) || found.model };
             });
         }
@@ -315,8 +315,8 @@
 
     function guestNoKeyError(provider) {
         return GUEST_PROVIDERS.indexOf(provider) === -1
-            ? 'Sans compte, ' + provider + ' n est pas disponible : utilise Groq, Gemini, Mistral, OpenAI ou Anthropic avec ta cle.'
-            : 'Mode invite : ajoute ta cle ' + provider + ' dans Parametres > Fournisseurs IA.';
+            ? 'Sans compte, ' + provider + ' n\'est pas disponible : utilise Groq, Gemini, Mistral, OpenAI ou Anthropic avec ta clé.'
+            : 'Mode invité : ajoute ta clé ' + provider + ' dans Paramètres > Fournisseurs IA.';
     }
 
     // Invite : un echec du fournisseur vient presque toujours de sa cle.
@@ -408,13 +408,13 @@
                     method: 'POST', headers: chatHeaders(ctx), body: chatBody(provider, data, ctx, tr.turn)
                 })['finally'](tr.release);
             }).then(function(r) {
-                return r.json().catch(function() { return { ok: false, error: 'Reponse illisible (HTTP ' + r.status + ')' }; });
+                return r.json().catch(function() { return { ok: false, error: 'Réponse illisible (HTTP ' + r.status + ')' }; });
             }).then(function(res) {
                 if (res && res.ok === false) guestProviderError(provider, res.error);
                 if (isAuthError(res)) authRequired(res.error);
                 return checkQuota(res);
             });
-        })['catch'](function(e) { return { ok: false, error: 'Reseau indisponible : ' + e.message }; });
+        })['catch'](function(e) { return { ok: false, error: 'Réseau indisponible : ' + e.message }; });
     }
 
     function wipeLocal() {
@@ -596,7 +596,7 @@
             return request('/api/providers').then(function(r) {
                 var list = (r && r.providers) || [];
                 for (var i = 0; i < list.length; i++) if (list[i].provider === p) return { ok: !!list[i].ok, error: list[i].error };
-                return { ok: false, error: 'Non configure' };
+                return { ok: false, error: 'Non configuré' };
             });
         },
         // Pas de chiffrement systeme dans un navigateur : les cles restent en clair
@@ -614,7 +614,7 @@
         customProvidersSave: function(d) {
             d = d || {};
             if (!d.name || !d.model || !/^https:\/\//i.test(d.baseUrl || '')) {
-                return Promise.resolve({ ok: false, error: 'Nom, modele et URL en https:// requis' });
+                return Promise.resolve({ ok: false, error: 'Nom, modèle et URL en https:// requis' });
             }
             return idbGet('customProviders').then(function(list) {
                 list = list || [];
@@ -848,9 +848,9 @@
         if (grid && !document.querySelector('.ether-web-note')) {
             var note = document.createElement('div');
             note.className = 'ether-web-note';
-            note.innerHTML = '<strong>Aucune cle requise.</strong> ' +
-                'Par defaut, ETHER utilise les cles du serveur. Tu peux ajouter ' +
-                'ta propre cle : elle reste dans ce navigateur, le serveur la ' +
+            note.innerHTML = '<strong>Aucune clé requise.</strong> ' +
+                'Par défaut, ETHER utilise les clés du serveur. Tu peux ajouter ' +
+                'ta propre clé : elle reste dans ce navigateur, le serveur la ' +
                 'transmet au fournisseur sans jamais l\'enregistrer, et tes ' +
                 'messages ne comptent alors plus dans le quota.';
             grid.parentNode.insertBefore(note, grid);
@@ -865,5 +865,5 @@
     // Les reglages peuvent etre rendus apres coup : on repasse une fois.
     setTimeout(applyWebModeUI, 2000);
 
-    console.log('[ETHER] Plateforme web active — API : ' + API_BASE);
+    console.log('[ETHER] Plateforme web active : API : ' + API_BASE);
 })();

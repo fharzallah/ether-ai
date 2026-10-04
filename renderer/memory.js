@@ -12,7 +12,7 @@ var MEMORY = {
         work: { label: 'Travail', icon: 'W', color: '#22c55e' },         // metier, entreprise, competences
         interests: { label: 'Interets', icon: 'I', color: '#f59e0b' },   // hobbies, passions
         projects: { label: 'Projets', icon: 'P', color: '#8b5cf6' },     // objectifs, projets en cours
-        preferences: { label: 'Preferences', icon: 'S', color: '#ec4899' }, // style de communication, gouts
+        preferences: { label: 'Préférences', icon: 'S', color: '#ec4899' }, // style de communication, gouts
         relations: { label: 'Relations', icon: 'R', color: '#0ea5e9' }   // famille, amis mentionnes
     },
 
@@ -558,7 +558,7 @@ function verifyResponse(answer, msgEl) {
     if (!mbd) return;
     var verifyEl = document.createElement('div');
     verifyEl.className = 'verify-bar checking';
-    verifyEl.innerHTML = '<svg class="verify-spinner" viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="31" stroke-dashoffset="10"/></svg><span>Verification en cours...</span>';
+    verifyEl.innerHTML = '<svg class="verify-spinner" viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="31" stroke-dashoffset="10"/></svg><span>Vérification en cours...</span>';
     var actionBar = mbd.querySelector('.ma');
     if (actionBar) mbd.insertBefore(verifyEl, actionBar);
     else mbd.appendChild(verifyEl);
@@ -579,7 +579,7 @@ function verifyResponse(answer, msgEl) {
         var claimList = claims.split('|').map(function(c) { return c.trim().replace(/^\d+[\.\)]\s*/, ''); }).filter(function(c) { return c.length > 10; }).slice(0, 4);
         if (!claimList.length) { verifyEl.style.display = 'none'; return; }
 
-        verifyEl.querySelector('span').textContent = 'Verification de ' + claimList.length + ' affirmations...';
+        verifyEl.querySelector('span').textContent = 'Vérification de ' + claimList.length + ' affirmations...';
 
         // ETAPE 2: Recherche web sur les affirmations
         var searchQuery = claimList.join(' ');
@@ -647,11 +647,11 @@ function showVerifyResult(el, status, details, verified, uncertain, contradicted
 
     var labels = {
         'verified': 'Informations verifiees',
-        'uncertain': 'Informations a verifier',
+        'uncertain': 'Informations à vérifier',
         'warning': 'Contradiction detectee',
         'no-facts': 'Pas d\'affirmation factuelle',
         'no-source': 'Sources indisponibles',
-        'error': 'Verification echouee',
+        'error': 'Vérification échouée',
         'skip': ''
     };
 
@@ -673,7 +673,7 @@ function showVerifyResult(el, status, details, verified, uncertain, contradicted
         detailHtml += '</div>';
         el.innerHTML = '<button class="verify-toggle" onclick="this.parentElement.classList.toggle(\'open\')">'
             + icon + '<span>' + label
-            + (verified ? ' — ' + verified + ' ✓' : '')
+            + (verified ? ' : ' + verified + ' ✓' : '')
             + (uncertain ? ' ' + uncertain + ' ?' : '')
             + (contradicted ? ' ' + contradicted + ' ✗' : '')
             + '</span></button>' + detailHtml;

@@ -8,7 +8,7 @@ var defaultCategories = [
     { id: 'design', label: 'Design', icon: 'Ds' },
     { id: 'business', label: 'Business', icon: 'B' },
     { id: 'science', label: 'Science', icon: 'Sc' },
-    { id: 'sante', label: 'Sante', icon: 'Sa' },
+    { id: 'sante', label: 'Santé', icon: 'Sa' },
     { id: 'finance', label: 'Finance', icon: 'F' },
     { id: 'voyage', label: 'Voyage', icon: 'V' },
     { id: 'jeux', label: 'Jeux', icon: 'J' },

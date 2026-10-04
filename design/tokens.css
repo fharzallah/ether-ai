@@ -1,0 +1,99 @@
+/* ETHER : tokens de design. Thème par défaut : Sombre. Ajouter data-theme="light" ou "midnight" sur <html>. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #161412;
+  --sidebar: #1b1816;
+  --surface: #211e1b;
+  --surface-2: #2a2622;
+  --border: #34302b;
+  --border-strong: #4a443e;
+  --text: #f3eee7;
+  --text-muted: #a59c91;
+  --brand: #ef4136;
+  --accent: #db3229;
+  --accent-ink: #ffffff;
+  --accent-text: #ff7466;
+  --accent-soft: rgba(239,65,54,0.14);
+  --scrim: rgba(10,8,7,0.62);
+  --shadow: 0 1px 2px rgba(0,0,0,0.25), 0 12px 32px rgba(0,0,0,0.28);
+  --shadow-lg: 0 24px 64px rgba(0,0,0,0.45);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #faf7f2;
+  --sidebar: #f3eee6;
+  --surface: #ffffff;
+  --surface-2: #efe9e0;
+  --border: #e4ddd2;
+  --border-strong: #cfc6b9;
+  --text: #1d1a17;
+  --text-muted: #6c645a;
+  --brand: #ef4136;
+  --accent: #d3301f;
+  --accent-ink: #ffffff;
+  --accent-text: #c02a1a;
+  --accent-soft: rgba(239,65,54,0.10);
+  --scrim: rgba(29,26,23,0.38);
+  --shadow: 0 1px 2px rgba(60,40,20,0.06), 0 10px 28px rgba(60,40,20,0.08);
+  --shadow-lg: 0 24px 64px rgba(60,40,20,0.18);
+}
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #0e1118;
+  --sidebar: #121620;
+  --surface: #171c27;
+  --surface-2: #1e2431;
+  --border: #262d3b;
+  --border-strong: #3a4356;
+  --text: #e8ebf2;
+  --text-muted: #959db0;
+  --brand: #ef4136;
+  --accent: #db3229;
+  --accent-ink: #ffffff;
+  --accent-text: #ff7466;
+  --accent-soft: rgba(239,65,54,0.14);
+  --scrim: rgba(10,8,7,0.62);
+  --shadow: 0 1px 2px rgba(0,0,0,0.25), 0 12px 32px rgba(0,0,0,0.28);
+  --shadow-lg: 0 24px 64px rgba(0,0,0,0.45);
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 999px;
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Geist", -apple-system, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --font-word: "Syne", "Geist", sans-serif;
+}
+/* Thème Auto : suivre le système quand l'utilisateur choisit Auto */
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    color-scheme: light;
+    --bg: #faf7f2;
+    --sidebar: #f3eee6;
+    --surface: #ffffff;
+    --surface-2: #efe9e0;
+    --border: #e4ddd2;
+    --border-strong: #cfc6b9;
+    --text: #1d1a17;
+    --text-muted: #6c645a;
+    --brand: #ef4136;
+    --accent: #d3301f;
+    --accent-ink: #ffffff;
+    --accent-text: #c02a1a;
+    --accent-soft: rgba(239,65,54,0.10);
+    --scrim: rgba(29,26,23,0.38);
+    --shadow: 0 1px 2px rgba(60,40,20,0.06), 0 10px 28px rgba(60,40,20,0.08);
+    --shadow-lg: 0 24px 64px rgba(60,40,20,0.18);
+  }
+}
