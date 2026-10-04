@@ -17,6 +17,11 @@ function sendMsg(text){
         showQuotaExhausted();
         return;
     }
+    // Invite sans cle : rien ne peut partir, on l'explique au lieu d'echouer.
+    if (typeof isGuestMode === 'function' && isGuestMode() && !window.etherDesktop.guestHasKey()) {
+        showGuestNeedKey();
+        return;
+    }
     var message=(text||'').trim(); uiEl.value=''; uiEl.style.height='auto'; sndEl.disabled=true;
     useDaily('msg');
     markUserMessage();
@@ -306,6 +311,7 @@ function updDeepThinkBtn() {
 function sendDeepThink() {
     var text = uiEl.value.trim();
     if (!text || thinking) return;
+    if (typeof isGuestMode === 'function' && isGuestMode()) { showGuestAccountOnly('La reflexion approfondie'); return; }
 
     var remaining = getDeepThinkRemaining();
     if (!isPro && remaining <= 0) {

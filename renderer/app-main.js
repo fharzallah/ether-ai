@@ -1452,9 +1452,11 @@ G('NET-TOGGLE').onchange = function() {
 // serveur et reviennent a la prochaine connexion.
 function logout() {
     G('SM').classList.add('hidden');
+    // Invite : rien a envoyer ni a effacer, les conversations restent ici.
+    if (isGuestMode()) { window.etherDesktop.guestExit(); location.reload(); return; }
     window.etherDesktop.authLogout().then(function() { location.reload(); });
 }
-G('LOGOUT').onclick = function() { if (confirm('Se deconnecter ?')) logout(); };
+G('LOGOUT').onclick = function() { if (confirm(isGuestMode() ? 'Quitter le mode invite ? Tes conversations restent sur cet appareil.' : 'Se deconnecter ?')) logout(); };
 G('ADD-ACC').onclick = function() { if (confirm('Se deconnecter pour utiliser un autre compte ?')) logout(); };
 
 // === MES DONNEES ===
@@ -2469,6 +2471,8 @@ function canSendMessage() {
     return getDailyRemaining('msg', 100) > 0;
 }
 function canSearchWeb() {
+    // La recherche passe par /api/search, reservee aux comptes.
+    if (typeof isGuestMode === 'function' && isGuestMode()) return false;
     if (isPro) return true;
     return getDailyRemaining('web', 30) > 0;
 }
@@ -2504,7 +2508,12 @@ if (window.etherDesktop && window.etherDesktop.onSystemThemeChanged) {
 
 // Sans jeton de session, pas d'app : l'ecran de connexion s'affiche.
 var _hasSession = !!(window.etherDesktop && window.etherDesktop.authToken && window.etherDesktop.authToken());
-if(user && _hasSession) showApp(); else setLoginMode(user ? 'login' : 'signup', null, user && user.email);
+// Mode invite : pas de jeton, tout reste dans ce navigateur.
+function isGuestMode() { return !!(window.etherDesktop && window.etherDesktop.isGuest && window.etherDesktop.isGuest()); }
+var GUEST_USER = { name: 'Invite', firstName: 'Invite', lastName: '', guest: true };
+if(user && _hasSession) showApp();
+else if (isGuestMode()) { user = GUEST_USER; showApp(); }
+else setLoginMode(user ? 'login' : 'signup', null, user && user.email);
 
 // LOGIN
 // Trois ecrans sur la meme carte : connexion, creation de compte, et
@@ -2540,6 +2549,12 @@ window.etherShowLogin = function(info) {
 };
 
 G('LT-IN').onclick = function() { setLoginMode('login'); };
+G('L-GUEST').onclick = function() {
+    window.etherDesktop.guestEnter();
+    user = GUEST_USER;
+    G('LS').classList.add('hidden');
+    showApp();
+};
 G('LT-UP').onclick = function() { setLoginMode('signup'); };
 G('L-FORGOT').onclick = function(e) { e.preventDefault(); setLoginMode('recover', 'Entre ton email, le code de secours recu a l inscription, et un nouveau mot de passe.'); };
 G('L-BACK').onclick = function(e) { e.preventDefault(); setLoginMode('login'); };
@@ -2607,8 +2622,123 @@ function showApp(){
     var wg=G('welc-greet'); if(wg) wg.textContent=getGreeting()+', '+user.name;
     initAppWaves(); updHist(); updProjs(); updImgCount(); updQuotaUI(); renderModelOptions(); loadAllModeResources();
     G('uinp').focus();
+    if (isGuestMode()) { applyGuestMode(); return; }
     showTutorial();
     startApiMonitor();
+    offerGuestImport();
+}
+
+// === MODE INVITE ===
+// Le serveur n'accepte sans compte que le chat de base avec la cle de
+// l'invite : on masque ce qui exige un compte et on ne route que vers les
+// fournisseurs pour lesquels une cle est enregistree.
+function applyGuestMode() {
+    G('GUEST-BAR').classList.remove('hidden');
+    ['DEEP-BTN', 'CUSTOM-TOGGLE'].forEach(function(id) { var el = G(id); if (el) el.classList.add('hidden'); });
+    var lo = G('LOGOUT'); if (lo) lo.textContent = 'Quitter le mode invite';
+    var em = G('ACC-EMAIL'); if (em) em.textContent = 'Mode invite : aucun compte, rien n est enregistre sur le serveur';
+    applyGuestRouting();
+}
+function applyGuestRouting() {
+    if (!isGuestMode()) return;
+    var D = window.etherDesktop;
+    var allowed = D.guestProviders();
+    for (var p in providerHealth) {
+        if (!providerHealth.hasOwnProperty(p)) continue;
+        var ok = allowed.indexOf(p) !== -1 && D.guestHasKey(p);
+        providerHealth[p] = ok;
+        if (typeof providerStatus !== 'undefined') providerStatus[p] = ok;
+    }
+    if (typeof renderModelOptions === 'function') renderModelOptions();
+}
+function openGuestSignup() {
+    G('APP').classList.add('hidden');
+    G('LS').classList.remove('hidden');
+    G('LS').querySelector('.login-card').classList.remove('hidden');
+    setLoginMode('signup', 'Cree ton compte : tu pourras importer les conversations de ce mode invite.');
+}
+G('GUEST-SIGNUP').onclick = openGuestSignup;
+window.addEventListener('ether-keys-changed', applyGuestRouting);
+// Cle refusee par le fournisseur : on le dit une fois, au lieu d'une bulle vide.
+var _guestErrShown = 0;
+window.addEventListener('ether-guest-provider-error', function(e) {
+    if (Date.now() - _guestErrShown < 15000) return;
+    _guestErrShown = Date.now();
+    var p = (e.detail && e.detail.provider) || 'Le fournisseur';
+    var d = document.createElement('div');
+    d.className = 'msg a';
+    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>' + esc(p.charAt(0).toUpperCase() + p.slice(1))
+        + ' a refuse la requete.</strong></p><p>Ta cle est peut-etre invalide, expiree ou sans credit. Verifie-la dans Parametres &gt; Fournisseurs IA, ou cree un compte gratuit pour utiliser ETHER sans cle.</p>'
+        + '<div class="guest-card"><button type="button" class="btn-p" data-g="key">Verifier ma cle</button><button type="button" class="btn-s" data-g="signup">Creer un compte gratuit</button></div></div></div>';
+    G('MG').appendChild(d);
+    d.querySelector('[data-g="key"]').onclick = openProviderSettings;
+    d.querySelector('[data-g="signup"]').onclick = openGuestSignup;
+    var av = d.querySelector('.mav'); if (av) addMsgWave(av);
+    if (typeof scr === 'function') scr();
+});
+function openProviderSettings() {
+    G('SM').classList.remove('hidden');
+    loadSett();
+    var h = document.querySelector('#SM [data-i18n="set_providers"]');
+    if (h && h.scrollIntoView) h.scrollIntoView({ block: 'start' });
+}
+// Sans cle, l'invite ne peut rien envoyer : message clair, pas de demo.
+function showGuestNeedKey() {
+    var d = document.createElement('div');
+    d.className = 'msg a';
+    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt">'
+        + '<p><strong>Ajoute ta cle API pour essayer, ou cree un compte gratuit pour utiliser ETHER sans cle.</strong></p>'
+        + '<p>Sans compte, ETHER fonctionne avec ta propre cle Groq, Gemini, Mistral, OpenAI ou Anthropic. Elle reste dans ce navigateur.</p>'
+        + '<div class="guest-card"><button type="button" class="btn-p" data-g="key">Ajouter ma cle</button>'
+        + '<button type="button" class="btn-s" data-g="signup">Creer un compte gratuit</button></div></div></div>';
+    G('MG').appendChild(d);
+    d.querySelector('[data-g="key"]').onclick = openProviderSettings;
+    d.querySelector('[data-g="signup"]').onclick = openGuestSignup;
+    var av = d.querySelector('.mav'); if (av) addMsgWave(av);
+    if (typeof scr === 'function') scr();
+}
+function showGuestAccountOnly(what) {
+    var d = document.createElement('div');
+    d.className = 'msg a';
+    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>' + esc(what) + ' est reserve aux comptes.</strong></p>'
+        + '<p>Cree un compte gratuit pour y acceder.</p><div class="guest-card"><button type="button" class="btn-p">Creer un compte gratuit</button></div></div></div>';
+    G('MG').appendChild(d);
+    d.querySelector('button').onclick = openGuestSignup;
+    var av = d.querySelector('.mav'); if (av) addMsgWave(av);
+    if (typeof scr === 'function') scr();
+}
+
+// Apres la creation d'un compte (ou une connexion) depuis le mode invite :
+// proposer d'importer les conversations restees sur cet appareil.
+function offerGuestImport() {
+    var D = window.etherDesktop;
+    if (!D || !D.guestImportPeek) return;
+    var guestConvs = D.guestImportPeek();
+    var ids = guestConvs ? Object.keys(guestConvs) : [];
+    if (!ids.length) { if (D.guestImportTake) D.guestImportTake(); return; }
+    var d = document.createElement('div');
+    d.className = 'msg a';
+    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Importer tes conversations du mode invite ?</strong></p>'
+        + '<p>' + ids.length + ' conversation' + (ids.length > 1 ? 's' : '') + ' de ce navigateur peu' + (ids.length > 1 ? 'vent' : 't')
+        + ' rejoindre ton compte et se synchroniser sur tes appareils.</p>'
+        + '<div class="guest-card"><button type="button" class="btn-p" data-g="yes">Importer</button>'
+        + '<button type="button" class="btn-s" data-g="no">Non merci</button></div></div></div>';
+    G('MG').appendChild(d);
+    d.querySelector('[data-g="yes"]').onclick = function() {
+        var taken = D.guestImportTake() || {};
+        var n = 0;
+        for (var id in taken) {
+            if (!taken.hasOwnProperty(id) || convs[id]) continue;
+            convs[id] = taken[id]; n++;
+        }
+        sSet('convs', convs); updHist();
+        d.querySelector('.mt').innerHTML = '<p>' + n + ' conversation' + (n > 1 ? 's importees' : ' importee') + ' dans ton compte.</p>';
+    };
+    d.querySelector('[data-g="no"]').onclick = function() {
+        D.guestImportTake();
+        d.querySelector('.mt').innerHTML = '<p>Conversations du mode invite ignorees.</p>';
+    };
+    var av = d.querySelector('.mav'); if (av) addMsgWave(av);
 }
 
 // SIDEBAR
