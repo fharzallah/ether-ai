@@ -163,6 +163,7 @@ var SKILL_CREATOR = {
         var modes = document.querySelectorAll('.mp');
         for (var j = 0; j < modes.length; j++) modes[j].classList.remove('on');
         G('CUSTOM-TOGGLE').classList.add('on');
+        if (typeof applyModeWelcome === 'function') applyModeWelcome();
 
         this.close();
         if (typeof showKbHint === 'function') showKbHint('Mode actif : ' + mode.name);

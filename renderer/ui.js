@@ -30,7 +30,7 @@ function sendMsg(text){
     if(pendingDocFormat){
         var fmt=pendingDocFormat;
         pendingDocFormat=null;
-        uiEl.placeholder='Envoie un message...';
+        applyModeWelcome();
         var badge=G('DOC-BADGE'); if(badge)badge.classList.add('hidden');
         addUserMsg('Génère un document '+fmt+' : '+message);
         genDoc(fmt, message);

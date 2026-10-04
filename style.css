@@ -1077,3 +1077,6 @@ select.si{appearance:none;-webkit-appearance:none;padding-right:36px;background-
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 .modal-b .il-e{padding:0}
+
+/* Suggestions de l'accueil : petite etiquette au-dessus du texte */
+.welc .chip small{display:block;font:500 12px/16px var(--font-sans);color:var(--accent-text);margin-bottom:4px}

@@ -13,9 +13,9 @@ function newChat(pid){
     var mg=G('MG');mg.innerHTML='';
     var w=document.createElement('div');w.className='welc';w.id='WS';
     var gr=user?getGreeting()+', '+user.name:'ETHER';
-    w.innerHTML='<div style="width:160px;height:160px;margin:0 auto 24px"><canvas id="welc-wv2" width="160" height="160" style="width:160px;height:160px"></canvas></div><h1>'+esc(gr)+'</h1><p class="welc-s" data-i18n="welc_help">'+t('welc_help')+'</p><div class="welc-c"><button class="chip" data-i18n="chip_relativity" data-p="Explique-moi la relativité">'+t('chip_relativity')+'</button><button class="chip" data-i18n="chip_remote" data-p="Pour ou contre le télétravail">'+t('chip_remote')+'</button><button class="chip" data-i18n="chip_app" data-p="Aide-moi à développer une idée d\'app">'+t('chip_app')+'</button><button class="chip" data-i18n="chip_sleep" data-p="Conseils pour mieux dormir">'+t('chip_sleep')+'</button></div>';
+    w.innerHTML='<div style="width:160px;height:160px;margin:0 auto 24px"><canvas id="welc-wv2" width="160" height="160" style="width:160px;height:160px"></canvas></div><h1>'+esc(gr)+'</h1><p class="welc-s"></p><div class="welc-c"></div>';
     mg.appendChild(w);
-    var ch=w.querySelectorAll('.chip');for(var i=0;i<ch.length;i++)ch[i].onclick=(function(c){return function(){sendMsg(c.getAttribute('data-p'));};})(ch[i]);
+    applyModeWelcome();
     var wc=document.getElementById('welc-wv2');if(wc)addLogo(wc);
     updHist();G('SB').classList.remove('open');G('SOV').classList.remove('vis');
 }
@@ -385,7 +385,7 @@ function selectDocType(format) {
 
 function cancelDoc() {
     pendingDocFormat = null;
-    uiEl.placeholder = 'Envoie un message...';
+    applyModeWelcome();
     var badge = G('DOC-BADGE');
     if (badge) badge.classList.add('hidden');
 }
@@ -2780,6 +2780,34 @@ G('SHOW-ALL').onclick = function() {
     G('SHOW-ALL').classList.add('hidden');
 };
 
+// Met l'accueil (phrase, suggestions) et le texte d'exemple de la saisie
+// au diapason du mode actif. Sans ecran d'accueil, seul le texte d'exemple change.
+function applyModeWelcome() {
+    var mode = (typeof ETHER_ENGINE !== 'undefined' && ETHER_ENGINE.currentMode) || 'base';
+    var w = getModeWelcome(mode);
+    var sub = w.sub;
+    if (/^custom_/.test(mode) && typeof customModes !== 'undefined') {
+        var id = mode.slice(7);
+        for (var i = 0; i < customModes.length; i++) {
+            if (String(customModes[i].id) === id && customModes[i].specialty) { sub = customModes[i].specialty; break; }
+        }
+    }
+    var inp = G('uinp');
+    if (inp && !pendingDocFormat) inp.placeholder = w.ph;
+    var ws = G('WS');
+    if (!ws) return;
+    var s = ws.querySelector('.welc-s');
+    if (s) s.textContent = sub;
+    var c = ws.querySelector('.welc-c');
+    if (!c) return;
+    c.innerHTML = w.sugs.map(function(sg) {
+        return '<button class="chip" type="button" data-p="' + escAttr(sg[1]) + '">' + (sg[0] ? '<small>' + esc(sg[0]) + '</small>' : '') + esc(sg[1]) + '</button>';
+    }).join('');
+    c.classList.toggle('hidden', !w.sugs.length);
+    var ch = c.querySelectorAll('.chip');
+    for (var j = 0; j < ch.length; j++) ch[j].onclick = (function(b) { return function() { sendMsg(b.getAttribute('data-p')); }; })(ch[j]);
+}
+
 // MODES
 var modes=document.querySelectorAll('.mp');
 for(var i=0;i<modes.length;i++){modes[i].onclick=(function(btn){return function(){
@@ -2789,6 +2817,7 @@ for(var i=0;i<modes.length;i++){modes[i].onclick=(function(btn){return function(
     G('IMG-OPTIONS').classList.add('hidden');
     if(btn.getAttribute('data-m')==='teacher')G('TLB').classList.remove('hidden');
     if(btn.getAttribute('data-m')==='image')G('IMG-OPTIONS').classList.remove('hidden');
+    applyModeWelcome();
 };})(modes[i]);}
 // Afficher le niveau Teacher calibre
 function updTeacherBadge() {
@@ -2985,6 +3014,7 @@ function renderCustomModes() {
             item.classList.add('active');
             // Fermer le dropdown
             G('CUSTOM-DROP').classList.add('hidden');
+            applyModeWelcome();
         }; })(items[j]);
     }
 }
@@ -3106,6 +3136,7 @@ function deleteCustomMode() {
         var allM = document.querySelectorAll('.mp');
         for (var i = 0; i < allM.length; i++) allM[i].classList.remove('on');
         if (allM[0]) allM[0].classList.add('on');
+        applyModeWelcome();
     }
     renderCustomModes();
     G('CM-MODAL').classList.add('hidden');
@@ -3163,8 +3194,7 @@ var uiEl=G('uinp'), sndEl=G('SND');
 uiEl.oninput=function(){uiEl.style.height='auto';uiEl.style.height=Math.min(uiEl.scrollHeight,140)+'px';sndEl.disabled=!uiEl.value.trim()&&!(stagedFiles&&stagedFiles.length);};
 sndEl.onclick=function(){sendMsg(uiEl.value);};
 uiEl.onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(uiEl.value);}};
-var chips=document.querySelectorAll('.chip');
-for(var i=0;i<chips.length;i++){chips[i].onclick=(function(c){return function(){sendMsg(c.getAttribute('data-p'));};})(chips[i]);}
+applyModeWelcome();
 
 // SEND MESSAGE
 
