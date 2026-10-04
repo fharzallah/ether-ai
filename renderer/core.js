@@ -407,6 +407,55 @@ function applyLanguage() {
         var spanH = span ? span.outerHTML : '';
         ct.innerHTML = svgH + t('mode_custom') + ' ' + spanH;
     }
+    if (typeof applyModeWelcome === 'function') applyModeWelcome();
+}
+
+// Accueil propre a chaque mode : phrase sous le "Bonjour", suggestions
+// ([etiquette, texte envoye]) et texte d'exemple de la zone de saisie.
+// Ecrit en francais et en anglais ; les autres langues gardent leurs
+// traductions pour le mode ETHER et prennent l'anglais pour les autres modes.
+var MODE_WELCOME = {
+    fr: {
+        base: { sub: 'Expose une idée. Je cherche ce qui casse.', ph: 'Expose ton idée. ETHER cherchera la faille.',
+            sugs: [['Idée', "Développer une idée d'appli"], ['Débat', 'Pour ou contre le télétravail'], ['Plan', 'Mon plan de révisions tient-il ?'], ['Projet', "Lancer un blog d'actu pour les jeunes"]] },
+        teacher: { sub: 'Dis-moi ce que tu veux comprendre.', ph: 'Pose ta question, même la plus simple.',
+            sugs: [['Physique', 'La relativité simplement'], ['Français', 'Les sophismes, avec des exemples'], ['Maths', 'Pourquoi on dérive une fonction ?'], ['Histoire', 'Les causes de la Première Guerre mondiale']] },
+        debate: { sub: "Donne ta position. Je défends le camp d'en face.", ph: 'Donne ta position en une phrase.',
+            sugs: [['Société', 'Les réseaux sociaux font plus de mal que de bien'], ['École', 'Il faut supprimer les notes'], ['Tech', "L'IA va remplacer les journalistes"], ['Vie', 'Mieux vaut dormir que réviser tard']] },
+        creative: { sub: 'Donne un point de départ. Je propose des pistes.', ph: 'Un thème, un mot, une contrainte.',
+            sugs: [['Nom', "Un nom pour mon blog d'actu"], ['Vidéo', "Un concept de série TikTok sur l'IA"], ['Projet', "Trois idées d'appli pour le lycée"], ['Récit', "Le début d'une nouvelle en 5 lignes"]] },
+        writer: { sub: 'Colle ton texte. Je le rends plus net.', ph: 'Colle ton texte ici.',
+            sugs: [['Mail', 'Corrige mon mail au prof'], ['Article', 'Rends mon intro plus percutante'], ['Oral', 'Raccourcis mon discours'], ['Réseaux', 'Réécris ma bio Instagram']] },
+        image: { sub: "Décris l'image. Je prépare le prompt.", ph: "Décris l'image que tu veux.",
+            sugs: [['Logo', 'Un logo minimal pour mon blog'], ['Affiche', 'Une affiche pour un débat au lycée'], ['Illustration', 'Une ville en 2050, style gravure'], ['Photo', "Un bureau d'étudiant la nuit"]] },
+        custom: { sub: 'Mode personnalisé.', ph: 'Écris ton message.', sugs: [] }
+    },
+    en: {
+        base: { sub: "Pitch an idea. I'll look for what breaks.", ph: 'Pitch your idea. ETHER will find the flaw.',
+            sugs: [['Idea', 'Develop an app idea'], ['Debate', 'Pros and cons of remote work'], ['Plan', 'Does my revision plan hold up?'], ['Project', 'Start a news blog for young people']] },
+        teacher: { sub: 'Tell me what you want to understand.', ph: 'Ask your question, even the simplest one.',
+            sugs: [['Physics', 'Relativity, simply'], ['Language', 'Logical fallacies, with examples'], ['Maths', 'Why do we differentiate a function?'], ['History', 'The causes of World War I']] },
+        debate: { sub: "Give your position. I'll argue the other side.", ph: 'State your position in one sentence.',
+            sugs: [['Society', 'Social media does more harm than good'], ['School', 'Grades should be abolished'], ['Tech', 'AI will replace journalists'], ['Life', 'Sleeping beats studying late']] },
+        creative: { sub: "Give me a starting point. I'll suggest directions.", ph: 'A theme, a word, a constraint.',
+            sugs: [['Name', 'A name for my news blog'], ['Video', 'A TikTok series concept about AI'], ['Project', 'Three app ideas for high school'], ['Story', 'The opening of a short story in 5 lines']] },
+        writer: { sub: "Paste your text. I'll make it sharper.", ph: 'Paste your text here.',
+            sugs: [['Email', 'Fix my email to my teacher'], ['Article', 'Make my intro punchier'], ['Speech', 'Shorten my speech'], ['Social', 'Rewrite my Instagram bio']] },
+        image: { sub: "Describe the image. I'll write the prompt.", ph: 'Describe the image you want.',
+            sugs: [['Logo', 'A minimal logo for my blog'], ['Poster', 'A poster for a school debate'], ['Illustration', 'A city in 2050, engraving style'], ['Photo', "A student's desk at night"]] },
+        custom: { sub: 'Custom mode.', ph: 'Write your message.', sugs: [] }
+    }
+};
+
+function getModeWelcome(mode) {
+    var key = /^custom_/.test(mode || '') ? 'custom' : (mode || 'base');
+    var set = MODE_WELCOME[curLang || 'fr'];
+    if (!set && key === 'base') {
+        return { sub: t('welc_help'), ph: t('input_placeholder'), sugs: [
+            ['', t('chip_relativity')], ['', t('chip_remote')], ['', t('chip_app')], ['', t('chip_sleep')]] };
+    }
+    set = set || MODE_WELCOME.en;
+    return set[key] || set.base;
 }
 
 // ETHER ENGINE v6 - Multi-provider: Gemini + Groq + Cerebras
