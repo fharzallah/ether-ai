@@ -13,7 +13,7 @@ function newChat(pid){
     var mg=G('MG');mg.innerHTML='';
     var w=document.createElement('div');w.className='welc';w.id='WS';
     var gr=user?getGreeting()+', '+user.name:'ETHER';
-    w.innerHTML='<div style="width:160px;height:160px;margin:0 auto 24px"><canvas id="welc-wv2" width="160" height="160" style="width:160px;height:160px"></canvas></div><h1>'+esc(gr)+'</h1><p class="welc-s" data-i18n="welc_help">'+t('welc_help')+'</p><div class="welc-c"><button class="chip" data-i18n="chip_relativity" data-p="Explique-moi la relativite">'+t('chip_relativity')+'</button><button class="chip" data-i18n="chip_remote" data-p="Pour et contre le teletravail">'+t('chip_remote')+'</button><button class="chip" data-i18n="chip_app" data-p="Aide-moi avec une idee d\'app">'+t('chip_app')+'</button><button class="chip" data-i18n="chip_sleep" data-p="Conseils pour mieux dormir">'+t('chip_sleep')+'</button></div>';
+    w.innerHTML='<div style="width:160px;height:160px;margin:0 auto 24px"><canvas id="welc-wv2" width="160" height="160" style="width:160px;height:160px"></canvas></div><h1>'+esc(gr)+'</h1><p class="welc-s" data-i18n="welc_help">'+t('welc_help')+'</p><div class="welc-c"><button class="chip" data-i18n="chip_relativity" data-p="Explique-moi la relativité">'+t('chip_relativity')+'</button><button class="chip" data-i18n="chip_remote" data-p="Pour ou contre le télétravail">'+t('chip_remote')+'</button><button class="chip" data-i18n="chip_app" data-p="Aide-moi à développer une idée d\'app">'+t('chip_app')+'</button><button class="chip" data-i18n="chip_sleep" data-p="Conseils pour mieux dormir">'+t('chip_sleep')+'</button></div>';
     mg.appendChild(w);
     var ch=w.querySelectorAll('.chip');for(var i=0;i<ch.length;i++)ch[i].onclick=(function(c){return function(){sendMsg(c.getAttribute('data-p'));};})(ch[i]);
     var wc=document.getElementById('welc-wv2');if(wc)addLogo(wc);
@@ -113,7 +113,7 @@ function loadConv(id){if(!convs[id])return;curConv=id;isEphemeral=false;ETHER_EN
 
 // TRASH
 function cleanTrash(){var now=Date.now();for(var id in trash){if(now-trash[id].deletedAt>30*24*60*60*1000){delete trash[id];}}sSet('trash',trash);}
-// NB: pas d'appel ici — 'trash' n'est assigne qu'en fin de fichier. La purge des
+// NB: pas d'appel ici : 'trash' n'est assigne qu'en fin de fichier. La purge des
 // entrees de plus de 30 jours se fait via updTrash(), a l'ouverture de la corbeille.
 function updTrash(){cleanTrash();var ids=Object.keys(trash).sort(function(a,b){return trash[b].deletedAt-trash[a].deletedAt;});var tl=G('TL');var etb=G('ETB');if(!ids.length){tl.innerHTML='<div class="il-e" data-i18n="sb_trash_empty">'+t('sb_trash_empty')+'</div>';etb.style.display='none';return;}etb.style.display='block';var h='';for(var i=0;i<ids.length;i++){var id=ids[i];var ti=trash[id];var dl=30-Math.floor((Date.now()-ti.deletedAt)/(24*60*60*1000));h+='<div class="trash-item"><div class="tr-info"><div class="tr-title">'+esc(ti.title)+'</div><div class="tr-date">'+dl+' d</div></div><div class="trash-actions"><button class="tr-restore" onclick="restoreConv(\''+id+'\')">'+t('btn_save')+'</button><button class="tr-del" onclick="permDelConv(\''+id+'\')">'+t('btn_delete')+'</button></div></div>';}tl.innerHTML=h;}
 function restoreConv(id){if(!trash[id])return;convs[id]=trash[id].data;sSet('convs',convs);delete trash[id];sSet('trash',trash);updHist();updTrash();}
@@ -174,7 +174,7 @@ function updRagDocs() {
         h += '<div class="cont-item rag-doc-item" data-doc-id="' + escAttr(d.id) + '">'
             + '<div class="cont-icon" style="background:rgba(14,165,233,.15);color:#0ea5e9;font-size:.55rem">RAG</div>'
             + '<div class="cont-info"><div class="cont-title">' + esc(d.name) + '</div>'
-            + '<div class="cont-date">' + sizeKb + ' Ko — ' + d.chunks + ' fragments</div></div>'
+            + '<div class="cont-date">' + sizeKb + ' Ko : ' + d.chunks + ' fragments</div></div>'
             + '<button class="rag-del" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:1rem;padding:0 4px;opacity:.5" title="Retirer">&times;</button>'
             + '</div>';
     }
@@ -268,7 +268,7 @@ function previewContentImage(cid) {
         + (imgSrc ? '' : '<div style="color:var(--t3);font-size:.85rem;padding:30px 0">Image introuvable</div>')
         + '</div>'
         + '<div class="preview-actions">'
-        + '<button class="btn-s" id="cont-dl-btn" style="display:none"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>Telecharger</button>'
+        + '<button class="btn-s" id="cont-dl-btn" style="display:none"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>Télécharger</button>'
         + '<button class="btn-s" id="cont-conv-btn">Voir la conversation</button>'
         + '<button class="btn-s" id="cont-close-btn">Fermer</button>'
         + '</div>';
@@ -296,7 +296,7 @@ function previewContentImage(cid) {
             }
         };
         img.onerror = function() {
-            // Le cache a rate ou l'URL a expire — tenter l'autre source
+            // Le cache a rate ou l'URL a expire : tenter l'autre source
             if (cachedData && imgUrl && img.src !== imgUrl) {
                 img.src = imgUrl; // fallback vers l'URL originale
                 return;
@@ -305,7 +305,7 @@ function previewContentImage(cid) {
             if (area) {
                 area.innerHTML = '<div style="padding:30px;color:var(--t3);text-align:center">'
                     + '<svg viewBox="0 0 24 24" width="48" height="48" style="opacity:.3;margin-bottom:10px"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>'
-                    + '<p>Image expiree</p>'
+                    + '<p>Image expirée</p>'
                     + '<p style="font-size:.78rem;margin-top:6px">L\'image n\'est plus disponible.</p>'
                     + '</div>';
             }
@@ -325,10 +325,10 @@ function previewContentDoc(idx) {
     var card = document.createElement('div');
     card.className = 'cont-preview-card';
     card.innerHTML = '<h3><div style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;background:' + (colors[doc.format] || 'var(--ac)') + ';color:#fff;font-size:.65rem;font-weight:700;vertical-align:-7px;margin-right:10px">' + esc((doc.format || 'DOC').toUpperCase().substring(0, 3)) + '</div>' + esc(doc.title) + '</h3>'
-        + '<div style="font-size:.78rem;color:var(--t3);margin-bottom:12px">Format : ' + esc((doc.format || 'txt').toUpperCase()) + ' — Genere le ' + new Date(doc.ts).toLocaleDateString('fr-FR') + '</div>'
+        + '<div style="font-size:.78rem;color:var(--t3);margin-bottom:12px">Format : ' + esc((doc.format || 'txt').toUpperCase()) + ' : Généré le ' + new Date(doc.ts).toLocaleDateString('fr-FR') + '</div>'
         + '<pre>' + esc((doc.content || '').substring(0, 2000)) + (doc.content && doc.content.length > 2000 ? '\n\n... (contenu tronque)' : '') + '</pre>'
         + '<div class="preview-actions">'
-        + '<button class="btn-s" id="cont-doc-dl" style="background:var(--ac);color:#fff;border-color:var(--ac)"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>Telecharger</button>'
+        + '<button class="btn-s" id="cont-doc-dl" style="background:var(--ac);color:#fff;border-color:var(--ac)"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>Télécharger</button>'
         + '<button class="btn-s" id="cont-doc-close">Fermer</button>'
         + '</div>';
     overlay.appendChild(card);
@@ -367,7 +367,7 @@ function selectDocType(format) {
     var label = labels[format] || format;
     // Pre-remplir la barre de chat avec un indicateur
     uiEl.value = '';
-    uiEl.placeholder = 'Decrivez le document ' + label + ' a generer...';
+    uiEl.placeholder = 'Decrivez le document ' + label + ' à générer…';
     uiEl.focus();
     sndEl.disabled = true;
     // Afficher un badge au-dessus de l'input
@@ -449,8 +449,8 @@ function genDoc(format, desc) {
         var docIdx = generatedDocs.length - 1;
         var colors = { word: '#2563eb', excel: '#22c55e', text: '#6b7280', html: '#f59e0b', markdown: '#8b5cf6' };
         var docResp = {
-            reasoning: { analyste: 'Document genere via IA.', critique: 'Contenu genere par ' + (aiResp._provider || 'ETHER') + '.', synthese: 'Document pret au telechargement.' },
-            answer: '<p><strong>Document genere et telecharge :</strong></p><div style="background:var(--b3);border:1px solid var(--bd);border-radius:var(--radius);padding:16px;margin:10px 0"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:10px;background:' + (colors[format] || 'var(--ac)') + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700">' + format.toUpperCase().substring(0, 3) + '</div><div><strong>' + esc(desc) + '</strong><br><span style="font-size:.78rem;color:var(--t3)">' + format.toUpperCase() + ' - Genere par ETHER AI</span></div></div><button onclick="dlDoc(' + docIdx + ')" style="margin-top:12px;padding:8px 16px;border:1px solid var(--ac);border-radius:var(--radius);background:transparent;color:var(--ac);cursor:pointer;font-size:.82rem;transition:all .15s">Retelecharger</button></div><details style="margin-top:8px"><summary style="cursor:pointer;font-size:.82rem;color:var(--t3)">Voir le contenu</summary><pre style="background:var(--b3);padding:12px;border-radius:var(--radius);font-size:.78rem;overflow-x:auto;margin-top:8px;white-space:pre-wrap">' + esc(finalContent.substring(0, 1000)) + '</pre></details>',
+            reasoning: { analyste: 'Document généré via IA.', critique: 'Contenu généré par ' + (aiResp._provider || 'ETHER') + '.', synthese: 'Document prêt au téléchargement.' },
+            answer: '<p><strong>Document généré et téléchargé :</strong></p><div style="background:var(--b3);border:1px solid var(--bd);border-radius:var(--radius);padding:16px;margin:10px 0"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:10px;background:' + (colors[format] || 'var(--ac)') + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700">' + format.toUpperCase().substring(0, 3) + '</div><div><strong>' + esc(desc) + '</strong><br><span style="font-size:.78rem;color:var(--t3)">' + format.toUpperCase() + ' - Généré par ETHER AI</span></div></div><button onclick="dlDoc(' + docIdx + ')" style="margin-top:12px;padding:8px 16px;border:1px solid var(--ac);border-radius:var(--radius);background:transparent;color:var(--ac);cursor:pointer;font-size:.82rem;transition:all .15s">Retelecharger</button></div><details style="margin-top:8px"><summary style="cursor:pointer;font-size:.82rem;color:var(--t3)">Voir le contenu</summary><pre style="background:var(--b3);padding:12px;border-radius:var(--radius);font-size:.78rem;overflow-x:auto;margin-top:8px;white-space:pre-wrap">' + esc(finalContent.substring(0, 1000)) + '</pre></details>',
             confidence: 'verified',
             sources: [aiResp._provider || 'ETHER'],
             _noSuggestions: true
@@ -605,7 +605,7 @@ G('SRC').oninput=function(){
     if(!results.length){
         var noRes=document.createElement('div');
         noRes.className='search-result';
-        noRes.innerHTML='<div class="sr-snippet">Aucun resultat</div>';
+        noRes.innerHTML='<div class="sr-snippet">Aucun résultat</div>';
         hl.appendChild(noRes);
     }
 };
@@ -622,7 +622,7 @@ function startListeningUI() {
     isRec = true;
     G('MIC').classList.add('mic-active');
     G('MIC-BAR').classList.add('vis');
-    G('MIC-STATUS').textContent = 'Ecoute en cours...';
+    G('MIC-STATUS').textContent = 'Écoute en cours...';
 }
 
 function stopListeningUI() {
@@ -704,7 +704,7 @@ function startRecording() {
     })['catch'](function(err) {
         console.log('[VOICE] Microphone error:', err.message);
         stopListeningUI();
-        alert('Impossible d\'acceder au microphone. Verifie les permissions dans Preferences Systeme > Confidentialite > Microphone.');
+        alert('Impossible d\'accéder au microphone. Vérifie les permissions dans Préférences Système > Confidentialité > Microphone.');
     });
 }
 
@@ -755,7 +755,7 @@ function stageFile(file) {
     if (!isPro) {
         var fileD = getDaily('files');
         if (fileD.count >= 5) {
-            alert('Limite atteinte : 5 fichiers/jour. Passe au Plan Pro pour un acces illimite.');
+            alert('Limite atteinte : 5 fichiers/jour. Passe au Plan Pro pour un accès illimité.');
             return;
         }
         useDaily('files');
@@ -988,8 +988,8 @@ function showTaskNotice(provider) {
             if (customProviders[i].id === sel) { label = customProviders[i].name; break; }
         }
     }
-    txt.textContent = 'Memoire, suggestions et resume sont desactives : ' + label
-        + ' n\'a pas traite ces taches. Rien n\'a ete envoye a un autre fournisseur.';
+    txt.textContent = 'Mémoire, suggestions et résumé sont désactivés : ' + label
+        + ' n\'a pas traite ces tâches. Rien n\'a été envoyé à un autre fournisseur.';
     bar.classList.remove('hidden');
 }
 
@@ -1005,8 +1005,8 @@ function loadCustomProviders() {
         if (warn) {
             if (available) { warn.classList.add('hidden'); }
             else {
-                warn.textContent = "Le chiffrement systeme n'est pas disponible sur cette machine. "
-                    + "Les cles API ne peuvent pas etre enregistrees tant qu'il ne l'est pas.";
+                warn.textContent = "Le chiffrement système n'est pas disponible sur cette machine. "
+                    + "Les clés API ne peuvent pas être enregistrees tant qu'il ne l'est pas.";
                 warn.classList.remove('hidden');
             }
         }
@@ -1022,7 +1022,7 @@ function renderCustomProviders() {
     var box = G('CUST-LIST');
     if (!box) return;
     if (!customProviders.length) {
-        box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Aucun fournisseur personnalise.</div>';
+        box.innerHTML = '<div style="font-size:.74rem;color:var(--t3);font-style:italic">Aucun fournisseur personnalisé.</div>';
         return;
     }
     var h = '';
@@ -1031,8 +1031,8 @@ function renderCustomProviders() {
         h += '<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;background:var(--b3)">'
           + '<div style="flex:1;min-width:0">'
           + '<div style="font-size:.8rem;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</div>'
-          + '<div style="font-size:.68rem;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.model) + ' — ' + esc(p.baseUrl) + '</div>'
-          + '<div style="font-size:.66rem;color:var(--t3)">' + (p.hasKey ? 'Cle enregistree (chiffree)' : 'Sans cle') + '</div>'
+          + '<div style="font-size:.68rem;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.model) + ' : ' + esc(p.baseUrl) + '</div>'
+          + '<div style="font-size:.66rem;color:var(--t3)">' + (p.hasKey ? 'Clé enregistrée (chiffrée)' : 'Sans clé') + '</div>'
           + '<div class="cust-test-status" data-id="' + escAttr(p.id) + '" style="font-size:.68rem;margin-top:2px"></div>'
           + '</div>'
           + '<button type="button" class="btn-s" onclick="testCustomProvider(\'' + escAttr(p.id) + '\')">Tester</button>'
@@ -1054,10 +1054,10 @@ function testCustomProvider(id) {
     if (el) { el.style.color = 'var(--t3)'; el.textContent = 'Test en cours...'; }
     window.etherDesktop.customProvidersTest(id).then(function(r) {
         if (!el) return;
-        if (r && r.ok) { el.style.color = 'var(--color-success)'; el.textContent = 'Connexion reussie'; }
-        else { el.style.color = 'var(--color-danger)'; el.textContent = 'Echec : ' + esc((r && r.error) || 'inconnu'); }
+        if (r && r.ok) { el.style.color = 'var(--color-success)'; el.textContent = 'Connexion réussie'; }
+        else { el.style.color = 'var(--color-danger)'; el.textContent = 'Échec : ' + esc((r && r.error) || 'inconnu'); }
     })['catch'](function() {
-        if (el) { el.style.color = 'var(--color-danger)'; el.textContent = 'Echec du test'; }
+        if (el) { el.style.color = 'var(--color-danger)'; el.textContent = 'Échec du test'; }
     });
 }
 
@@ -1071,7 +1071,7 @@ function openCustomForm(p) {
     var hint = G('CUST-KEY-HINT');
     if (hint) {
         if (p && p.hasKey) {
-            hint.textContent = 'Une cle est deja enregistree. Laisse vide pour la conserver.';
+            hint.textContent = 'Une clé est déjà enregistrée. Laisse vide pour la conserver.';
             hint.classList.remove('hidden');
         } else { hint.classList.add('hidden'); }
     }
@@ -1087,7 +1087,7 @@ function editCustomProvider(id) {
 }
 
 function deleteCustomProvider(id) {
-    if (!confirm('Supprimer ce fournisseur et sa cle ?')) return;
+    if (!confirm('Supprimer ce fournisseur et sa clé ?')) return;
     window.etherDesktop.customProvidersDelete(id).then(function(r) {
         if (r && r.ok) {
             customProviders = r.providers || [];
@@ -1138,7 +1138,7 @@ var BUILTIN_PROVIDERS = ['groq', 'gemini', 'mistral', 'cerebras', 'openai', 'ant
 var providerKeyStatus = {}; // { groq: true, ... } — presence seulement, jamais la valeur
 
 function loadProviderKeys() {
-    // Les champs restent vides : la valeur d'une cle enregistree n'est jamais
+    // Les champs restent vides : la valeur d'une clé enregistrée n'est jamais
     // renvoyee au renderer. Le placeholder indique seulement qu'elle existe.
     migrateLegacyProviderKeys().then(function() {
         return window.etherDesktop.providerKeysStatus();
@@ -1149,7 +1149,7 @@ function loadProviderKeys() {
             var el = G('KEY-' + p.toUpperCase());
             if (!el) continue;
             el.value = '';
-            el.placeholder = providerKeyStatus[p] ? 'Ta cle perso est enregistree dans ce navigateur — laisser vide pour la conserver' : 'Facultatif : ta cle perso (sinon cle du serveur)';
+            el.placeholder = providerKeyStatus[p] ? 'Ta clé perso est enregistrée dans ce navigateur : laisser vide pour la conserver' : 'Facultatif : ta clé perso (sinon clé du serveur)';
         }
         loadCustomProviders();
         updProviderStatuses();
@@ -1213,17 +1213,17 @@ G('SAVE-KEYS').onclick = function() {
         for (var i = 0; i < BUILTIN_PROVIDERS.length; i++) {
             var p = BUILTIN_PROVIDERS[i];
             var el = G('KEY-' + p.toUpperCase());
-            if (el) el.placeholder = providerKeyStatus[p] ? 'Ta cle perso est enregistree dans ce navigateur — laisser vide pour la conserver' : 'Facultatif : ta cle perso (sinon cle du serveur)';
+            if (el) el.placeholder = providerKeyStatus[p] ? 'Ta clé perso est enregistrée dans ce navigateur : laisser vide pour la conserver' : 'Facultatif : ta clé perso (sinon clé du serveur)';
         }
         updProviderStatuses();
         if (failed.length) {
-            btn.textContent = 'Echec : ' + failed[0];
+            btn.textContent = 'Échec : ' + failed[0];
             btn.style.background = '#ef4444';
         } else {
             btn.textContent = 'Sauvegarde !';
             btn.style.background = '#22c55e';
         }
-        setTimeout(function() { btn.textContent = 'Sauvegarder les cles'; btn.style.background = ''; }, 2500);
+        setTimeout(function() { btn.textContent = 'Sauvegarder les clés'; btn.style.background = ''; }, 2500);
     });
 };
 
@@ -1248,9 +1248,9 @@ function updProviderStatuses() {
         var opEl = G('PROV-' + op.toUpperCase() + '-STATUS');
         if (!opEl) continue;
         if (keys[op]) {
-            opEl.innerHTML = '<span class="prov-dot prov-dot-orange"></span>Configure';
+            opEl.innerHTML = '<span class="prov-dot prov-dot-orange"></span>Configuré';
         } else {
-            opEl.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Non configure';
+            opEl.innerHTML = '<span class="prov-dot prov-dot-gray"></span>Non configuré';
         }
     }
     // Workers AI et OpenRouter : cles cote serveur
@@ -1273,8 +1273,8 @@ function updProviderStatuses() {
                     waStatusEl.parentNode.insertBefore(hint, waStatusEl.nextSibling);
                 }
                 hint.innerHTML = 'Aujourd\'hui : <strong style="color:' + color + '">' + Math.round(u.neurons).toLocaleString('fr-FR')
-                    + '</strong> / ' + u.limit.toLocaleString('fr-FR') + ' neurones (' + pct + ' %) — '
-                    + u.chat + ' reponses, ' + u.images + ' images. Coupure a 95 %, remise a zero a minuit UTC.'
+                    + '</strong> / ' + u.limit.toLocaleString('fr-FR') + ' neurones (' + pct + ' %) : '
+                    + u.chat + ' réponses, ' + u.images + ' images. Coupure a 95 %, remise a zero a minuit UTC.'
                     + '<div style="height:4px;background:var(--b3);border-radius:4px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + color + '"></div></div>';
             })['catch'](function() {});
         }
@@ -1290,8 +1290,8 @@ function updProviderStatuses() {
     if (custStatus) {
         var n = customProviders.length;
         custStatus.innerHTML = n
-            ? '<span class="prov-dot prov-dot-orange"></span>' + n + ' configure' + (n > 1 ? 's' : '')
-            : '<span class="prov-dot prov-dot-gray"></span>Non configure';
+            ? '<span class="prov-dot prov-dot-orange"></span>' + n + ' configuré' + (n > 1 ? 's' : '')
+            : '<span class="prov-dot prov-dot-gray"></span>Non configuré';
     }
 }
 
@@ -1303,7 +1303,7 @@ function testProvider(provider) {
     if (provider === 'groq') {
         testApiKey().then(function(r) {
             if (r.apiWorks) {
-                statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>' + r.count + ' modeles actifs';
+                statusEl.innerHTML = '<span class="prov-dot prov-dot-green"></span>' + r.count + ' modèles actifs';
             } else {
                 statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur';
             }
@@ -1316,7 +1316,7 @@ function testProvider(provider) {
             })['catch'](function() { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Erreur'; });
         } else {
             var keyM = G('KEY-MISTRAL').value.trim();
-            if (!keyM) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Cle manquante'; return; }
+            if (!keyM) { statusEl.innerHTML = '<span class="prov-dot prov-dot-red"></span>Clé manquante'; return; }
             var xhrM = new XMLHttpRequest();
             xhrM.open('POST', 'https://api.mistral.ai/v1/chat/completions', true);
             xhrM.setRequestHeader('Content-Type', 'application/json');
@@ -1338,8 +1338,8 @@ function testProvider(provider) {
         // Les fournisseurs personnalises se testent un par un depuis leur ligne dans la liste.
         var n = customProviders.length;
         statusEl.innerHTML = n
-            ? '<span class="prov-dot prov-dot-green"></span>' + n + ' configure' + (n > 1 ? 's' : '')
-            : '<span class="prov-dot prov-dot-gray"></span>Non configure';
+            ? '<span class="prov-dot prov-dot-green"></span>' + n + ' configuré' + (n > 1 ? 's' : '')
+            : '<span class="prov-dot prov-dot-gray"></span>Non configuré';
     } else {
         // Test delegue au process principal : la cle reste dans le coffre chiffre,
         // le renderer ne la voit jamais et ne sort pas en reseau lui-meme.
@@ -1373,10 +1373,10 @@ function updApiUI() {
         G('DEL-API').style.display = 'flex';
         G('GEN-API').innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg> Regenerer';
     } else {
-        G('API-KEY-DISPLAY').value = 'Aucune cle generee';
+        G('API-KEY-DISPLAY').value = 'Aucune clé générée';
         G('API-KEY-DISPLAY').type = 'text';
         G('DEL-API').style.display = 'none';
-        G('GEN-API').innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Generer';
+        G('GEN-API').innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Générer';
     }
 }
 
@@ -1388,7 +1388,7 @@ G('GEN-API').onclick = function() {
 };
 
 G('DEL-API').onclick = function() {
-    if (!confirm('Revoquer cette cle API ? Les services connectes ne fonctionneront plus.')) return;
+    if (!confirm('Révoquer cette clé API ? Les services connectés ne fonctionneront plus.')) return;
     sSet('apikey', null);
     if (window.etherDesktop && window.etherDesktop.setApiKey) window.etherDesktop.setApiKey(null);
     updApiUI();
@@ -1423,8 +1423,11 @@ G('NET-TOGGLE').onchange = function() {
     }
     if (enabled) {
         if (window.etherDesktop && window.etherDesktop.getLocalIp) {
-            window.etherDesktop.getLocalIp().then(function(ip) {
-                G('NET-URL').textContent = 'http://' + ip + ':3456';
+            window.etherDesktop.getLocalIp().then(function(r) {
+                // getLocalIp peut renvoyer l'adresse seule ou un objet ({ ip } ou { ok:false, error }) :
+                // on affiche toujours l'adresse IP, jamais l'objet.
+                var ip = (typeof r === 'string') ? r : (r && (r.ip || r.address)) || '';
+                G('NET-URL').textContent = ip ? 'http://' + ip + ':3456' : 'Adresse indisponible : l\'accès réseau local ne marche que dans l\'appli de bureau.';
                 G('NET-URL').classList.add('vis');
             });
         } else {
@@ -1456,15 +1459,15 @@ function logout() {
     if (isGuestMode()) { window.etherDesktop.guestExit(); location.reload(); return; }
     window.etherDesktop.authLogout().then(function() { location.reload(); });
 }
-G('LOGOUT').onclick = function() { if (confirm(isGuestMode() ? 'Quitter le mode invite ? Tes conversations restent sur cet appareil.' : 'Se deconnecter ?')) logout(); };
-G('ADD-ACC').onclick = function() { if (confirm('Se deconnecter pour utiliser un autre compte ?')) logout(); };
+G('LOGOUT').onclick = function() { if (confirm(isGuestMode() ? 'Quitter le mode invité ? Tes conversations restent sur cet appareil.' : 'Se déconnecter ?')) logout(); };
+G('ADD-ACC').onclick = function() { if (confirm('Se déconnecter pour utiliser un autre compte ?')) logout(); };
 
 // === MES DONNEES ===
 G('ACC-EXPORT').onclick = function() {
     var b = G('ACC-EXPORT');
     b.disabled = true; b.textContent = 'Preparation...';
     window.etherDesktop.accountExport().then(function(r) {
-        b.disabled = false; b.textContent = 'Telecharger toutes mes donnees';
+        b.disabled = false; b.textContent = 'Télécharger toutes mes données';
         if (!r || !r.ok) { alert((r && r.error) || 'Export impossible.'); return; }
         // Les images sont des liens : on les rend absolus pour qu'ils restent utilisables hors d'ETHER.
         r.images = (r.images || []).map(function(u) { return location.origin + u; });
@@ -1486,7 +1489,7 @@ G('ACC-DEL-OK').onclick = function() {
     window.etherDesktop.accountDelete(pw).then(function(r) {
         b.disabled = false;
         if (!r || !r.ok) { err.textContent = (r && r.error) || 'Suppression impossible.'; err.classList.remove('hidden'); return; }
-        alert('Ton compte et toutes tes donnees ont ete supprimes.');
+        alert('Ton compte et toutes tes données ont été supprimés.');
         location.reload();
     });
 };
@@ -1717,12 +1720,12 @@ function updLearnDashboard() {
 
     // Niveau
     var levels = [
-        { name: 'Debutant', min: 0 },
+        { name: 'Débutant', min: 0 },
         { name: 'Apprenti', min: 50 },
-        { name: 'Intermediaire', min: 150 },
-        { name: 'Avance', min: 350 },
+        { name: 'Intermédiaire', min: 150 },
+        { name: 'Avancé', min: 350 },
         { name: 'Expert', min: 700 },
-        { name: 'Maitre', min: 1200 }
+        { name: 'Maître', min: 1200 }
     ];
     var curLevel = levels[0];
     var nextLevel = levels[1];
@@ -1824,7 +1827,7 @@ G('MG').addEventListener('drop', function(e) {
 if (window.etherDesktop) {
     if (window.etherDesktop.onUpdateAvailable) {
         window.etherDesktop.onUpdateAvailable(function(version) {
-            showKbHint('Mise a jour v' + version + ' en cours de telechargement...');
+            showKbHint('Mise a jour v' + version + ' en cours de téléchargement...');
         });
     }
     if (window.etherDesktop.onUpdateDownloaded) {
@@ -1833,7 +1836,7 @@ if (window.etherDesktop) {
             var bar = document.createElement('div');
             bar.id = 'UPDATE-BAR';
             bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 16px;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(34,197,94,.05));color:#22c55e;font-size:.82rem;font-weight:500;flex-shrink:0;border-bottom:1px solid rgba(34,197,94,.2)';
-            bar.innerHTML = '<span>ETHER v' + version + ' est pret a installer</span><button onclick="if(window.etherDesktop)window.etherDesktop.installUpdate()" style="padding:4px 14px;border:1px solid #22c55e;border-radius:8px;background:rgba(34,197,94,.1);color:#22c55e;cursor:pointer;font-size:.78rem;font-weight:600">Redemarrer</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#22c55e;cursor:pointer;opacity:.5;font-size:1.1rem">&times;</button>';
+            bar.innerHTML = '<span>ETHER v' + version + ' est prêt a installer</span><button onclick="if(window.etherDesktop)window.etherDesktop.installUpdate()" style="padding:4px 14px;border:1px solid #22c55e;border-radius:8px;background:rgba(34,197,94,.1);color:#22c55e;cursor:pointer;font-size:.78rem;font-weight:600">Redemarrer</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#22c55e;cursor:pointer;opacity:.5;font-size:1.1rem">&times;</button>';
             var statusBar = G('API-STATUS-BAR');
             if (statusBar) statusBar.parentNode.insertBefore(bar, statusBar);
         });
@@ -1938,11 +1941,11 @@ function selectModel(btn) {
 // routage automatique utiliserait pour ce fournisseur.
 function builtinPickerEntries() {
     return [
-        { provider: 'groq',     label: 'Groq',     model: GROQ_MODELS.main,     note: 'Rapide, usage general' },
-        { provider: 'gemini',   label: 'Gemini',   model: GEMINI_MODELS.main,   note: 'Long contexte, creatif' },
+        { provider: 'groq',     label: 'Groq',     model: GROQ_MODELS.main,     note: 'Rapide, usage général' },
+        { provider: 'gemini',   label: 'Gemini',   model: GEMINI_MODELS.main,   note: 'Long contexte, créatif' },
         { provider: 'mistral',  label: 'Mistral',  model: MISTRAL_MODELS.main,  note: 'Raisonnement' },
-        { provider: 'cerebras', label: 'Cerebras', model: CEREBRAS_MODELS.main, note: 'Tres gros modele' },
-        { provider: 'workersai', label: 'Workers AI', model: WORKERSAI_MODELS.main, note: 'Llama 3.3 70B, sans cle' },
+        { provider: 'cerebras', label: 'Cerebras', model: CEREBRAS_MODELS.main, note: 'Très gros modèle' },
+        { provider: 'workersai', label: 'Workers AI', model: WORKERSAI_MODELS.main, note: 'Llama 3.3 70B, sans clé' },
         { provider: 'openrouter', label: 'OpenRouter', model: OPENROUTER_MODELS.main, note: 'Gratuit, dernier recours' }
     ];
 }
@@ -1951,8 +1954,8 @@ function builtinPickerEntries() {
 // dans le routage automatique : depenser son credit sans qu'il l'ait demande
 // serait une mauvaise surprise. Ils n'apparaissent que si une cle est enregistree.
 var OPTIONAL_MODELS = {
-    openai:    { main: 'gpt-4o',        label: 'OpenAI',    note: 'GPT-4o, cle requise' },
-    anthropic: { main: 'claude-sonnet-5', label: 'Anthropic', note: 'Claude Sonnet 5, cle requise' }
+    openai:    { main: 'gpt-4o',        label: 'OpenAI',    note: 'GPT-4o, clé requise' },
+    anthropic: { main: 'claude-sonnet-5', label: 'Anthropic', note: 'Claude Sonnet 5, clé requise' }
 };
 
 function optionalPickerEntries() {
@@ -2028,7 +2031,7 @@ function renderModelOptions() {
 
     // --- Fournisseurs personnalises ---
     if (!customProviders.length) return;
-    drop.appendChild(pickerSection('model-sep-custom', 'Fournisseurs personnalises'));
+    drop.appendChild(pickerSection('model-sep-custom', 'Fournisseurs personnalisés'));
     for (var j = 0; j < customProviders.length; j++) {
         var p = customProviders[j];
         drop.appendChild(pickerButton({
@@ -2066,7 +2069,7 @@ function renderTabs() {
             title = convs[tab.id].title || 'Chat';
         }
         var isActive = i === activeTabIdx;
-        html += '<button class="conv-tab' + (isActive ? ' active' : '') + '" onclick="switchTab(' + i + ')" ondblclick="event.stopPropagation();renameTab(' + i + ')" title="Double-clic pour renommer — ' + escAttr(title) + '">'
+        html += '<button class="conv-tab' + (isActive ? ' active' : '') + '" onclick="switchTab(' + i + ')" ondblclick="event.stopPropagation();renameTab(' + i + ')" title="Double-clic pour renommer : ' + escAttr(title) + '">'
             + '<span class="tab-title" id="tab-title-' + i + '">' + esc(title) + '</span>'
             + '<span class="tab-close" onclick="event.stopPropagation();closeTab(' + i + ')">&times;</span>'
             + '</button>';
@@ -2223,7 +2226,7 @@ document.onkeydown = function(e) {
             var mt = lastAI.querySelector('.mt');
             if (mt && navigator.clipboard) {
                 navigator.clipboard.writeText(mt.textContent);
-                showKbHint('Derniere reponse copiee');
+                showKbHint('Dernière réponse copiée');
             }
         }
     }
@@ -2255,7 +2258,7 @@ document.onkeydown = function(e) {
         e.preventDefault();
         G('SM').classList.remove('hidden');
         loadSett();
-        showKbHint('Parametres');
+        showKbHint('Paramètres');
     }
     // Cmd+Shift+S : toggle sidebar
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
@@ -2283,7 +2286,7 @@ document.onkeydown = function(e) {
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'N') {
         e.preventDefault();
         makeEphemeral();
-        showKbHint('Chat ephemere');
+        showKbHint('Chat éphémère');
     }
     // Cmd+1-5 : switcher de mode
     if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '6') {
@@ -2326,11 +2329,11 @@ function toggleShortcutsHelp() {
             + '<div class="modal-b" style="padding:16px 24px">'
             + '<table style="width:100%;font-size:.85rem;border-collapse:collapse">'
             + '<tr><td style="padding:8px 0;color:var(--t2)">Nouveau chat</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+N</kbd></td></tr>'
-            + '<tr><td style="padding:8px 0;color:var(--t2)">Chat ephemere</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+Shift+N</kbd></td></tr>'
+            + '<tr><td style="padding:8px 0;color:var(--t2)">Chat éphémère</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+Shift+N</kbd></td></tr>'
             + '<tr><td style="padding:8px 0;color:var(--t2)">Rechercher</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+K</kbd></td></tr>'
-            + '<tr><td style="padding:8px 0;color:var(--t2)">Parametres</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+,</kbd></td></tr>'
+            + '<tr><td style="padding:8px 0;color:var(--t2)">Paramètres</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+,</kbd></td></tr>'
             + '<tr><td style="padding:8px 0;color:var(--t2)">Toggle sidebar</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+Shift+S</kbd></td></tr>'
-            + '<tr><td style="padding:8px 0;color:var(--t2)">Copier derniere reponse</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+Shift+C</kbd></td></tr>'
+            + '<tr><td style="padding:8px 0;color:var(--t2)">Copier dernière réponse</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+Shift+C</kbd></td></tr>'
             + '<tr><td style="padding:8px 0;color:var(--t2)">Regenerer</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+R</kbd></td></tr>'
             + '<tr><td style="padding:8px 0;color:var(--t2)">Exporter Markdown</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+E</kbd></td></tr>'
             + '<tr><td style="padding:8px 0;color:var(--t2)">Modes (1-6)</td><td style="text-align:right"><kbd style="background:var(--b3);padding:3px 8px;border-radius:5px;font-size:.78rem;border:1px solid var(--bd)">Cmd+1..6</kbd></td></tr>'
@@ -2355,7 +2358,7 @@ function checkApiStatus() {
         // Ancien mode: juste Groq
         window.etherDesktop.groqTest().then(function(r) {
             if (r && r.count > 0) setApiStatus('connected', 'Groq OK');
-            else setApiStatus('error', 'Aucun modele');
+            else setApiStatus('error', 'Aucun modèle');
         })['catch'](function() { setApiStatus('disconnected', 'Injoignable'); });
         return;
     }
@@ -2417,7 +2420,7 @@ function showQuotaExhausted() {
     d.className = 'msg a';
     d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Limite du jour atteinte.</strong></p>'
         + '<p>Ce serveur accorde 100 messages par jour et par personne. Reviens demain, '
-        + 'ou ajoute ta propre cle API dans Parametres &gt; Fournisseurs IA : tes messages ne seront alors plus limites.</p></div></div>';
+        + 'ou ajoute ta propre clé API dans Paramètres &gt; Fournisseurs IA : tes messages ne seront alors plus limites.</p></div></div>';
     G('MG').appendChild(d);
     var av = d.querySelector('.mav');
     if (av) addMsgWave(av);
@@ -2479,7 +2482,10 @@ function canSearchWeb() {
 // Plus de barre de quota cote client : la limite reelle est celle du serveur.
 function updQuotaUI() {}
 var theme=sGet('theme','auto');
+if (['auto', 'dark', 'light', 'midnight'].indexOf(theme) < 0) theme = 'dark';
 function applyTheme(t) {
+    // Seuls Auto, Sombre, Clair et Minuit existent : un ancien thème enregistré retombe sur Sombre.
+    if (['auto', 'dark', 'light', 'midnight'].indexOf(t) < 0) t = 'dark';
     if (t === 'auto') {
         // Detecter le theme systeme
         if (window.etherDesktop && window.etherDesktop.getSystemTheme) {
@@ -2510,7 +2516,7 @@ if (window.etherDesktop && window.etherDesktop.onSystemThemeChanged) {
 var _hasSession = !!(window.etherDesktop && window.etherDesktop.authToken && window.etherDesktop.authToken());
 // Mode invite : pas de jeton, tout reste dans ce navigateur.
 function isGuestMode() { return !!(window.etherDesktop && window.etherDesktop.isGuest && window.etherDesktop.isGuest()); }
-var GUEST_USER = { name: 'Invite', firstName: 'Invite', lastName: '', guest: true };
+var GUEST_USER = { name: 'Invité', firstName: 'Invité', lastName: '', guest: true };
 if(user && _hasSession) showApp();
 else if (isGuestMode()) { user = GUEST_USER; showApp(); }
 else setLoginMode(user ? 'login' : 'signup', null, user && user.email);
@@ -2520,14 +2526,14 @@ else setLoginMode(user ? 'login' : 'signup', null, user && user.email);
 // reinitialisation du mot de passe avec le code de secours.
 // Pas de valeur initiale ici : setLoginMode() a deja pu etre appele plus haut
 // au demarrage, et une affectation l'ecraserait (le formulaire affichait
-// "Creer un compte" mais tentait une connexion).
+// "Créer un compte" mais tentait une connexion).
 var loginMode;
 function setLoginMode(mode, info, email) {
     loginMode = mode;
     G('LS').setAttribute('data-mode', mode);
     G('LT-IN').classList.toggle('on', mode === 'login');
     G('LT-UP').classList.toggle('on', mode === 'signup');
-    G('LB').textContent = mode === 'signup' ? 'Creer mon compte' : mode === 'recover' ? 'Changer le mot de passe' : 'Se connecter';
+    G('LB').textContent = mode === 'signup' ? 'Créer mon compte' : mode === 'recover' ? 'Changer le mot de passe' : 'Se connecter';
     G('LP').placeholder = mode === 'login' ? 'Mot de passe' : (mode === 'recover' ? 'Nouveau mot de passe' : 'Mot de passe') + ' (8 caracteres min.)';
     G('LP').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
     if (email) G('LE').value = email;
@@ -2556,7 +2562,7 @@ G('L-GUEST').onclick = function() {
     showApp();
 };
 G('LT-UP').onclick = function() { setLoginMode('signup'); };
-G('L-FORGOT').onclick = function(e) { e.preventDefault(); setLoginMode('recover', 'Entre ton email, le code de secours recu a l inscription, et un nouveau mot de passe.'); };
+G('L-FORGOT').onclick = function(e) { e.preventDefault(); setLoginMode('recover', "Entre ton adresse e-mail, le code de secours reçu à l'inscription et un nouveau mot de passe."); };
 G('L-BACK').onclick = function(e) { e.preventDefault(); setLoginMode('login'); };
 
 G('LF').onsubmit = function() { G('LB').onclick(); return false; };
@@ -2567,14 +2573,14 @@ G('LB').onclick = function() {
     var errEl = G('login-err');
     function fail(msg) { errEl.textContent = msg; errEl.style.display = 'block'; G('LB').disabled = false; }
     errEl.style.display = 'none';
-    if (!email || email.indexOf('@') === -1 || email.indexOf('.') === -1) return fail('Adresse email invalide.');
+    if (!email || email.indexOf('@') === -1 || email.indexOf('.') === -1) return fail('Erreur : cette adresse e-mail est incomplète.');
     if (!pw) return fail('Mot de passe requis.');
     if (loginMode !== 'login' && pw.length < 8) return fail('Le mot de passe doit faire au moins 8 caracteres.');
 
     var prenom = G('LN').value.trim(), nom = G('LNAME').value.trim();
     var call;
     if (loginMode === 'signup') {
-        if (!prenom) return fail('Le prenom est requis.');
+        if (!prenom) return fail('Erreur : écris ton prénom.');
         call = D.authSignup({ name: nom ? prenom + ' ' + nom : prenom, email: email, password: pw });
     } else if (loginMode === 'recover') {
         var code = G('LRC').value.trim();
@@ -2587,7 +2593,7 @@ G('LB').onclick = function() {
     call.then(function(r) {
         if (!r || !r.ok) {
             if (r && r.exists) setLoginMode('login', null, email);
-            return fail((r && r.error) || 'Connexion impossible, reessaie.');
+            return fail((r && r.error) || 'Erreur : connexion impossible. Réessaie.');
         }
         var full = r.user.name || prenom || 'Utilisateur';
         var sp = full.indexOf(' ');
@@ -2597,7 +2603,7 @@ G('LB').onclick = function() {
         G('LP').value = '';
         if (r.recoveryCode) showRecoveryCode(r.recoveryCode);
         else D.authFinish();
-    })['catch'](function() { fail('Reseau indisponible, reessaie.'); });
+    })['catch'](function() { fail('Erreur : réseau indisponible. Réessaie.'); });
 };
 
 // Le code de secours n'est affiche qu'une fois, juste apres l'inscription ou
@@ -2610,7 +2616,7 @@ function showRecoveryCode(code) {
         var b = G('RC-COPY');
         (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(function() {
             b.textContent = 'Copie !';
-        }, function() { b.textContent = 'Selectionne le code et copie-le'; });
+        }, function() { b.textContent = 'Sélectionné le code et copie-le'; });
     };
     G('RC-OK').onclick = function() { G('RC-OK').disabled = true; window.etherDesktop.authFinish(); };
 }
@@ -2635,8 +2641,8 @@ function showApp(){
 function applyGuestMode() {
     G('GUEST-BAR').classList.remove('hidden');
     ['DEEP-BTN', 'CUSTOM-TOGGLE'].forEach(function(id) { var el = G(id); if (el) el.classList.add('hidden'); });
-    var lo = G('LOGOUT'); if (lo) lo.textContent = 'Quitter le mode invite';
-    var em = G('ACC-EMAIL'); if (em) em.textContent = 'Mode invite : aucun compte, rien n est enregistre sur le serveur';
+    var lo = G('LOGOUT'); if (lo) lo.textContent = 'Quitter le mode invité';
+    var em = G('ACC-EMAIL'); if (em) em.textContent = 'Mode invité : aucun compte, rien n\'est enregistré sur le serveur';
     applyGuestRouting();
 }
 function applyGuestRouting() {
@@ -2655,7 +2661,7 @@ function openGuestSignup() {
     G('APP').classList.add('hidden');
     G('LS').classList.remove('hidden');
     G('LS').querySelector('.login-card').classList.remove('hidden');
-    setLoginMode('signup', 'Cree ton compte : tu pourras importer les conversations de ce mode invite.');
+    setLoginMode('signup', 'Crée ton compte : tu pourras importer les conversations de ce mode invité.');
 }
 G('GUEST-SIGNUP').onclick = openGuestSignup;
 window.addEventListener('ether-keys-changed', applyGuestRouting);
@@ -2668,8 +2674,8 @@ window.addEventListener('ether-guest-provider-error', function(e) {
     var d = document.createElement('div');
     d.className = 'msg a';
     d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>' + esc(p.charAt(0).toUpperCase() + p.slice(1))
-        + ' a refuse la requete.</strong></p><p>Ta cle est peut-etre invalide, expiree ou sans credit. Verifie-la dans Parametres &gt; Fournisseurs IA, ou cree un compte gratuit pour utiliser ETHER sans cle.</p>'
-        + '<div class="guest-card"><button type="button" class="btn-p" data-g="key">Verifier ma cle</button><button type="button" class="btn-s" data-g="signup">Creer un compte gratuit</button></div></div></div>';
+        + ' a refusé la requête.</strong></p><p>Ta clé est peut-être invalide, expirée ou sans crédit. Vérifie-la dans Paramètres &gt; Fournisseurs IA, ou crée un compte gratuit pour utiliser ETHER sans clé.</p>'
+        + '<div class="guest-card"><button type="button" class="btn-p" data-g="key">Vérifier ma clé</button><button type="button" class="btn-s" data-g="signup">Créer un compte gratuit</button></div></div></div>';
     G('MG').appendChild(d);
     d.querySelector('[data-g="key"]').onclick = openProviderSettings;
     d.querySelector('[data-g="signup"]').onclick = openGuestSignup;
@@ -2687,10 +2693,10 @@ function showGuestNeedKey() {
     var d = document.createElement('div');
     d.className = 'msg a';
     d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt">'
-        + '<p><strong>Ajoute ta cle API pour essayer, ou cree un compte gratuit pour utiliser ETHER sans cle.</strong></p>'
-        + '<p>Sans compte, ETHER fonctionne avec ta propre cle Groq, Gemini, Mistral, OpenAI ou Anthropic. Elle reste dans ce navigateur.</p>'
-        + '<div class="guest-card"><button type="button" class="btn-p" data-g="key">Ajouter ma cle</button>'
-        + '<button type="button" class="btn-s" data-g="signup">Creer un compte gratuit</button></div></div></div>';
+        + '<p><strong>Ajoute ta clé API pour essayer, ou crée un compte gratuit pour utiliser ETHER sans clé.</strong></p>'
+        + '<p>Sans compte, ETHER fonctionne avec ta propre clé Groq, Gemini, Mistral, OpenAI ou Anthropic. Elle reste dans ce navigateur.</p>'
+        + '<div class="guest-card"><button type="button" class="btn-p" data-g="key">Ajouter ma clé</button>'
+        + '<button type="button" class="btn-s" data-g="signup">Créer un compte gratuit</button></div></div></div>';
     G('MG').appendChild(d);
     d.querySelector('[data-g="key"]').onclick = openProviderSettings;
     d.querySelector('[data-g="signup"]').onclick = openGuestSignup;
@@ -2700,8 +2706,8 @@ function showGuestNeedKey() {
 function showGuestAccountOnly(what) {
     var d = document.createElement('div');
     d.className = 'msg a';
-    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>' + esc(what) + ' est reserve aux comptes.</strong></p>'
-        + '<p>Cree un compte gratuit pour y acceder.</p><div class="guest-card"><button type="button" class="btn-p">Creer un compte gratuit</button></div></div></div>';
+    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>' + esc(what) + ' est réservé aux comptes.</strong></p>'
+        + '<p>Crée un compte gratuit pour y accéder.</p><div class="guest-card"><button type="button" class="btn-p">Créer un compte gratuit</button></div></div></div>';
     G('MG').appendChild(d);
     d.querySelector('button').onclick = openGuestSignup;
     var av = d.querySelector('.mav'); if (av) addMsgWave(av);
@@ -2718,7 +2724,7 @@ function offerGuestImport() {
     if (!ids.length) { if (D.guestImportTake) D.guestImportTake(); return; }
     var d = document.createElement('div');
     d.className = 'msg a';
-    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Importer tes conversations du mode invite ?</strong></p>'
+    d.innerHTML = '<div class="mav"></div><div class="mbd"><div class="mt"><p><strong>Importer tes conversations du mode invité ?</strong></p>'
         + '<p>' + ids.length + ' conversation' + (ids.length > 1 ? 's' : '') + ' de ce navigateur peu' + (ids.length > 1 ? 'vent' : 't')
         + ' rejoindre ton compte et se synchroniser sur tes appareils.</p>'
         + '<div class="guest-card"><button type="button" class="btn-p" data-g="yes">Importer</button>'
@@ -2736,7 +2742,7 @@ function offerGuestImport() {
     };
     d.querySelector('[data-g="no"]').onclick = function() {
         D.guestImportTake();
-        d.querySelector('.mt').innerHTML = '<p>Conversations du mode invite ignorees.</p>';
+        d.querySelector('.mt').innerHTML = '<p>Conversations du mode invité ignorées.</p>';
     };
     var av = d.querySelector('.mav'); if (av) addMsgWave(av);
 }
@@ -2792,7 +2798,7 @@ function updTeacherBadge() {
     if (typeof TEACHER_MEMORY === 'undefined') return;
     var data = TEACHER_MEMORY.load();
     if (data.calibrated && data.globalLevel !== 'unknown') {
-        var labels = { debutant: 'Debutant', intermediaire: 'Intermediaire', avance: 'Avance', expert: 'Expert' };
+        var labels = { debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' };
         var colors = { debutant: '#22c55e', intermediaire: '#f59e0b', avance: '#8b5cf6', expert: '#ef4444' };
         badge.textContent = 'Niveau: ' + (labels[data.globalLevel] || data.globalLevel);
         badge.style.color = colors[data.globalLevel] || 'var(--ac)';
@@ -2886,7 +2892,7 @@ if (G('CM-RES-ADD')) {
             renderModeResources(editingModeId);
             loadModeResources(editingModeId);
         })['catch'](function(e) {
-            err.textContent = 'Echec : ' + (e && e.message ? e.message : 'inconnu');
+            err.textContent = 'Échec : ' + (e && e.message ? e.message : 'inconnu');
             err.classList.remove('hidden');
         });
     };
@@ -2916,7 +2922,7 @@ var defaultCategories = [
     { id: 'design', label: 'Design', icon: 'Ds' },
     { id: 'business', label: 'Business', icon: 'B' },
     { id: 'science', label: 'Science', icon: 'Sc' },
-    { id: 'sante', label: 'Sante', icon: 'Sa' },
+    { id: 'sante', label: 'Santé', icon: 'Sa' },
     { id: 'finance', label: 'Finance', icon: 'F' },
     { id: 'voyage', label: 'Voyage', icon: 'V' },
     { id: 'jeux', label: 'Jeux', icon: 'J' },
@@ -2936,7 +2942,7 @@ function renderCustomModes() {
     if (countEl) countEl.textContent = customModes.length > 0 ? '(' + customModes.length + ')' : '';
 
     if (!customModes.length) {
-        container.innerHTML = '<div class="cm-empty">Aucun mode personnalise</div>';
+        container.innerHTML = '<div class="cm-empty">Aucun mode personnalisé</div>';
         return;
     }
 
@@ -3000,7 +3006,7 @@ function openCreateCustomMode() {
     G('CM-WHEN').value = '';
     renderModeResources(null);
     G('CM-EMOJI').value = 'autre';
-    G('CM-SAVE').textContent = 'Creer le mode';
+    G('CM-SAVE').textContent = 'Créer le mode';
     G('CM-DELETE').style.display = 'none';
     renderCategoryPicker('');
     G('CM-MODAL').classList.remove('hidden');
@@ -3049,7 +3055,7 @@ function saveCustomMode() {
     if (!name) { G('CM-NAME').style.borderColor = '#dc2626'; return; }
     // Limite modes custom (3 max gratuit)
     if (!isPro && !editingModeId && customModes.length >= 3) {
-        alert('Limite atteinte : 3 modes personnalises max. Passe au Plan Pro pour en creer plus.');
+        alert('Limite atteinte : 3 modes personnalisés max. Passe au Plan Pro pour en créer plus.');
         return;
     }
     var emoji = G('CM-EMOJI').value.trim() || 'autre';
