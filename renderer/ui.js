@@ -13,6 +13,13 @@ function markUserMessage(){if(window.etherDesktop&&window.etherDesktop.markUserM
 function sendMsg(text){
     var hasFiles = stagedFiles && stagedFiles.length > 0;
     if((!text||!text.trim())&&!hasFiles||thinking)return;
+    // Un fichier en lecture ou illisible bloque tout le message : sinon
+    // l'utilisateur croirait son document envoye.
+    var blocking = hasFiles ? stagedFilesBlocking() : null;
+    if (blocking) {
+        showKbHint(blocking.reading ? 'Attends la fin de la lecture du fichier.' : 'Retire le fichier en erreur pour envoyer.');
+        return;
+    }
     if (!canSendMessage()) {
         showQuotaExhausted();
         return;
@@ -1262,7 +1269,6 @@ if (window.etherDesktop && window.etherDesktop.isDesktop) {
                     }
                     stagedFiles.push(entry);
                     renderStagedFiles();
-                    sndEl.disabled = false;
                 })(files[i]);
             }
         });
