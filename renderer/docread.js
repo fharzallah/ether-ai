@@ -1,8 +1,9 @@
-// === ETHER — Lecture des documents Word (.docx) et Excel (.xlsx) ===
-// Sans bibliotheque : un .docx/.xlsx est un zip de fichiers XML. On lit le
-// repertoire central du zip, on decompresse les entrees utiles avec
+// === ETHER — Lecture des documents Word (.docx), Excel (.xlsx) et PDF ===
+// Word et Excel sans bibliotheque : un .docx/.xlsx est un zip de fichiers XML.
+// On lit le repertoire central du zip, on decompresse les entrees utiles avec
 // DecompressionStream('deflate-raw') et on extrait le texte du XML.
 // (docgen.js fait l'inverse : il ecrit ces fichiers.)
+// PDF avec pdf.js, heberge dans vendor/pdfjs et charge au premier PDF.
 
 var ETHER_DOCREAD = (function() {
     // Au-dela, on arrete de lire une feuille : le texte serait coupe a l'envoi.
@@ -154,16 +155,68 @@ var ETHER_DOCREAD = (function() {
         });
     }
 
-    // Texte d'un .docx ou .xlsx (ArrayBuffer). Rejette si le fichier n'est pas lisible.
-    function read(buffer, ext) {
-        return Promise.resolve().then(function() {
-            var bytes = new Uint8Array(buffer);
-            var entries = listZip(bytes);
-            if (ext === 'docx') return readDocx(bytes, entries);
-            if (ext === 'xlsx') return readXlsx(bytes, entries);
-            throw new Error('Format non gere : ' + ext);
+    // pdf.js (1,8 Mo) n'est charge qu'au premier PDF. Meme origine : la CSP
+    // (script-src et worker-src 'self') l'autorise sans exception.
+    var pdfjsPromise = null;
+    function loadPdfJs() {
+        if (!pdfjsPromise) {
+            var base = new URL('vendor/pdfjs/', document.baseURI).href;
+            pdfjsPromise = import(base + 'pdf.min.mjs').then(function(lib) {
+                lib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.mjs';
+                return lib;
+            });
+            pdfjsPromise['catch'](function() { pdfjsPromise = null; });
+        }
+        return pdfjsPromise;
+    }
+
+    // Texte d'un PDF, page par page. pages : nombre de pages lues ; pageCount : total.
+    function readPdf(bytes, lib) {
+        var task = lib.getDocument({ data: bytes, isEvalSupported: false, useWorkerFetch: false, verbosity: 0 });
+        return task.promise.then(function(doc) {
+            var texts = [];
+            var size = 0;
+            function next(n) {
+                if (n > doc.numPages || size >= MAX_CHARS) return Promise.resolve();
+                return doc.getPage(n).then(function(page) { return page.getTextContent(); }).then(function(tc) {
+                    var text = tc.items.map(function(it) { return (it.str || '') + (it.hasEOL ? '\n' : ''); }).join('')
+                        .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+                    texts.push(text);
+                    size += text.length;
+                    return next(n + 1);
+                });
+            }
+            return next(1).then(function() {
+                var pageCount = doc.numPages;
+                task.destroy();
+                var hasText = texts.some(function(t) { return t; });
+                return {
+                    text: hasText ? texts.map(function(t, i) { return t ? '[Page ' + (i + 1) + ']\n' + t : ''; }).filter(Boolean).join('\n\n') : '',
+                    pages: texts.length,
+                    pageCount: pageCount
+                };
+            });
+        })['catch'](function(e) {
+            if (e && e.name === 'PasswordException') { var err = new Error('PDF protege'); err.code = 'password'; throw err; }
+            throw e;
         });
     }
 
-    return { read: read, canRead: function(ext) { return ext === 'docx' || ext === 'xlsx'; } };
+    // Lit un .docx, .xlsx ou .pdf (ArrayBuffer) : { text, pages, pageCount }
+    // (pages et pageCount seulement pour un PDF). Rejette si le fichier est illisible.
+    // opts.pdfjs : module pdf.js deja charge (tests sous Node).
+    function read(buffer, ext, opts) {
+        return Promise.resolve().then(function() {
+            var bytes = new Uint8Array(buffer);
+            if (ext === 'pdf') {
+                return (opts && opts.pdfjs ? Promise.resolve(opts.pdfjs) : loadPdfJs()).then(function(lib) { return readPdf(bytes, lib); });
+            }
+            var entries = listZip(bytes);
+            var text = ext === 'docx' ? readDocx(bytes, entries) : ext === 'xlsx' ? readXlsx(bytes, entries) : null;
+            if (!text) throw new Error('Format non gere : ' + ext);
+            return text.then(function(t) { return { text: t }; });
+        });
+    }
+
+    return { read: read, canRead: function(ext) { return ext === 'docx' || ext === 'xlsx' || ext === 'pdf'; } };
 })();

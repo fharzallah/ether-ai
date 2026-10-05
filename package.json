@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "for f in renderer/*.js sw.js worker/src/index.js; do node --check \"$f\" || exit 1; done",
     "test": "node test/smoke.js",
-    "build:web": "rm -rf worker/public && mkdir -p worker/public && cp -R index.html offline.html style.css marked.min.js manifest.webmanifest sw.js icons renderer _headers worker/public/",
+    "build:web": "rm -rf worker/public && mkdir -p worker/public && cp -R index.html offline.html style.css marked.min.js manifest.webmanifest sw.js icons renderer vendor _headers worker/public/",
     "dev": "npm run build:web && cd worker && npx wrangler dev",
     "deploy": "npm run build:web && cd worker && npx wrangler deploy"
   },
