@@ -743,6 +743,45 @@ var stagedFiles = [];
 // Extensions lues comme du texte brut dans le navigateur.
 var TEXT_EXTS = ['txt', 'csv', 'md', 'json', 'js', 'html', 'css', 'py'];
 
+// Texte de documents envoye avec un message, partage entre les fichiers joints
+// (environ 5 000 tokens). Le plus petit contexte des modeles utilises depasse
+// 60 000 tokens, mais l'historique renvoie ce texte aux tours suivants et une
+// requete d'invite est plafonnee a 128 Ko par le worker.
+// Ce qui depasse reste cherchable : le texte complet est indexe dans le RAG.
+var DOC_BUDGET = 20000;
+
+// Part du texte d'un fichier qui tient dans `budget` caracteres.
+// PDF : pages entieres, note "X pages sur Y lues". Autres : note en pourcentage.
+function fitDocument(sf, budget) {
+    var full = sf.content || (sf.desktopFile && sf.desktopFile.content) || '';
+    var pages = sf.pageTexts;
+    if (pages && pages.length) {
+        var total = sf.pageCount || pages.length;
+        var parts = [], used = 0, read = 0, partial = false;
+        for (var i = 0; i < pages.length; i++) {
+            var block = pages[i] ? '[Page ' + (i + 1) + ']\n' + pages[i] : '';
+            if (block && used + block.length > budget) {
+                if (!parts.length) { parts.push(block.substring(0, budget)); read = i + 1; partial = true; }
+                break;
+            }
+            if (block) { parts.push(block); used += block.length + 2; }
+            read = i + 1;
+        }
+        var text = parts.join('\n\n');
+        if (read < total) return { text: text, cut: true, note: read + (read > 1 ? ' pages sur ' : ' page sur ') + total + (read > 1 ? ' lues' : ' lue') };
+        if (partial) return { text: text, cut: true, note: 'Texte coupé : ' + Math.max(1, Math.floor(budget * 100 / full.length)) + ' % lu' };
+        return { text: text, cut: false, note: '' };
+    }
+    if (full.length <= budget) return { text: full, cut: false, note: '' };
+    return { text: full.substring(0, budget), cut: true, note: 'Texte coupé : ' + Math.max(1, Math.floor(budget * 100 / full.length)) + ' % lu' };
+}
+
+// Budget de chaque fichier texte quand `files` partent ensemble.
+function docBudgetPerFile(files) {
+    var docs = files.filter(function(f) { return !f.isImage; }).length;
+    return Math.floor(DOC_BUDGET / Math.max(1, docs));
+}
+
 // Etat d'un fichier joint : { ok } si son texte peut partir, { reading } pendant
 // la lecture, sinon { error } avec le message affiche sur la pastille.
 // Un fichier sans texte lisible ne part jamais : le modele inventerait son contenu.
@@ -812,14 +851,16 @@ function stageFile(file) {
     } else if (TEXT_EXTS.indexOf(ext) !== -1) {
         entry.reading = true;
         var r2 = new FileReader();
-        r2.onload = function(e) { entry.content = e.target.result.substring(0, 3000); entry.reading = false; renderStagedFiles(); };
+        r2.onload = function(e) { entry.content = e.target.result.substring(0, 200000); entry.reading = false; renderStagedFiles(); };
         r2.onerror = function() { entry.reading = false; entry.readError = 'Lecture impossible. Réessaie ou copie-colle le texte.'; renderStagedFiles(); };
         r2.readAsText(file);
     } else if (typeof ETHER_DOCREAD !== 'undefined' && ETHER_DOCREAD.canRead(ext)) {
         entry.reading = true;
         var kind = { docx: 'fichier Word', xlsx: 'fichier Excel', pdf: 'PDF' }[ext];
         file.arrayBuffer().then(function(buf) { return ETHER_DOCREAD.read(buf, ext); }).then(function(res) {
-            entry.content = (res.text || '').substring(0, 3000);
+            entry.content = res.text || '';
+            entry.pageTexts = res.pageTexts || null;
+            entry.pageCount = res.pageCount || 0;
         })['catch'](function(e) {
             entry.readError = e && e.code === 'password' ? 'Ce PDF est protégé par un mot de passe. Retire la protection ou copie-colle le texte.'
                 : 'Lecture impossible : ce ' + kind + ' est protégé par un mot de passe ou abîmé.';
@@ -839,11 +880,12 @@ function renderStagedFiles() {
         var icons = { pdf: '#ef4444', doc: '#2563eb', docx: '#2563eb', txt: '#6b7280', csv: '#22c55e', xls: '#22c55e', xlsx: '#22c55e' };
         var iconColor = icons[sf.ext] || '#8b5cf6';
         var st = stagedFileState(sf);
+        var fit = st.ok && !sf.isImage ? fitDocument(sf, docBudgetPerFile(stagedFiles)) : null;
         var el = document.createElement('div');
         el.className = 'staged-file' + (st.error ? ' sf-err' : '') + (st.reading ? ' sf-reading' : '');
         if (st.error) el.title = st.error;
         var info = st.error ? '<span class="sf-msg" role="alert">' + esc(st.error) + '</span>'
-            : '<span style="font-size:.68rem;color:var(--t3)">' + (st.reading ? 'Lecture…' : sf.size) + '</span>';
+            : '<span style="font-size:.68rem;color:var(--t3)">' + (st.reading ? 'Lecture…' : sf.size + (fit && fit.cut ? ' · ' + esc(fit.note) : '')) + '</span>';
         if (sf.isImage && sf.dataUrl) {
             el.innerHTML = '<img class="sf-thumb" src="' + sf.dataUrl + '"><span class="sf-name">' + esc(sf.name) + '</span>' + info + '<button class="sf-remove" data-idx="' + i + '" aria-label="Retirer le fichier">&times;</button>';
         } else {
@@ -871,6 +913,7 @@ function clearStagedFiles() {
 
 function processStagedFiles(userPrompt) {
     var filesToProcess = stagedFiles.slice();
+    var budget = docBudgetPerFile(filesToProcess);
     clearStagedFiles();
 
     for (var f = 0; f < filesToProcess.length; f++) {
@@ -884,8 +927,9 @@ function processStagedFiles(userPrompt) {
         } else {
             var icons2 = { pdf: '#ef4444', doc: '#2563eb', docx: '#2563eb', txt: '#6b7280', csv: '#22c55e', xls: '#22c55e', xlsx: '#22c55e' };
             var iconColor2 = icons2[sf.ext] || '#8b5cf6';
+            var fit1 = fitDocument(sf, budget);
             var d2 = document.createElement('div'); d2.className = 'msg u';
-            d2.innerHTML = '<div class="mb"><div style="display:flex;align-items:center;gap:10px;padding:4px 0"><div style="width:36px;height:36px;border-radius:8px;background:' + iconColor2 + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">' + sf.ext.toUpperCase() + '</div><div><div style="font-size:.85rem">' + esc(sf.name) + '</div><div style="font-size:.72rem;color:rgba(255,255,255,.6)">' + sf.size + '</div></div></div></div>';
+            d2.innerHTML = '<div class="mb"><div style="display:flex;align-items:center;gap:10px;padding:4px 0"><div style="width:36px;height:36px;border-radius:8px;background:' + iconColor2 + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">' + sf.ext.toUpperCase() + '</div><div><div style="font-size:.85rem">' + esc(sf.name) + '</div><div style="font-size:.72rem;color:rgba(255,255,255,.6)">' + sf.size + (fit1.cut ? ' · ' + esc(fit1.note) : '') + '</div></div></div></div>';
             G('MG').appendChild(d2);
             if (curConv && !isEphemeral) convs[curConv].messages.push({ r: 'u', t: '[Fichier: ' + sf.name + ']', ts: Date.now() });
         }
@@ -901,10 +945,12 @@ function processStagedFiles(userPrompt) {
             content = sf2.desktopFile.content;
         }
         if (content) {
-            fileContext += '\n\n--- Fichier: ' + sf2.name + ' ---\n' + content.substring(0, 4000);
-            // Indexer automatiquement dans le RAG
+            var fit2 = fitDocument(sf2, budget);
+            fileContext += '\n\n--- Fichier: ' + sf2.name + (fit2.cut ? ' (' + fit2.note + ')' : '') + ' ---\n' + fit2.text;
+            if (fit2.cut) fileContext += '\n[Document coupé : ' + fit2.note + '. Le reste est dans la base de documents. Si la question porte sur une partie absente, dis-le.]';
+            // Indexer le texte complet dans le RAG : les passages coupes restent cherchables
             if (typeof ragIndexUploadedFile === 'function') {
-                ragIndexUploadedFile({ name: sf2.name, content: content });
+                ragIndexUploadedFile({ name: sf2.name, content: content.substring(0, 100000) });
             }
         } else if (sf2.isImage && sf2.base64 && window.etherDesktop && window.etherDesktop.geminiVision) {
             // Analyser l'image via Gemini Vision

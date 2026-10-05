@@ -219,6 +219,18 @@ function disabledTask(provider, reason) {
     return Promise.resolve({ ok: false, error: 'task disabled', disabled: true, provider: provider });
 }
 
+// Les documents joints restent entiers dans les deux derniers messages de
+// l'historique (suite de la conversation). Plus haut, un message long est
+// coupe : renvoyer chaque document a chaque tour ferait grossir la requete
+// au-dela du contexte des petits modeles et des 128 Ko d'une requete d'invite.
+var HISTORY_OLD_MAX = 4000;
+function trimHistoryForRequest(list) {
+    return list.map(function(h, i) {
+        if (i >= list.length - 2 || !h.content || h.content.length <= HISTORY_OLD_MAX) return h;
+        return { role: h.role, content: h.content.substring(0, HISTORY_OLD_MAX) + '\n[Suite retirée de l\'historique pour alléger la requête.]' };
+    });
+}
+
 var ETHER_ENGINE = {
     currentMode: 'base',
     teacherLevel: 'lycee',
@@ -296,7 +308,7 @@ var ETHER_ENGINE = {
                 return window.etherDesktop.openrouterChat({
                     model: OPENROUTER_MODELS.main,
                     messages: [{ role: 'system', content: self.getSystemPrompt(false) }].concat(
-                        self.conversationHistory.slice(-10).map(function(h) { return { role: h.role === 'user' ? 'user' : 'assistant', content: h.content }; })
+                        trimHistoryForRequest(self.conversationHistory.slice(-10)).map(function(h) { return { role: h.role === 'user' ? 'user' : 'assistant', content: h.content }; })
                     ).concat([{ role: 'user', content: userMessage }]),
                     temperature: 0.6, max_tokens: 3000
                 }).then(function(r) {
@@ -362,7 +374,7 @@ var ETHER_ENGINE = {
             sysPrompt += RAG.getContext(userMessage);
         }
         var messages = [{ role: 'system', content: sysPrompt }];
-        var recent = this.conversationHistory.slice(-10);
+        var recent = trimHistoryForRequest(this.conversationHistory.slice(-10));
         for (var i = 0; i < recent.length; i++) {
             messages.push({ role: recent[i].role === 'user' ? 'user' : 'assistant', content: recent[i].content });
         }
@@ -400,7 +412,7 @@ var ETHER_ENGINE = {
         if (typeof RAG !== 'undefined') sysBase += RAG.getContext(userMessage);
 
         var contextMsgs = [];
-        var recent = this.conversationHistory.slice(-6);
+        var recent = trimHistoryForRequest(this.conversationHistory.slice(-6));
         for (var i = 0; i < recent.length; i++) {
             contextMsgs.push({ role: recent[i].role === 'user' ? 'user' : 'assistant', content: recent[i].content });
         }
@@ -877,7 +889,7 @@ var ETHER_ENGINE = {
         var self = this;
         var sp = this.getSystemPrompt();
         var ctx = '';
-        var recent = this.conversationHistory.slice(-10);
+        var recent = trimHistoryForRequest(this.conversationHistory.slice(-10));
         for (var i = 0; i < recent.length; i++) {
             if (recent[i].role === 'user') ctx += 'User: ' + recent[i].content + '\n';
             else ctx += 'ETHER: ' + recent[i].content + '\n';
