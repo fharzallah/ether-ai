@@ -752,6 +752,7 @@ function stagedFileState(sf) {
     if (sf.reading) return { ok: false, reading: true };
     var text = sf.content || (sf.desktopFile && sf.desktopFile.content) || '';
     if (text.trim()) return { ok: true };
+    if (sf.ext === 'pdf' && !sf.desktopFile && sf.content === '') return { ok: false, error: 'Ce PDF ne contient pas de texte : c\'est sans doute un scan. Copie-colle le texte ou joins un PDF avec du texte.' };
     if (TEXT_EXTS.indexOf(sf.ext) !== -1 || sf.ext === 'docx' || sf.ext === 'xlsx' || sf.desktopFile) return { ok: false, error: 'Ce fichier ne contient pas de texte lisible.' };
     if (sf.ext === 'doc') return { ok: false, error: 'Les anciens fichiers Word (.doc) ne sont pas lus. Enregistre-le en .docx ou copie-colle le texte.' };
     if (sf.ext === 'xls') return { ok: false, error: 'Les anciens fichiers Excel (.xls) ne sont pas lus. Enregistre-le en .xlsx ou copie-colle le texte.' };
@@ -816,11 +817,12 @@ function stageFile(file) {
         r2.readAsText(file);
     } else if (typeof ETHER_DOCREAD !== 'undefined' && ETHER_DOCREAD.canRead(ext)) {
         entry.reading = true;
-        var kind = ext === 'docx' ? 'Word' : 'Excel';
-        file.arrayBuffer().then(function(buf) { return ETHER_DOCREAD.read(buf, ext); }).then(function(text) {
-            entry.content = (text || '').substring(0, 3000);
-        })['catch'](function() {
-            entry.readError = 'Lecture impossible : ce fichier ' + kind + ' est protégé par un mot de passe ou abîmé.';
+        var kind = { docx: 'fichier Word', xlsx: 'fichier Excel', pdf: 'PDF' }[ext];
+        file.arrayBuffer().then(function(buf) { return ETHER_DOCREAD.read(buf, ext); }).then(function(res) {
+            entry.content = (res.text || '').substring(0, 3000);
+        })['catch'](function(e) {
+            entry.readError = e && e.code === 'password' ? 'Ce PDF est protégé par un mot de passe. Retire la protection ou copie-colle le texte.'
+                : 'Lecture impossible : ce ' + kind + ' est protégé par un mot de passe ou abîmé.';
         }).then(function() { entry.reading = false; renderStagedFiles(); });
     }
     renderStagedFiles();

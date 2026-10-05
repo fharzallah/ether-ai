@@ -878,8 +878,34 @@ function buildZip(files, stored) {
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length);
 }
 
+// Fabrique un PDF minimal : une page par element (texte, ou null pour une page sans texte).
+function buildPdf(pages) {
+  const objs = [];
+  const kids = pages.map((_, i) => (4 + i * 2) + ' 0 R').join(' ');
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2] = '<< /Type /Pages /Kids [' + kids + '] /Count ' + pages.length + ' >>';
+  objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  pages.forEach((txt, i) => {
+    const content = txt ? 'BT /F1 18 Tf 72 720 Td (' + txt + ') Tj ET' : '';
+    objs[4 + i * 2] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ' + (5 + i * 2) + ' 0 R >>';
+    objs[5 + i * 2] = '<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream';
+  });
+  let out = '%PDF-1.4\n';
+  const offsets = [];
+  for (let n = 1; n < objs.length; n++) {
+    offsets[n] = Buffer.byteLength(out, 'latin1');
+    out += n + ' 0 obj\n' + objs[n] + '\nendobj\n';
+  }
+  const xref = Buffer.byteLength(out, 'latin1');
+  out += 'xref\n0 ' + objs.length + '\n0000000000 65535 f \n';
+  for (let n = 1; n < objs.length; n++) out += String(offsets[n]).padStart(10, '0') + ' 00000 n \n';
+  out += 'trailer\n<< /Size ' + objs.length + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n';
+  const buf = Buffer.from(out, 'latin1');
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length);
+}
+
 async function runDocReadTests() {
-  console.log('\n\x1b[36m5c. Lecture Word et Excel\x1b[0m');
+  console.log('\n\x1b[36m5c. Lecture Word, Excel et PDF\x1b[0m');
   const src = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'docread.js'), 'utf8');
   const docread = new Function(src + '\nreturn ETHER_DOCREAD;')();
 
@@ -891,7 +917,7 @@ async function runDocReadTests() {
       + '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>A1</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>B1</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
       + '</w:body></w:document>'
   }, ['[Content_Types].xml']);
-  const docxText = await docread.read(docx, 'docx');
+  const docxText = (await docread.read(docx, 'docx')).text;
   test('docread lit le texte d\'un .docx compressé', () => {
     assert(docxText.startsWith('Bonjour & salut\nDeuxième\tligne'), JSON.stringify(docxText));
     assert(/A1/.test(docxText) && /B1/.test(docxText), 'Texte des tableaux absent : ' + JSON.stringify(docxText));
@@ -908,7 +934,7 @@ async function runDocReadTests() {
       + '<row r="4"><c r="A4" s="2"/></row>'
       + '</sheetData></worksheet>'
   });
-  const xlsxText = await docread.read(xlsx, 'xlsx');
+  const xlsxText = (await docread.read(xlsx, 'xlsx')).text;
   test('docread lit les feuilles d\'un .xlsx', () => {
     assert(xlsxText === '## Budget & co\nPoste\tMontant\nLoyer\t650\n\t\tnote\tVRAI', JSON.stringify(xlsxText));
   });
@@ -917,6 +943,34 @@ async function runDocReadTests() {
   test('docread rejette un fichier qui n\'est pas un zip', () => {
     assert(broken !== 'lu', 'Un fichier abîmé ne doit pas être lu');
   });
+
+  // PDF : pdf.js heberge dans vendor/pdfjs (il demande Node 22 ou plus).
+  const nodeMajor = parseInt(process.versions.node, 10);
+  if (nodeMajor < 22) {
+    console.log('  \x1b[33m⊘\x1b[0m pdf.js demande Node 22 ou plus (skip tests PDF)');
+  } else {
+    const { pathToFileURL } = require('url');
+    const vendor = path.join(__dirname, '..', 'vendor', 'pdfjs');
+    const pdfjs = await import(pathToFileURL(path.join(vendor, 'pdf.min.mjs')).href);
+    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(path.join(vendor, 'pdf.worker.min.mjs')).href;
+    const textPdf = buildPdf(['Bonjour ETHER', 'Page deux']);
+    const scanPdf = buildPdf([null]);
+    const pdfRes = await docread.read(textPdf, 'pdf', { pdfjs });
+    test('docread lit le texte d\'un PDF page par page', () => {
+      assert(pdfRes.pageCount === 2 && pdfRes.pages === 2, 'Pages : ' + JSON.stringify(pdfRes));
+      assert(/\[Page 1\]\nBonjour ETHER/.test(pdfRes.text) && /\[Page 2\]\nPage deux/.test(pdfRes.text), JSON.stringify(pdfRes.text));
+    });
+    const scanRes = await docread.read(scanPdf, 'pdf', { pdfjs });
+    test('un PDF sans texte (scan) donne un texte vide et une erreur claire', () => {
+      assert(scanRes.text === '' && scanRes.pageCount === 1, JSON.stringify(scanRes));
+      const st = loadStagedFileState()({ name: 'scan.pdf', ext: 'pdf', content: scanRes.text });
+      assert(!st.ok && /scan/.test(st.error), JSON.stringify(st));
+    });
+    const notPdf = await docread.read(new Uint8Array([1, 2, 3]).buffer, 'pdf', { pdfjs }).then(() => 'lu', e => e.message);
+    test('docread rejette un faux PDF', () => {
+      assert(notPdf !== 'lu', 'Un faux PDF ne doit pas être lu');
+    });
+  }
 
   test('stagedFileState refuse clairement .doc et .xls', () => {
     const state = loadStagedFileState();

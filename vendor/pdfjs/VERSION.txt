@@ -1,0 +1,4 @@
+pdf.js 6.4.299 (pdfjs-dist, build legacy), licence Apache-2.0 (voir LICENSE).
+Sert a lire le texte des PDF joints dans la version web (renderer/docread.js).
+Mise a jour : npm pack pdfjs-dist@<version>, puis copier legacy/build/pdf.min.mjs et
+legacy/build/pdf.worker.min.mjs ici.
