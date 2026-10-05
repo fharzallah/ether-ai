@@ -752,7 +752,9 @@ function stagedFileState(sf) {
     if (sf.reading) return { ok: false, reading: true };
     var text = sf.content || (sf.desktopFile && sf.desktopFile.content) || '';
     if (text.trim()) return { ok: true };
-    if (TEXT_EXTS.indexOf(sf.ext) !== -1 || sf.desktopFile) return { ok: false, error: 'Ce fichier ne contient pas de texte lisible.' };
+    if (TEXT_EXTS.indexOf(sf.ext) !== -1 || sf.ext === 'docx' || sf.ext === 'xlsx' || sf.desktopFile) return { ok: false, error: 'Ce fichier ne contient pas de texte lisible.' };
+    if (sf.ext === 'doc') return { ok: false, error: 'Les anciens fichiers Word (.doc) ne sont pas lus. Enregistre-le en .docx ou copie-colle le texte.' };
+    if (sf.ext === 'xls') return { ok: false, error: 'Les anciens fichiers Excel (.xls) ne sont pas lus. Enregistre-le en .xlsx ou copie-colle le texte.' };
     var kinds = { pdf: 'PDF', doc: 'Word', docx: 'Word', xls: 'Excel', xlsx: 'Excel', ppt: 'PowerPoint', pptx: 'PowerPoint' };
     var kind = kinds[sf.ext] || (sf.ext ? sf.ext.toUpperCase() : '');
     return { ok: false, error: (kind ? 'Je ne peux pas encore lire les fichiers ' + kind + '.' : 'Je ne peux pas lire ce type de fichier.') + ' Copie-colle le texte dans le message.' };
@@ -812,6 +814,14 @@ function stageFile(file) {
         r2.onload = function(e) { entry.content = e.target.result.substring(0, 3000); entry.reading = false; renderStagedFiles(); };
         r2.onerror = function() { entry.reading = false; entry.readError = 'Lecture impossible. Réessaie ou copie-colle le texte.'; renderStagedFiles(); };
         r2.readAsText(file);
+    } else if (typeof ETHER_DOCREAD !== 'undefined' && ETHER_DOCREAD.canRead(ext)) {
+        entry.reading = true;
+        var kind = ext === 'docx' ? 'Word' : 'Excel';
+        file.arrayBuffer().then(function(buf) { return ETHER_DOCREAD.read(buf, ext); }).then(function(text) {
+            entry.content = (text || '').substring(0, 3000);
+        })['catch'](function() {
+            entry.readError = 'Lecture impossible : ce fichier ' + kind + ' est protégé par un mot de passe ou abîmé.';
+        }).then(function() { entry.reading = false; renderStagedFiles(); });
     }
     renderStagedFiles();
 }
