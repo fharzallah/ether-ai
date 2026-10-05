@@ -317,8 +317,21 @@ function updDeepThinkBtn() {
 
 function sendDeepThink() {
     var text = uiEl.value.trim();
-    if (!text || thinking) return;
+    var hasFiles = stagedFiles && stagedFiles.length > 0;
+    if ((!text && !hasFiles) || thinking) return;
     if (typeof isGuestMode === 'function' && isGuestMode()) { showGuestAccountOnly('La réflexion approfondie'); return; }
+    // Memes regles que l'envoi normal : un fichier en lecture ou illisible bloque tout.
+    if (hasFiles) {
+        var blocking = stagedFilesBlocking();
+        if (blocking) {
+            showKbHint(blocking.reading ? 'Attends la fin de la lecture du fichier.' : 'Retire le fichier en erreur pour envoyer.');
+            return;
+        }
+        if (stagedFiles.some(function(f) { return f.isImage; })) {
+            showKbHint('La réflexion approfondie ne lit pas les images. Retire l\'image ou envoie normalement.');
+            return;
+        }
+    }
 
     var remaining = getDeepThinkRemaining();
     if (!isPro && remaining <= 0) {
@@ -331,7 +344,7 @@ function sendDeepThink() {
         return;
     }
 
-    var message = text;
+    var message = text || 'Analyse ce document en profondeur.';
     markUserMessage();
     uiEl.value = '';
     uiEl.style.height = 'auto';
@@ -344,12 +357,14 @@ function sendDeepThink() {
         sSet('convs', convs); updHist();
     }
 
-    addUserMsg(message);
+    // Comme l'envoi normal : la carte des fichiers, puis le message.
+    var docs = hasFiles ? consumeStagedFiles(message) : '';
+    if (text) addUserMsg(text);
     if (curConv && !isEphemeral) convs[curConv].messages.push({ r: 'u', t: message, ts: Date.now() });
 
     if (!isPro) useDeepThink();
     thinking = true;
-    ETHER_ENGINE.deepThink(message).then(function() {
+    ETHER_ENGINE.deepThink(message, docs).then(function() {
         thinking = false;
     })['catch'](function() {
         thinking = false;
