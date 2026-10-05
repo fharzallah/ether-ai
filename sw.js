@@ -8,7 +8,7 @@
  * /offline.html vers /offline, et une reponse redirigee ne peut pas servir
  * une navigation.
  */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = 'ether-shell-' + CACHE_VERSION;
 const OFFLINE_URL = '/offline';
 const SHELL = [
@@ -26,6 +26,7 @@ const SHELL = [
   '/renderer/ui.js',
   '/renderer/skill-creator.js',
   '/renderer/docgen.js',
+  '/renderer/docread.js',
   '/renderer/app-main.js'
 ];
 

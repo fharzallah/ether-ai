@@ -45,7 +45,7 @@ test('_headers (CSP) existe', () => {
   assert(fs.existsSync(path.join(__dirname, '..', '_headers')));
 });
 
-const rendererFiles = ['platform-web.js', 'core.js', 'memory.js', 'engine.js', 'ui.js', 'skill-creator.js', 'docgen.js', 'app-main.js'];
+const rendererFiles = ['platform-web.js', 'core.js', 'memory.js', 'engine.js', 'ui.js', 'skill-creator.js', 'docgen.js', 'docread.js', 'app-main.js'];
 rendererFiles.forEach(f => {
   test('renderer/' + f + ' existe', () => {
     assert(fs.existsSync(path.join(__dirname, '..', 'renderer', f)));
@@ -844,6 +844,88 @@ async function runGuestTests() {
   });
 }
 
+// === 5c. LECTURE WORD ET EXCEL (renderer/docread.js) ===
+// Fabrique un vrai zip (entrees compressees en deflate, sauf `stored`).
+function buildZip(files, stored) {
+  const zlib = require('zlib');
+  const locals = [], centrals = [];
+  let offset = 0;
+  Object.keys(files).forEach(name => {
+    const raw = Buffer.from(files[name], 'utf8');
+    const deflate = !(stored || []).includes(name);
+    const data = deflate ? zlib.deflateRawSync(raw) : raw;
+    const nameBuf = Buffer.from(name, 'utf8');
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(deflate ? 8 : 0, 8);
+    local.writeUInt32LE(data.length, 18); local.writeUInt32LE(raw.length, 22);
+    local.writeUInt16LE(nameBuf.length, 26);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(deflate ? 8 : 0, 10);
+    central.writeUInt32LE(data.length, 20); central.writeUInt32LE(raw.length, 24);
+    central.writeUInt16LE(nameBuf.length, 28); central.writeUInt32LE(offset, 42);
+    locals.push(local, nameBuf, data);
+    centrals.push(central, nameBuf);
+    offset += 30 + nameBuf.length + data.length;
+  });
+  const cd = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(Object.keys(files).length, 8); end.writeUInt16LE(Object.keys(files).length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
+  const buf = Buffer.concat(locals.concat([cd, end]));
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length);
+}
+
+async function runDocReadTests() {
+  console.log('\n\x1b[36m5c. Lecture Word et Excel\x1b[0m');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'docread.js'), 'utf8');
+  const docread = new Function(src + '\nreturn ETHER_DOCREAD;')();
+
+  const docx = buildZip({
+    '[Content_Types].xml': '<Types/>',
+    'word/document.xml': '<w:document><w:body>'
+      + '<w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:t>Bonjour &amp; </w:t></w:r><w:r><w:t xml:space="preserve">salut</w:t></w:r></w:p>'
+      + '<w:p><w:r><w:t>Deuxième</w:t><w:tab/><w:t>ligne</w:t></w:r></w:p>'
+      + '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>A1</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>B1</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+      + '</w:body></w:document>'
+  }, ['[Content_Types].xml']);
+  const docxText = await docread.read(docx, 'docx');
+  test('docread lit le texte d\'un .docx compressé', () => {
+    assert(docxText.startsWith('Bonjour & salut\nDeuxième\tligne'), JSON.stringify(docxText));
+    assert(/A1/.test(docxText) && /B1/.test(docxText), 'Texte des tableaux absent : ' + JSON.stringify(docxText));
+  });
+
+  const xlsx = buildZip({
+    'xl/workbook.xml': '<workbook><sheets><sheet name="Budget &amp; co" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Type="worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/sharedStrings.xml': '<sst><si><t>Poste</t></si><si><t>Montant</t></si><si><r><t>Lo</t></r><r><t>yer</t></r><rPh><t>X</t></rPh></si></sst>',
+    'xl/worksheets/sheet1.xml': '<worksheet><cols><col min="1"/></cols><sheetData>'
+      + '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>'
+      + '<row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2"><v>650</v></c></row>'
+      + '<row r="3"><c r="C3" t="inlineStr"><is><t>note</t></is></c><c r="D3" t="b"><v>1</v></c></row>'
+      + '<row r="4"><c r="A4" s="2"/></row>'
+      + '</sheetData></worksheet>'
+  });
+  const xlsxText = await docread.read(xlsx, 'xlsx');
+  test('docread lit les feuilles d\'un .xlsx', () => {
+    assert(xlsxText === '## Budget & co\nPoste\tMontant\nLoyer\t650\n\t\tnote\tVRAI', JSON.stringify(xlsxText));
+  });
+
+  const broken = await docread.read(new Uint8Array([1, 2, 3, 4]).buffer, 'docx').then(() => 'lu', e => e.message);
+  test('docread rejette un fichier qui n\'est pas un zip', () => {
+    assert(broken !== 'lu', 'Un fichier abîmé ne doit pas être lu');
+  });
+
+  test('stagedFileState refuse clairement .doc et .xls', () => {
+    const state = loadStagedFileState();
+    assert(/\.docx/.test(state({ name: 'a.doc', ext: 'doc', content: null }).error), 'Le .doc doit proposer le .docx');
+    assert(/\.xlsx/.test(state({ name: 'a.xls', ext: 'xls', content: null }).error), 'Le .xls doit proposer le .xlsx');
+    assert(/texte lisible/.test(state({ name: 'a.docx', ext: 'docx', content: '' }).error), 'Un .docx vide doit le dire');
+  });
+}
+
 // === 8. API TESTS (si le worker local tourne) ===
 console.log('\n\x1b[36m8. API live tests\x1b[0m');
 
@@ -888,6 +970,9 @@ runAuthTests().catch(e => {
   failed++;
 })).then(() => runGuestTests().catch(e => {
   console.log('  \x1b[31m✗\x1b[0m tests du mode invite interrompus — ' + e.message);
+  failed++;
+})).then(() => runDocReadTests().catch(e => {
+  console.log('  \x1b[31m✗\x1b[0m tests de lecture Word/Excel interrompus — ' + e.message);
   failed++;
 })).then(runApiTests).then(() => {
   // === RESUME ===
