@@ -184,6 +184,22 @@ test('le prompt système interdit d\'inventer un document non lu', () => {
   assert(engine.includes('N\\\'invente jamais le contenu d\\\'un document que tu n\\\'as pas lu'), 'Règle DOCUMENTS absente du prompt système');
 });
 
+test('la réflexion approfondie envoie aussi les fichiers joints', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'ui.js'), 'utf8');
+  const deep = extractFn(ui, 'sendDeepThink');
+  assert(/stagedFilesBlocking\(\)/.test(deep), 'sendDeepThink doit bloquer un fichier illisible ou en lecture');
+  assert(/consumeStagedFiles\(/.test(deep), 'sendDeepThink doit récupérer le texte des fichiers joints');
+  assert(/deepThink\(message, docs\)/.test(deep), 'sendDeepThink doit passer les documents à deepThink');
+  const engine = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'engine.js'), 'utf8');
+  const fn = engine.slice(engine.indexOf('deepThink: function('), engine.indexOf('deepThink: function(') + 12000);
+  assert(/deepThink: function\(userMessage, docs\)/.test(fn), 'deepThink doit accepter les documents');
+  assert(/DOCUMENTS JOINTS PAR L\\'UTILISATEUR[^\n]*' \+ docs/.test(fn) || /analysePrompt[\s\S]*?docs \?[\s\S]*?\+ docs \+/.test(fn), 'L\'étape d\'analyse doit recevoir les documents');
+});
+
+test('l\'envoi normal et la réflexion approfondie partagent consumeStagedFiles', () => {
+  assert(/function processStagedFiles\(userPrompt\) \{\n    var fileContext = consumeStagedFiles\(userPrompt\);/.test(appSrc), 'processStagedFiles doit passer par consumeStagedFiles');
+});
+
 function loadFitDocument() {
   const budget = appSrc.match(/var DOC_BUDGET = \d+;/);
   assert(budget, 'DOC_BUDGET introuvable');

@@ -912,6 +912,22 @@ function clearStagedFiles() {
 }
 
 function processStagedFiles(userPrompt) {
+    var fileContext = consumeStagedFiles(userPrompt);
+    var fullPrompt = userPrompt || '';
+    if (fileContext) {
+        if (fullPrompt) {
+            fullPrompt = fullPrompt + '\n\nFichiers joints:' + fileContext;
+        } else {
+            fullPrompt = 'Analyse les fichiers suivants:' + fileContext;
+        }
+    }
+    return fullPrompt;
+}
+
+// Affiche les fichiers joints dans la conversation, indexe leur texte dans le
+// RAG, vide la zone d'envoi et renvoie le texte des fichiers pour le modele.
+// Utilise par l'envoi normal (processStagedFiles) et la reflexion approfondie.
+function consumeStagedFiles(userPrompt) {
     var filesToProcess = stagedFiles.slice();
     var budget = docBudgetPerFile(filesToProcess);
     clearStagedFiles();
@@ -985,16 +1001,7 @@ function processStagedFiles(userPrompt) {
         // l'envoi avant d'arriver ici (voir stagedFileState).
     }
 
-    var fullPrompt = userPrompt || '';
-    if (fileContext) {
-        if (fullPrompt) {
-            fullPrompt = fullPrompt + '\n\nFichiers joints:' + fileContext;
-        } else {
-            fullPrompt = 'Analyse les fichiers suivants:' + fileContext;
-        }
-    }
-
-    return fullPrompt;
+    return fileContext;
 }
 
 // CONNECTORS

@@ -1277,8 +1277,10 @@ var ETHER_ENGINE = {
 
     // === REFLEXION APPROFONDIE (Deep Think) ===
     // Pipeline multi-etapes: decomposition → recherche → analyse → critique → synthese
-    deepThink: function(userMessage) {
+    // docs : texte des fichiers joints (voir consumeStagedFiles), ou ''.
+    deepThink: function(userMessage, docs) {
         var self = this;
+        docs = docs || '';
         if (!window.etherDesktop) return Promise.resolve(self.getSimulatedResponse(userMessage));
 
         var langName = (G('SLG') && G('SLG').options[G('SLG').selectedIndex]) ? G('SLG').options[G('SLG').selectedIndex].text : 'Francais';
@@ -1345,7 +1347,7 @@ var ETHER_ENGINE = {
             model: GROQ_MODELS.fast,
             messages: [
                 { role: 'system', content: 'Decompose cette question en 3-4 sous-questions precises pour y repondre completement. Reponds UNIQUEMENT avec les sous-questions, une par ligne, sans numerotation. ' + langName + '.' },
-                { role: 'user', content: userMessage }
+                { role: 'user', content: userMessage + (docs ? '\n\nLa question porte sur ce document (début) :' + docs.substring(0, 3000) : '') }
             ],
             temperature: 0.3, max_tokens: 300
         };
@@ -1387,6 +1389,8 @@ var ETHER_ENGINE = {
             // ETAPE 3: Analyse detaillee — cascade: Gemini → Groq → Cerebras
             setStep(3, 'active', 'Analyse approfondie en cours...');
             var analysePrompt = 'Question principale: ' + userMessage + '\n\n'
+                + (docs ? 'DOCUMENTS JOINTS PAR L\'UTILISATEUR (la question porte sur eux) :' + docs + '\n\n'
+                    + 'Appuie-toi d\'abord sur ces documents et cite les pages quand elles sont indiquées. Les informations collectées sur le web ne servent qu\'en complément.\n\n' : '')
                 + 'Sous-questions a traiter:\n' + subQuestions.join('\n') + '\n\n'
                 + (webContext ? 'INFORMATIONS COLLECTEES:\n' + webContext.substring(0, 4000) + '\n\n' : '')
                 + 'Genere une analyse DETAILLEE et STRUCTUREE qui repond a chaque sous-question. Utilise les sources fournies. Sois precis, factuel, exhaustif. Markdown. ' + langName + '.';
@@ -1452,7 +1456,7 @@ var ETHER_ENGINE = {
             var critiqueContent = mainAnalysis || userMessage; // Si pas d'analyse, critiquer la question directement
             var critiqueMsgs = [
                 { role: 'system', content: 'Tu es un critique rigoureux. On te donne une analyse. Trouve les failles, biais, manques, erreurs factuelles ou logiques. Sois precis et constructif. Si l\'analyse est bonne, dis-le mais suggere des ameliorations. 3-5 points maximum. ' + langName + '.' },
-                { role: 'user', content: 'Question: ' + userMessage + '\n\nAnalyse a critiquer:\n' + critiqueContent.substring(0, 3000) }
+                { role: 'user', content: 'Question: ' + userMessage + (docs ? '\n(L\'analyse s\'appuie sur un document joint par l\'utilisateur, que tu ne vois pas : ne lui reproche pas de le citer.)' : '') + '\n\nAnalyse a critiquer:\n' + critiqueContent.substring(0, 3000) }
             ];
             function openrouterCritiqueFallback() {
                 return window.etherDesktop.openrouterChat({ model: OPENROUTER_MODELS.reasoning, messages: critiqueMsgs, temperature: 0.4, max_tokens: 1000 })['catch'](function() {
@@ -1477,7 +1481,7 @@ var ETHER_ENGINE = {
             setStep(5, 'active', 'Redaction de la reponse definitive...');
             var synthMsgs = [
                 { role: 'system', content: 'Tu es ETHER, un expert en synthese. On te donne une analyse et sa critique. Produis une reponse DEFINITIVE qui integre les corrections de la critique. La reponse doit etre complete, structuree, precise, avec des exemples concrets. Utilise du Markdown riche (titres, listes, gras, tableaux si pertinent). ' + langName + '.' },
-                { role: 'user', content: 'Question: ' + userMessage + '\n\nAnalyse initiale:\n' + (mainAnalysis || 'Pas d\'analyse disponible').substring(0, 3000) + '\n\n' + (critique ? 'Critique:\n' + critique.substring(0, 1500) + '\n\n' : '') + 'Redige la reponse finale optimale.' }
+                { role: 'user', content: 'Question: ' + userMessage + (docs ? '\n(La question porte sur un document joint par l\'utilisateur ; l\'analyse en reprend les éléments.)' : '') + '\n\nAnalyse initiale:\n' + (mainAnalysis || 'Pas d\'analyse disponible').substring(0, 3000) + '\n\n' + (critique ? 'Critique:\n' + critique.substring(0, 1500) + '\n\n' : '') + 'Redige la reponse finale optimale.' }
             ];
             var synthOpts = { messages: synthMsgs, temperature: 0.5, max_tokens: 8000 };
 
@@ -1521,7 +1525,8 @@ var ETHER_ENGINE = {
             result._showBadge = false;
             result._streamed = true;
 
-            self.conversationHistory.push({ role: 'user', content: userMessage });
+            // Le document reste dans l'historique : les questions suivantes en mode normal le voient.
+            self.conversationHistory.push({ role: 'user', content: userMessage + (docs ? '\n\nFichiers joints:' + docs : '') });
             self.conversationHistory.push({ role: 'assistant', content: finalText });
 
             // Construire le bloc de reflexion repliable
