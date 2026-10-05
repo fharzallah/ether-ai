@@ -740,6 +740,38 @@ ETHER_ENGINE._finalizeStreamElement = function(streamEl, result) {
 // PIECE JOINTE — staging (fichier en attente d'envoi avec le prompt)
 var stagedFiles = [];
 
+// Extensions lues comme du texte brut dans le navigateur.
+var TEXT_EXTS = ['txt', 'csv', 'md', 'json', 'js', 'html', 'css', 'py'];
+
+// Etat d'un fichier joint : { ok } si son texte peut partir, { reading } pendant
+// la lecture, sinon { error } avec le message affiche sur la pastille.
+// Un fichier sans texte lisible ne part jamais : le modele inventerait son contenu.
+function stagedFileState(sf) {
+    if (sf.isImage) return { ok: true };
+    if (sf.readError) return { ok: false, error: sf.readError };
+    if (sf.reading) return { ok: false, reading: true };
+    var text = sf.content || (sf.desktopFile && sf.desktopFile.content) || '';
+    if (text.trim()) return { ok: true };
+    if (TEXT_EXTS.indexOf(sf.ext) !== -1 || sf.desktopFile) return { ok: false, error: 'Ce fichier ne contient pas de texte lisible.' };
+    var kinds = { pdf: 'PDF', doc: 'Word', docx: 'Word', xls: 'Excel', xlsx: 'Excel', ppt: 'PowerPoint', pptx: 'PowerPoint' };
+    var kind = kinds[sf.ext] || (sf.ext ? sf.ext.toUpperCase() : '');
+    return { ok: false, error: (kind ? 'Je ne peux pas encore lire les fichiers ' + kind + '.' : 'Je ne peux pas lire ce type de fichier.') + ' Copie-colle le texte dans le message.' };
+}
+
+// Premier fichier joint qui empeche l'envoi (en lecture ou illisible), sinon null.
+function stagedFilesBlocking() {
+    for (var i = 0; i < stagedFiles.length; i++) {
+        var st = stagedFileState(stagedFiles[i]);
+        if (!st.ok) return st;
+    }
+    return null;
+}
+
+// Le bouton Envoyer suit le texte saisi et l'etat des fichiers joints.
+function updSendState() {
+    sndEl.disabled = !!stagedFilesBlocking() || (!uiEl.value.trim() && !stagedFiles.length);
+}
+
 G('ATTACH-BTN').onclick = function() { G('FILE-UP').click(); };
 G('FILE-UP').onchange = function() {
     var files = G('FILE-UP').files;
@@ -766,28 +798,27 @@ function stageFile(file) {
     var icons = { pdf: '#ef4444', doc: '#2563eb', docx: '#2563eb', txt: '#6b7280', csv: '#22c55e', xls: '#22c55e', xlsx: '#22c55e', png: '#8b5cf6', jpg: '#8b5cf6', jpeg: '#8b5cf6', gif: '#f59e0b', webp: '#8b5cf6' };
     var iconColor = icons[ext] || '#8b5cf6';
 
-    var entry = { file: file, name: file.name, ext: ext, size: size, isImage: isImage, dataUrl: null, content: null };
+    var entry = { file: file, name: file.name, ext: ext, size: size, isImage: isImage, dataUrl: null, content: null, reading: false, readError: null };
     stagedFiles.push(entry);
-    var idx = stagedFiles.length - 1;
 
     // Lire le contenu pour preview et envoi
     if (isImage) {
         var r = new FileReader();
         r.onload = function(e) { entry.dataUrl = e.target.result; renderStagedFiles(); };
         r.readAsDataURL(file);
-    } else if (ext === 'txt' || ext === 'csv' || ext === 'md' || ext === 'json' || ext === 'js' || ext === 'html' || ext === 'css' || ext === 'py') {
+    } else if (TEXT_EXTS.indexOf(ext) !== -1) {
+        entry.reading = true;
         var r2 = new FileReader();
-        r2.onload = function(e) { entry.content = e.target.result.substring(0, 3000); renderStagedFiles(); };
+        r2.onload = function(e) { entry.content = e.target.result.substring(0, 3000); entry.reading = false; renderStagedFiles(); };
+        r2.onerror = function() { entry.reading = false; entry.readError = 'Lecture impossible. Réessaie ou copie-colle le texte.'; renderStagedFiles(); };
         r2.readAsText(file);
-    } else {
-        renderStagedFiles();
     }
-
-    sndEl.disabled = false;
+    renderStagedFiles();
 }
 
 function renderStagedFiles() {
     var container = G('STAGED-FILES');
+    updSendState();
     if (!stagedFiles.length) { container.style.display = 'none'; container.innerHTML = ''; return; }
     container.style.display = 'flex';
     container.innerHTML = '';
@@ -795,12 +826,16 @@ function renderStagedFiles() {
         var sf = stagedFiles[i];
         var icons = { pdf: '#ef4444', doc: '#2563eb', docx: '#2563eb', txt: '#6b7280', csv: '#22c55e', xls: '#22c55e', xlsx: '#22c55e' };
         var iconColor = icons[sf.ext] || '#8b5cf6';
+        var st = stagedFileState(sf);
         var el = document.createElement('div');
-        el.className = 'staged-file';
+        el.className = 'staged-file' + (st.error ? ' sf-err' : '') + (st.reading ? ' sf-reading' : '');
+        if (st.error) el.title = st.error;
+        var info = st.error ? '<span class="sf-msg" role="alert">' + esc(st.error) + '</span>'
+            : '<span style="font-size:.68rem;color:var(--t3)">' + (st.reading ? 'Lecture…' : sf.size) + '</span>';
         if (sf.isImage && sf.dataUrl) {
-            el.innerHTML = '<img class="sf-thumb" src="' + sf.dataUrl + '"><span class="sf-name">' + esc(sf.name) + '</span><span style="font-size:.68rem;color:var(--t3)">' + sf.size + '</span><button class="sf-remove" data-idx="' + i + '">&times;</button>';
+            el.innerHTML = '<img class="sf-thumb" src="' + sf.dataUrl + '"><span class="sf-name">' + esc(sf.name) + '</span>' + info + '<button class="sf-remove" data-idx="' + i + '" aria-label="Retirer le fichier">&times;</button>';
         } else {
-            el.innerHTML = '<div class="sf-icon" style="background:' + iconColor + '">' + sf.ext.toUpperCase() + '</div><span class="sf-name">' + esc(sf.name) + '</span><span style="font-size:.68rem;color:var(--t3)">' + sf.size + '</span><button class="sf-remove" data-idx="' + i + '">&times;</button>';
+            el.innerHTML = '<div class="sf-icon" style="background:' + iconColor + '">' + esc(sf.ext.toUpperCase()) + '</div><span class="sf-name">' + esc(sf.name) + '</span>' + info + '<button class="sf-remove" data-idx="' + i + '" aria-label="Retirer le fichier">&times;</button>';
         }
         container.appendChild(el);
     }
@@ -812,7 +847,6 @@ function renderStagedFiles() {
                 e.stopPropagation();
                 stagedFiles.splice(idx, 1);
                 renderStagedFiles();
-                if (!stagedFiles.length && !uiEl.value.trim()) sndEl.disabled = true;
             };
         })(parseInt(rmBtns[j].getAttribute('data-idx')));
     }
@@ -888,9 +922,9 @@ function processStagedFiles(userPrompt) {
                 })['catch'](function() {});
             })(sf2, userPrompt);
             fileContext += '\n\n[Image analysee par Gemini Vision: ' + sf2.name + ']';
-        } else {
-            fileContext += '\n\n[Fichier joint: ' + sf2.name + ' (' + sf2.ext.toUpperCase() + ', ' + sf2.size + ')]';
         }
+        // Un fichier sans texte n'est jamais annonce au modele : sendMsg bloque
+        // l'envoi avant d'arriver ici (voir stagedFileState).
     }
 
     var fullPrompt = userPrompt || '';
@@ -3191,7 +3225,7 @@ renderCustomModes();
 
 // TEXTAREA + SEND
 var uiEl=G('uinp'), sndEl=G('SND');
-uiEl.oninput=function(){uiEl.style.height='auto';uiEl.style.height=Math.min(uiEl.scrollHeight,140)+'px';sndEl.disabled=!uiEl.value.trim()&&!(stagedFiles&&stagedFiles.length);};
+uiEl.oninput=function(){uiEl.style.height='auto';uiEl.style.height=Math.min(uiEl.scrollHeight,140)+'px';updSendState();};
 sndEl.onclick=function(){sendMsg(uiEl.value);};
 uiEl.onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(uiEl.value);}};
 applyModeWelcome();

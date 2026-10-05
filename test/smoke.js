@@ -130,6 +130,60 @@ test('engine.js contient les 4 providers', () => {
   assert(engine.includes('getSmartRoute'), 'Missing getSmartRoute');
 });
 
+// === 5b. PIECES JOINTES ===
+console.log('\n\x1b[36m5b. Pièces jointes\x1b[0m');
+
+const appSrc = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'app-main.js'), 'utf8');
+
+// Extrait une fonction de premier niveau d'app-main.js (elle se termine par "\n}\n").
+function extractFn(src, name) {
+  const start = src.indexOf('function ' + name + '(');
+  assert(start !== -1, name + ' introuvable');
+  return src.slice(start, src.indexOf('\n}\n', start) + 2);
+}
+function loadStagedFileState() {
+  const exts = appSrc.match(/var TEXT_EXTS = \[[^\]]*\];/);
+  assert(exts, 'TEXT_EXTS introuvable');
+  return new Function(exts[0] + '\n' + extractFn(appSrc, 'stagedFileState') + '\nreturn stagedFileState;')();
+}
+
+test('un fichier sans texte n\'est jamais annoncé comme "[Fichier joint]"', () => {
+  assert(!appSrc.includes('[Fichier joint:'), 'processStagedFiles envoie encore "[Fichier joint: ...]"');
+});
+
+test('stagedFileState refuse les fichiers sans texte lisible', () => {
+  const state = loadStagedFileState();
+  const pdf = state({ name: 'a.pdf', ext: 'pdf', content: null });
+  assert(!pdf.ok && /PDF/.test(pdf.error), 'Un PDF non lu doit être en erreur : ' + JSON.stringify(pdf));
+  const empty = state({ name: 'a.txt', ext: 'txt', content: '   ' });
+  assert(!empty.ok && empty.error, 'Un txt vide doit être en erreur');
+  const reading = state({ name: 'a.txt', ext: 'txt', content: null, reading: true });
+  assert(!reading.ok && reading.reading, 'Un txt en cours de lecture doit bloquer');
+  const failed = state({ name: 'a.txt', ext: 'txt', content: null, readError: 'Lecture impossible.' });
+  assert(!failed.ok && failed.error === 'Lecture impossible.', 'Une erreur de lecture doit remonter');
+  const unknown = state({ name: 'a', ext: '', content: null });
+  assert(!unknown.ok && unknown.error, 'Un type inconnu doit être en erreur');
+});
+
+test('stagedFileState accepte le texte lu et les images', () => {
+  const state = loadStagedFileState();
+  assert(state({ name: 'a.txt', ext: 'txt', content: 'Bonjour' }).ok, 'Un txt lu doit partir');
+  assert(state({ name: 'a.pdf', ext: 'pdf', content: null, desktopFile: { content: 'Texte extrait' } }).ok, 'Un PDF extrait par le bureau doit partir');
+  assert(!state({ name: 'a.pdf', ext: 'pdf', content: null, desktopFile: { content: '' } }).ok, 'Un PDF de bureau sans texte doit être refusé');
+  assert(state({ name: 'a.png', ext: 'png', isImage: true }).ok, 'Une image passe par la vision');
+});
+
+test('sendMsg bloque l\'envoi si un fichier est illisible', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'ui.js'), 'utf8');
+  const send = ui.slice(ui.indexOf('function sendMsg('), ui.indexOf('processStagedFiles(message)'));
+  assert(/stagedFilesBlocking\(\)/.test(send), 'sendMsg doit appeler stagedFilesBlocking avant processStagedFiles');
+});
+
+test('le prompt système interdit d\'inventer un document non lu', () => {
+  const engine = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'engine.js'), 'utf8');
+  assert(engine.includes('N\\\'invente jamais le contenu d\\\'un document que tu n\\\'as pas lu'), 'Règle DOCUMENTS absente du prompt système');
+});
+
 // === 6. SECURITE ===
 console.log('\n\x1b[36m6. Securite\x1b[0m');
 
