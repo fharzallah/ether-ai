@@ -184,6 +184,53 @@ test('le prompt système interdit d\'inventer un document non lu', () => {
   assert(engine.includes('N\\\'invente jamais le contenu d\\\'un document que tu n\\\'as pas lu'), 'Règle DOCUMENTS absente du prompt système');
 });
 
+function loadFitDocument() {
+  const budget = appSrc.match(/var DOC_BUDGET = \d+;/);
+  assert(budget, 'DOC_BUDGET introuvable');
+  return new Function(budget[0] + '\n' + extractFn(appSrc, 'fitDocument') + '\n' + extractFn(appSrc, 'docBudgetPerFile')
+    + '\nreturn { fitDocument, docBudgetPerFile, DOC_BUDGET };')();
+}
+
+test('plus de coupure à 3000 / 4000 caractères sur les fichiers joints', () => {
+  assert(!/content = [^;]*substring\(0, 3000\)/.test(appSrc), 'stageFile coupe encore à 3000');
+  assert(!/content\.substring\(0, 4000\)/.test(appSrc), 'processStagedFiles coupe encore à 4000');
+  const { DOC_BUDGET } = loadFitDocument();
+  assert(DOC_BUDGET >= 15000 && DOC_BUDGET <= 40000, 'DOC_BUDGET hors de la plage raisonnable : ' + DOC_BUDGET);
+});
+
+test('fitDocument coupe un PDF sur des pages entières et le dit', () => {
+  const { fitDocument } = loadFitDocument();
+  const pageTexts = Array.from({ length: 12 }, (_, i) => ('Page ' + (i + 1) + ' ').repeat(500).slice(0, 3000));
+  const fit = fitDocument({ content: 'x', pageTexts, pageCount: 12 }, 20000);
+  assert(fit.cut && fit.note === '6 pages sur 12 lues', JSON.stringify(fit.note));
+  assert(fit.text.startsWith('[Page 1]\n') && fit.text.includes('[Page 6]\n') && !fit.text.includes('[Page 7]'), 'Pages mal coupées');
+  const whole = fitDocument({ content: 'x', pageTexts: ['a', '', 'b'], pageCount: 3 }, 20000);
+  assert(!whole.cut && whole.text === '[Page 1]\na\n\n[Page 3]\nb', JSON.stringify(whole));
+  const big = fitDocument({ content: 'x'.repeat(50000), pageTexts: ['x'.repeat(50000)], pageCount: 1 }, 20000);
+  assert(big.cut && /% lu/.test(big.note) && big.text.length === 20000, JSON.stringify(big.note));
+});
+
+test('fitDocument coupe un texte long et donne le pourcentage lu', () => {
+  const { fitDocument, docBudgetPerFile } = loadFitDocument();
+  const short = fitDocument({ content: 'Bonjour' }, 20000);
+  assert(!short.cut && short.text === 'Bonjour', 'Un texte court ne doit pas être coupé');
+  const long = fitDocument({ content: 'a'.repeat(100000) }, 20000);
+  assert(long.cut && long.note === 'Texte coupé : 20 % lu' && long.text.length === 20000, JSON.stringify(long.note));
+  assert(docBudgetPerFile([{}, {}, { isImage: true }]) === 10000, 'Le budget se partage entre les fichiers texte');
+});
+
+test('l\'historique allège les vieux messages longs mais garde les deux derniers', () => {
+  const engine = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'engine.js'), 'utf8');
+  const max = engine.match(/var HISTORY_OLD_MAX = \d+;/);
+  assert(max, 'HISTORY_OLD_MAX introuvable');
+  const trim = new Function(max[0] + '\n' + extractFn(engine, 'trimHistoryForRequest') + '\nreturn trimHistoryForRequest;')();
+  const long = 'd'.repeat(20000);
+  const out = trim([{ role: 'user', content: long }, { role: 'assistant', content: 'ok' }, { role: 'user', content: long }, { role: 'assistant', content: 'ok' }]);
+  assert(out[0].content.length < 4200 && /historique/.test(out[0].content), 'Le vieux message doit être coupé');
+  assert(out[2].content === long, 'Le message récent doit rester entier');
+  assert((engine.match(/trimHistoryForRequest\(/g) || []).length >= 5, 'Toutes les requêtes doivent passer par trimHistoryForRequest');
+});
+
 // === 6. SECURITE ===
 console.log('\n\x1b[36m6. Securite\x1b[0m');
 
@@ -958,6 +1005,7 @@ async function runDocReadTests() {
     const pdfRes = await docread.read(textPdf, 'pdf', { pdfjs });
     test('docread lit le texte d\'un PDF page par page', () => {
       assert(pdfRes.pageCount === 2 && pdfRes.pages === 2, 'Pages : ' + JSON.stringify(pdfRes));
+      assert(Array.isArray(pdfRes.pageTexts) && pdfRes.pageTexts[1] === 'Page deux', 'pageTexts : ' + JSON.stringify(pdfRes.pageTexts));
       assert(/\[Page 1\]\nBonjour ETHER/.test(pdfRes.text) && /\[Page 2\]\nPage deux/.test(pdfRes.text), JSON.stringify(pdfRes.text));
     });
     const scanRes = await docread.read(scanPdf, 'pdf', { pdfjs });

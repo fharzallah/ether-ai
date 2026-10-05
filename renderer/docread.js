@@ -192,6 +192,7 @@ var ETHER_DOCREAD = (function() {
                 var hasText = texts.some(function(t) { return t; });
                 return {
                     text: hasText ? texts.map(function(t, i) { return t ? '[Page ' + (i + 1) + ']\n' + t : ''; }).filter(Boolean).join('\n\n') : '',
+                    pageTexts: texts,
                     pages: texts.length,
                     pageCount: pageCount
                 };
@@ -202,8 +203,8 @@ var ETHER_DOCREAD = (function() {
         });
     }
 
-    // Lit un .docx, .xlsx ou .pdf (ArrayBuffer) : { text, pages, pageCount }
-    // (pages et pageCount seulement pour un PDF). Rejette si le fichier est illisible.
+    // Lit un .docx, .xlsx ou .pdf (ArrayBuffer) : { text, pageTexts, pages, pageCount }
+    // (pageTexts, pages et pageCount seulement pour un PDF). Rejette si le fichier est illisible.
     // opts.pdfjs : module pdf.js deja charge (tests sous Node).
     function read(buffer, ext, opts) {
         return Promise.resolve().then(function() {
