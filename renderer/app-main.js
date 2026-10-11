@@ -2636,10 +2636,15 @@ function setLoginMode(mode, info, email) {
     G('LP').placeholder = mode === 'login' ? 'Mot de passe' : (mode === 'recover' ? 'Nouveau mot de passe' : 'Mot de passe') + ' (8 caracteres min.)';
     G('LP').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
     if (email) G('LE').value = email;
+    showInviteField(mode === 'signup' && !(window.etherDesktop.hasInviteCode && window.etherDesktop.hasInviteCode()));
     var inf = G('login-info');
     if (info) { inf.textContent = info; inf.classList.remove('hidden'); } else { inf.classList.add('hidden'); }
     G('login-err').style.display = 'none';
 }
+
+// Champ "Code d'invitation" : visible seulement a l'inscription, quand le
+// lien ouvert ne contenait pas de code (ou que ce code a ete refuse).
+function showInviteField(on) { G('LCODE').style.display = on ? 'block' : 'none'; }
 
 // Appele par platform-web.js quand le serveur refuse la session.
 window.etherShowLogin = function(info) {
@@ -2680,7 +2685,10 @@ G('LB').onclick = function() {
     var call;
     if (loginMode === 'signup') {
         if (!prenom) return fail('Erreur : écris ton prénom.');
-        call = D.authSignup({ name: nom ? prenom + ' ' + nom : prenom, email: email, password: pw });
+        var codeField = G('LCODE').style.display !== 'none';
+        var invite = G('LCODE').value.trim();
+        if (codeField && !invite) { G('LCODE').focus(); return fail("Entre le code d'invitation que t'a donné la personne qui t'a invité."); }
+        call = D.authSignup({ name: nom ? prenom + ' ' + nom : prenom, email: email, password: pw, code: codeField ? invite : '' });
     } else if (loginMode === 'recover') {
         var code = G('LRC').value.trim();
         if (!code) return fail('Le code de secours est requis.');
@@ -2692,6 +2700,10 @@ G('LB').onclick = function() {
     call.then(function(r) {
         if (!r || !r.ok) {
             if (r && r.exists) setLoginMode('login', null, email);
+            if (r && r.needCode) {
+                showInviteField(true); G('LCODE').focus();
+                return fail(G('LCODE').value.trim() ? "Ce code d'invitation n'est pas le bon. Vérifie-le auprès de la personne qui t'a invité." : "ETHER est sur invitation : entre le code que t'a donné la personne qui t'a invité.");
+            }
             return fail((r && r.error) || 'Erreur : connexion impossible. Réessaie.');
         }
         var full = r.user.name || prenom || 'Utilisateur';

@@ -83,19 +83,11 @@
         } catch (e) { return ''; }
     }
 
-    function showInviteError(message) {
-        if (document.getElementById('ETHER-INVITE-ERR')) return;
-        var box = document.createElement('div');
-        box.id = 'ETHER-INVITE-ERR';
-        box.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;' +
-            'align-items:center;justify-content:center;background:rgba(0,0,0,.55);' +
-            'font-family:system-ui,-apple-system,sans-serif;padding:24px';
-        box.innerHTML = '<div style="background:#fff;color:#111;max-width:420px;' +
-            'border-radius:16px;padding:28px;text-align:center;line-height:1.6">' +
-            '<div style="font-size:2rem;margin-bottom:8px">🔒</div>' +
-            '<div style="font-weight:700;font-size:1.1rem;margin-bottom:10px">Accès sur invitation</div>' +
-            '<div style="font-size:.9rem;color:#555">' + message + '</div></div>';
-        document.body.appendChild(box);
+    // Plus de fenetre bloquante quand le code manque : l'ecran d'inscription
+    // affiche un champ "Code d'invitation" (voir app-main.js). Avant, un ami
+    // qui ouvrait le lien sans "?code=" restait bloque sans rien pouvoir faire.
+    function setInviteCode(code) {
+        try { if (code) localStorage.setItem(INVITE_KEY, code); else localStorage.removeItem(INVITE_KEY); } catch (e) {}
     }
 
     function tokenPayload() {
@@ -136,12 +128,7 @@
     function authCall(path, body) {
         return rawRequest(path, body).then(function(r) {
             if (r && r.token) { leaveGuestForAccount(); setToken(r.token); _loginShown = false; }
-            else if (r && r.needCode) {
-                try { localStorage.removeItem(INVITE_KEY); } catch (e) {}
-                showInviteError(inviteCode()
-                    ? "Le code de ton lien n'est pas valide. Demande un lien à jour."
-                    : 'Ether AI est sur invitation. Ouvre le lien qu\'on t\'a transmis : il contient le code d\'accès.');
-            }
+            else if (r && r.needCode) setInviteCode('');
             return r;
         });
     }
@@ -765,8 +752,11 @@
         },
 
         // === Comptes ===
+        hasInviteCode: function() { return !!inviteCode(); },
         authSignup: function(d) {
-            return authCall('/api/auth/signup', { name: d.name, email: d.email, password: d.password, code: inviteCode() });
+            var code = (d.code || '').trim() || inviteCode();
+            if (d.code) setInviteCode(code);
+            return authCall('/api/auth/signup', { name: d.name, email: d.email, password: d.password, code: code });
         },
         authLogin:   function(d) { return authCall('/api/auth/login', { email: d.email, password: d.password }); },
         authRecover: function(d) { return authCall('/api/auth/recover', { email: d.email, recoveryCode: d.recoveryCode, newPassword: d.newPassword }); },
