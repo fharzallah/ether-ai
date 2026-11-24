@@ -53,11 +53,43 @@ async function ensureServer() {
 
 const engines = { chromium, webkit, firefox };
 
+// Scène seule, à des points fixes de la progression (serveur de développement).
+const ACTS = [0.04, 0.2, 0.27, 0.31, 0.36, 0.42, 0.46, 0.5, 0.53, 0.6, 0.64, 0.72, 0.85, 0.93, 1];
+
+async function captureActs(browser) {
+  for (const vp of VIEWPORTS) {
+    const context = await browser.newContext({ viewport: vp.viewport, deviceScaleFactor: vp.deviceScaleFactor, isMobile: vp.isMobile, hasTouch: vp.hasTouch });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && errors.push(m.text()));
+    page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+    for (const p of ACTS) {
+      await page.goto(`${BASE}/?poster&p=${p}`, { waitUntil: 'load' });
+      await page.waitForSelector('.scene-canvas.is-ready', { timeout: 30000 });
+      await page.waitForTimeout(2200);
+      await page.screenshot({ path: `${OUT}/act-${vp.name}-${String(p).padEnd(4, '0')}.png` });
+    }
+    console.log(`${vp.name}: ${ACTS.length} captures, ${errors.length} messages`);
+    for (const e of errors) console.log(`  ! ${e}`);
+    await context.close();
+  }
+}
+
 async function run() {
   mkdirSync(OUT, { recursive: true });
   const server = await ensureServer();
-  const launchArgs = flag('no-webgl') && BROWSER === 'chromium' ? ['--disable-webgl', '--disable-webgl2'] : [];
+  const gpu = BROWSER === 'chromium' ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] : [];
+  const launchArgs = flag('no-webgl') && BROWSER === 'chromium' ? ['--disable-webgl', '--disable-webgl2'] : gpu;
   const browser = await engines[BROWSER].launch({ args: launchArgs });
+  if (flag('acts')) {
+    try {
+      await captureActs(browser);
+    } finally {
+      await browser.close();
+      if (server) server.kill();
+    }
+    return;
+  }
   const summary = [];
   try {
     for (const vp of VIEWPORTS) {

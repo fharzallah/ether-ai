@@ -211,13 +211,31 @@ main, .site-footer { position: relative; z-index: 2; }
   z-index: 0;
   pointer-events: none;
 }
+.scene-canvas {
+  height: 100vh;
+  height: 100lvh;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.scene-canvas.is-ready { opacity: 1; }
 .scene-poster {
   display: none;
   background-color: var(--bg);
+  background-image: url(/poster.webp);
   background-position: 72% 50%;
   background-size: cover;
   background-repeat: no-repeat;
 }
+/* L'image fixe remplace la scène : sans JavaScript, sans WebGL, contexte perdu. */
+.no-js .scene-poster,
+.scene-fallback .scene-poster { display: block; }
+.scene-fallback .scene-canvas { display: none; }
+/* Captures du poster (développement) : la scène seule. */
+.poster-mode main,
+.poster-mode .site-nav,
+.poster-mode .site-footer,
+.poster-mode .scene-scrim,
+.poster-mode .skip-link { visibility: hidden; }
 .scene-scrim {
   position: fixed;
   inset: 0;
@@ -584,6 +602,8 @@ main, .site-footer { position: relative; z-index: 2; }
 /* ---------- Mouvement réduit : rien ne bouge, la scène devient une image fixe ---------- */
 
 @media (prefers-reduced-motion: reduce) {
+  .scene-poster { display: block; }
+  .scene-canvas { display: none; }
   .scroll-hint { animation: none; opacity: 0.6; }
   .logo .lg-s { animation: none !important; }
   .btn, .seg, .step, .nav-links a, .lang-link, .footer-links a, .objections li { transition: none; }
