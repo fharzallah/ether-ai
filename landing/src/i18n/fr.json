@@ -1,0 +1,128 @@
+{
+  "lang": "fr",
+  "locale": "fr_FR",
+  "path": "/",
+  "alt": {
+    "lang": "en",
+    "locale": "en_US",
+    "path": "/en/",
+    "label": "EN",
+    "name": "EN, English version"
+  },
+  "meta": {
+    "title": "ETHER, l'IA gratuite qui trouve les failles de ton idée",
+    "description": "Une IA gratuite qui critique ton idée, ton texte ou ton raisonnement, puis te montre comment le corriger. Sans abonnement. Sans flatterie.",
+    "ogImage": "og-fr.jpg",
+    "ogAlt": "Le prisme d'ETHER, fissuré de trois lignes rouges, sous le titre : Ton idée a des failles."
+  },
+  "skip": "Aller au contenu",
+  "nav": {
+    "label": "Navigation principale",
+    "home": "ETHER, accueil",
+    "problem": "Le problème",
+    "how": "Comment il réfléchit",
+    "features": "Ce qu'il fait",
+    "source": "Code source",
+    "menu": "Menu"
+  },
+  "ids": {
+    "problem": "probleme",
+    "demo": "demo",
+    "how": "comment",
+    "features": "fonctions",
+    "why": "pourquoi",
+    "source": "code-source",
+    "final": "essayer"
+  },
+  "cta": {
+    "primary": "Essayer ETHER",
+    "code": "Voir le code",
+    "github": "Voir le code sur GitHub"
+  },
+  "hero": {
+    "title1": "Ton idée a des failles.",
+    "title2": "ETHER les trouve avant les autres.",
+    "lead": "Une IA gratuite qui critique ton idée, ton texte ou ton raisonnement, puis te montre comment le corriger. Sans abonnement. Sans flatterie.",
+    "note": "Gratuit. 100 messages par jour. Open source."
+  },
+  "problem": {
+    "title": "Les IA te donnent raison. Même quand tu as tort.",
+    "body": "Les assistants IA apprennent en partie grâce aux notes que leur donnent des humains. Et les humains notent mieux les réponses qui leur font plaisir. Résultat : tu présentes une idée moyenne, on te répond qu'elle est “super intéressante”. Tu repars content, et tu n'as rien appris."
+  },
+  "demo": {
+    "title": "ETHER fait l'inverse.",
+    "body": "Il part du principe que ta première version a des défauts. Il te les montre, puis il te dit comment les corriger.",
+    "you": "Toi :",
+    "user": "Je vais lancer un blog d'actualité pour les jeunes. Je publierai tous les jours.",
+    "switchLabel": "Comparer les réponses",
+    "classicLabel": "Un assistant classique",
+    "etherLabel": "ETHER",
+    "classic": "Excellente idée ! Un blog d'actualité pour les jeunes a un vrai potentiel. Voici quelques conseils pour bien démarrer…",
+    "objection1": "“Actualité pour les jeunes” ne dit rien.",
+    "objection2": "Tous les médias généralistes visent déjà cette cible, et tu n'as pas leurs moyens.",
+    "objection3": "Publier tous les jours, seul, pendant trois mois : c'est un plan qui s'arrête à la troisième semaine.",
+    "fixLead": "La correction :",
+    "fix": "choisis un angle précis. Par exemple, décrypter une seule actualité par semaine, en trois minutes de lecture. Teste cet angle pendant deux semaines avant de grandir.",
+    "note": "Exemple illustratif, pas une conversation enregistrée."
+  },
+  "how": {
+    "title": "Il ne répond pas du premier coup.",
+    "body": "Avec la réflexion approfondie, ta question passe par cinq étapes avant d'arriver jusqu'à toi.",
+    "step1": "Décomposer.",
+    "step1Text": "Il découpe ta question en sous-questions.",
+    "step2": "Chercher.",
+    "step2Text": "Il va chercher des sources sur le web.",
+    "step3": "Analyser.",
+    "step3Text": "Il croise ce qu'il a trouvé.",
+    "step4": "Critiquer.",
+    "step4Text": "Il attaque son propre brouillon.",
+    "step5": "Synthétiser.",
+    "step5Text": "Il te donne la version qui a tenu le choc."
+  },
+  "features": {
+    "title": "Tout ce qu'il faut pour réfléchir mieux.",
+    "f1": "Il change de rôle tout seul.",
+    "f1Text": "Tuteur, Débat, Écriture, Créatif, Image : il détecte ce dont tu as besoin, sans commande. Tu peux aussi créer tes propres modes.",
+    "f2": "Il lit tes fichiers.",
+    "f2Text": "PDF, Word, Excel. Et s'il n'a pas tout lu, il te le dit au lieu d'inventer.",
+    "f3": "Il cherche sur le web.",
+    "f3Text": "Ses réponses s'appuient sur des sources récentes, pas seulement sur sa mémoire.",
+    "f4": "Il crée des images et des documents.",
+    "f4Text": "Des images, et de vrais fichiers Word et Excel à télécharger.",
+    "f5": "Il te suit partout.",
+    "f5Text": "Installe-le sur ton téléphone ou ton Mac. Tes conversations se synchronisent.",
+    "f6": "Tes données t'appartiennent.",
+    "f6Text": "Exporte tout, ou supprime ton compte, en deux clics."
+  },
+  "why": {
+    "title": "Pourquoi pas juste Claude ou ChatGPT ?",
+    "p1Lead": "La franchise, c'est son réglage par défaut.",
+    "p1": "Tu peux demander à un autre assistant d'être dur. Mais il faut y penser à chaque fois, et il redevient poli au bout de quelques messages. ETHER est construit pour critiquer, dans chaque mode et à chaque message.",
+    "p2Lead": "Il ne s'arrête pas à la critique.",
+    "p2": "Chaque défaut vient avec sa correction. Tu repars avec une meilleure version, pas seulement avec des reproches.",
+    "p3Lead": "Gratuit, sans abonnement.",
+    "p3": "100 messages par jour, plusieurs modèles d'IA en secours. Pas de carte bancaire."
+  },
+  "source": {
+    "title": "Le code est ouvert. Vérifie-le.",
+    "body": "ETHER est open source, sous licence MIT. Tu peux lire chaque ligne, proposer une amélioration, ou héberger ton propre ETHER gratuitement sur Cloudflare."
+  },
+  "final": {
+    "title": "Montre-lui ton idée.",
+    "body": "Il te dira ce qui casse. Puis comment le réparer."
+  },
+  "footer": {
+    "text": "ETHER, projet open source sous licence MIT.",
+    "label": "Liens du projet",
+    "github": "GitHub",
+    "licence": "Licence",
+    "security": "Signaler une faille"
+  },
+  "scene": {
+    "prism": "Je lance un blog d'actualité pour les jeunes.",
+    "phrase1": "Excellente idée !",
+    "phrase2": "Super intéressant.",
+    "phrase3": "Tu as tout à fait raison.",
+    "phrase4": "J'adore."
+  }
+}

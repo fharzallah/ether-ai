@@ -1,0 +1,4 @@
+# node_modules/, dist/ et .env.local sont déjà ignorés par le .gitignore racine.
+# Captures et rapports produits en local (Playwright, Lighthouse, axe).
+.screenshots/
+.reports/

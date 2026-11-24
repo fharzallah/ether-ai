@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="{{ lang }}" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ meta.title }}</title>
+<meta name="description" content="{{ meta.description }}">
+<link rel="canonical" href="{{ $.canonical }}">
+<link rel="alternate" hreflang="fr" href="{{ $.urlFr }}">
+<link rel="alternate" hreflang="en" href="{{ $.urlEn }}">
+<link rel="alternate" hreflang="x-default" href="{{ $.urlFr }}">
+<meta name="theme-color" content="#0e0c0b">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ETHER">
+<meta property="og:locale" content="{{ locale }}">
+<meta property="og:locale:alternate" content="{{ alt.locale }}">
+<meta property="og:url" content="{{ $.canonical }}">
+<meta property="og:title" content="{{ meta.title }}">
+<meta property="og:description" content="{{ meta.description }}">
+<meta property="og:image" content="{{ $.ogImage }}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ meta.ogAlt }}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="{{ $.fonts }}">
+<link rel="stylesheet" href="{{ $.fonts }}" media="print" id="fonts">
+<noscript><link rel="stylesheet" href="{{ $.fonts }}"></noscript>
+<script>{{> headScript }}</script>
+<script type="module" src="/src/main.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#contenu">{{ skip }}</a>
+<div class="scene-poster" aria-hidden="true"></div>
+<div class="scene-still" aria-hidden="true"></div>
+<div class="scene-scrim" aria-hidden="true"></div>
+
+<header class="site-nav" data-nav>
+  <div class="nav-bar">
+    <a class="brand" href="#top" aria-label="{{ nav.home }}">{{> logoSpin }}<span class="wordmark" aria-hidden="true">ETHER</span></a>
+    <nav class="nav-menu" id="nav-menu" aria-label="{{ nav.label }}">
+      <ul class="nav-links" role="list">
+        <li><a href="#{{ ids.problem }}">{{ nav.problem }}</a></li>
+        <li><a href="#{{ ids.how }}">{{ nav.how }}</a></li>
+        <li><a href="#{{ ids.features }}">{{ nav.features }}</a></li>
+        <li><a href="#{{ ids.source }}">{{ nav.source }}</a></li>
+        <li class="nav-lang-in-menu"><a href="{{ alt.path }}" hreflang="{{ alt.lang }}" lang="{{ alt.lang }}" aria-label="{{ alt.name }}">{{ alt.label }}</a></li>
+      </ul>
+    </nav>
+    <div class="nav-actions">
+      <a class="lang-link" href="{{ alt.path }}" hreflang="{{ alt.lang }}" lang="{{ alt.lang }}" aria-label="{{ alt.name }}">{{ alt.label }}</a>
+      <a class="btn btn-primary btn-nav" href="{{ $.cta }}" data-nav-cta>{{ cta.primary }}</a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">{{> menuIcon }}<span class="menu-label">{{ nav.menu }}</span></button>
+    </div>
+  </div>
+</header>
+
+<main id="contenu" tabindex="-1">
+
+  <section class="section hero" id="top" aria-labelledby="hero-title" data-act="0">
+    <div class="container">
+      <div class="hero-copy">
+        <h1 class="h1" id="hero-title" data-split><span class="line">{{ hero.title1 }}</span> <span class="line">{{ hero.title2 }}</span></h1>
+        <p class="lead">{{ hero.lead }}</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="{{ $.cta }}" data-primary-cta>{{ cta.primary }}</a>
+          <a class="btn btn-secondary" href="{{ $.repo }}">{{ cta.code }}</a>
+        </div>
+        <p class="small muted hero-note">{{ hero.note }}</p>
+      </div>
+    </div>
+    <div class="scroll-hint" aria-hidden="true"></div>
+  </section>
+
+  <section class="section problem" id="{{ ids.problem }}" aria-labelledby="problem-title" data-act="1">
+    <div class="container">
+      <div class="copy">
+        <h2 class="h2" id="problem-title" data-split>{{ problem.title }}</h2>
+        <p>{{ problem.body }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section demo" id="{{ ids.demo }}" aria-labelledby="demo-title" data-act="2">
+    <div class="container">
+      <div class="copy">
+        <h2 class="h2" id="demo-title" data-split>{{ demo.title }}</h2>
+        <p>{{ demo.body }}</p>
+      </div>
+      <figure class="demo-figure">
+        <div class="demo-card" data-demo>
+          <div class="demo-user">
+            <p class="bubble"><span class="sr-only">{{ demo.you }} </span>{{ demo.user }}</p>
+          </div>
+          <div class="demo-switch" role="group" aria-label="{{ demo.switchLabel }}">
+            <button type="button" class="seg" aria-pressed="false" data-answer="classic">{{ demo.classicLabel }}</button>
+            <button type="button" class="seg" aria-pressed="true" data-answer="ether">{{ demo.etherLabel }}</button>
+          </div>
+          <div class="demo-answers" aria-live="polite">
+            <div class="answer answer-classic" data-panel="classic">
+              <p class="answer-label">{{ demo.classicLabel }}</p>
+              <p>{{ demo.classic }}</p>
+            </div>
+            <div class="answer answer-ether" data-panel="ether">
+              <div class="answer-mark">{{> logoStatic }}</div>
+              <div class="answer-body">
+                <p class="answer-label">{{ demo.etherLabel }}</p>
+                <ol class="objections">
+                  <li tabindex="0" data-objection="0">{{ demo.objection1 }}</li>
+                  <li tabindex="0" data-objection="1">{{ demo.objection2 }}</li>
+                  <li tabindex="0" data-objection="2">{{ demo.objection3 }}</li>
+                </ol>
+                <p class="fix"><strong>{{ demo.fixLead }}</strong> {{ demo.fix }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption class="small muted">{{ demo.note }}</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section how" id="{{ ids.how }}" aria-labelledby="how-title" data-act="3">
+    <div class="container how-grid">
+      <div class="how-card">
+        <h2 class="h2" id="how-title" data-split>{{ how.title }}</h2>
+        <p>{{ how.body }}</p>
+        <ol class="steps" role="list">
+          <li class="step-item" data-step-item="0"><button type="button" class="step" data-step="0"><span class="step-num" aria-hidden="true">1</span><span class="step-body"><span class="step-title">{{ how.step1 }}</span> {{ how.step1Text }}</span></button></li>
+          <li class="step-item" data-step-item="1"><button type="button" class="step" data-step="1"><span class="step-num" aria-hidden="true">2</span><span class="step-body"><span class="step-title">{{ how.step2 }}</span> {{ how.step2Text }}</span></button></li>
+          <li class="step-item" data-step-item="2"><button type="button" class="step" data-step="2"><span class="step-num" aria-hidden="true">3</span><span class="step-body"><span class="step-title">{{ how.step3 }}</span> {{ how.step3Text }}</span></button></li>
+          <li class="step-item" data-step-item="3"><button type="button" class="step" data-step="3"><span class="step-num" aria-hidden="true">4</span><span class="step-body"><span class="step-title">{{ how.step4 }}</span> {{ how.step4Text }}</span></button></li>
+          <li class="step-item" data-step-item="4"><button type="button" class="step" data-step="4"><span class="step-num" aria-hidden="true">5</span><span class="step-body"><span class="step-title">{{ how.step5 }}</span> {{ how.step5Text }}</span></button></li>
+        </ol>
+      </div>
+      <div class="how-track" aria-hidden="true">
+        <div class="how-marker" data-marker="0"></div>
+        <div class="how-marker" data-marker="1"></div>
+        <div class="how-marker" data-marker="2"></div>
+        <div class="how-marker" data-marker="3"></div>
+        <div class="how-marker" data-marker="4"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section features" id="{{ ids.features }}" aria-labelledby="features-title" data-act="4">
+    <div class="container">
+      <h2 class="h2" id="features-title" data-split>{{ features.title }}</h2>
+      <ul class="feature-list" role="list">
+        <li><h3 class="h3">{{ features.f1 }}</h3><p>{{ features.f1Text }}</p></li>
+        <li><h3 class="h3">{{ features.f2 }}</h3><p>{{ features.f2Text }}</p></li>
+        <li><h3 class="h3">{{ features.f3 }}</h3><p>{{ features.f3Text }}</p></li>
+        <li><h3 class="h3">{{ features.f4 }}</h3><p>{{ features.f4Text }}</p></li>
+        <li><h3 class="h3">{{ features.f5 }}</h3><p>{{ features.f5Text }}</p></li>
+        <li><h3 class="h3">{{ features.f6 }}</h3><p>{{ features.f6Text }}</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section why" id="{{ ids.why }}" aria-labelledby="why-title" data-act="5">
+    <div class="container">
+      <div class="copy">
+        <h2 class="h2" id="why-title" data-split>{{ why.title }}</h2>
+        <p><strong>{{ why.p1Lead }}</strong> {{ why.p1 }}</p>
+        <p><strong>{{ why.p2Lead }}</strong> {{ why.p2 }}</p>
+        <p><strong>{{ why.p3Lead }}</strong> {{ why.p3 }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section source" id="{{ ids.source }}" aria-labelledby="source-title" data-act="6">
+    <div class="container">
+      <div class="copy">
+        <h2 class="h2" id="source-title" data-split>{{ source.title }}</h2>
+        <p>{{ source.body }}</p>
+        <div class="actions">
+          <a class="btn btn-secondary" href="{{ $.repo }}">{{ cta.github }}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section final" id="{{ ids.final }}" aria-labelledby="final-title" data-act="7">
+    <div class="container final-inner">
+      <h2 class="h2" id="final-title" data-split>{{ final.title }}</h2>
+      <p>{{ final.body }}</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="{{ $.cta }}" data-primary-cta>{{ cta.primary }}</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <p class="small muted">{{ footer.text }}</p>
+    <nav aria-label="{{ footer.label }}">
+      <ul class="footer-links" role="list">
+        <li><a href="{{ $.repo }}">{{ footer.github }}</a></li>
+        <li><a href="{{ $.licence }}">{{ footer.licence }}</a></li>
+        <li><a href="{{ $.security }}">{{ footer.security }}</a></li>
+        <li><a href="{{ alt.path }}" hreflang="{{ alt.lang }}" lang="{{ alt.lang }}" aria-label="{{ alt.name }}">{{ alt.label }}</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+<template id="scene-copy">
+  <span data-k="prism">{{ scene.prism }}</span>
+  <span data-k="phrase">{{ scene.phrase1 }}</span>
+  <span data-k="phrase">{{ scene.phrase2 }}</span>
+  <span data-k="phrase">{{ scene.phrase3 }}</span>
+  <span data-k="phrase">{{ scene.phrase4 }}</span>
+</template>
+</body>
+</html>
