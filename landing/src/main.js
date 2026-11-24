@@ -2,7 +2,7 @@
 // scène 3D comme le défilement fluide arrivent par import dynamique ensuite.
 import './styles/main.css';
 import { state } from './lib/state.js';
-import { initNav, initDemo, initSteps } from './ui.js';
+import { initNav, initDemo, initSteps, initKinetic } from './ui.js';
 
 const html = document.documentElement;
 state.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -19,6 +19,18 @@ const scroller = {
 initNav();
 initDemo();
 initSteps({ scrollTo: (y) => scroller.to(y) });
+if (!state.reducedMotion) initKinetic();
+
+// Défilement fluide et scrub : seulement sans préférence de mouvement réduit.
+const motionReady = state.reducedMotion
+  ? Promise.resolve(null)
+  : import('./motion.js')
+      .then(({ startMotion }) => {
+        const motion = startMotion();
+        scroller.to = (y) => motion.scrollTo(y);
+        return motion;
+      })
+      .catch(() => null);
 
 // Captures (développement uniquement) : ?p=0.4 fige la scène, ?poster masque l'interface.
 const params = new URLSearchParams(window.location.search);
@@ -47,8 +59,10 @@ function bootScene() {
         onFallback: showPoster,
       }),
     )
-    .then((scene) => {
+    .then(async (scene) => {
       if (import.meta.env.DEV) window.__ether = scene;
+      const motion = await motionReady;
+      if (motion) scene.setScrollSource(motion.scrollValue);
     })
     .catch((error) => {
       if (import.meta.env.DEV) console.error(error);

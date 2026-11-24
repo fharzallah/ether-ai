@@ -138,6 +138,36 @@ strong { font-weight: 500; color: var(--text); }
   margin-right: -0.32em;
 }
 
+/* ---------- Titres lettre par lettre ---------- */
+/* Chaque lettre « durcit » : graisse 200 → 340, SOFT 0 → 100, 18 ms de décalage,
+   700 ms, expo.out (approché par linear() là où il existe). */
+
+:root { --ease-expo: cubic-bezier(0.16, 1, 0.3, 1); }
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-expo: linear(0, 0.293 5%, 0.5 10%, 0.646 15%, 0.75 20%, 0.823 25%, 0.875 30%, 0.912 35%, 0.938 40%, 0.956 45%, 0.969 50%, 0.984 60%, 0.992 70%, 0.996 80%, 0.998 90%, 1);
+  }
+}
+.js [data-split]:not(.is-split) { opacity: 0; animation: split-fallback 0s linear 2.5s forwards; }
+@keyframes split-fallback { to { opacity: 1; } }
+.is-split .w { display: inline-block; white-space: nowrap; }
+.is-split .ch {
+  display: inline-block;
+  opacity: 0;
+  translate: 0 0.35em;
+  font-weight: 200;
+  font-variation-settings: "opsz" 144, "SOFT" 0;
+  transform: skewY(var(--skew, 0deg));
+}
+.is-split.is-in .ch {
+  animation: ch-in 700ms var(--ease-expo) both;
+  animation-delay: calc(var(--i) * 18ms);
+}
+@keyframes ch-in {
+  from { opacity: 0; translate: 0 0.35em; font-weight: 200; font-variation-settings: "opsz" 144, "SOFT" 0; }
+  to { opacity: 1; translate: 0 0; font-weight: 340; font-variation-settings: "opsz" 144, "SOFT" 100; }
+}
+
 /* ---------- Logo (rotation lente, comme dans l'appli) ---------- */
 
 .logo .lg-p { fill: var(--brand); fill-opacity: 0.26; stroke: var(--brand); stroke-opacity: 0.9; stroke-width: 13; stroke-linejoin: round; }
@@ -602,6 +632,7 @@ main, .site-footer { position: relative; z-index: 2; }
 /* ---------- Mouvement réduit : rien ne bouge, la scène devient une image fixe ---------- */
 
 @media (prefers-reduced-motion: reduce) {
+  .js [data-split]:not(.is-split) { opacity: 1; animation: none; }
   .scene-poster { display: block; }
   .scene-canvas { display: none; }
   .scroll-hint { animation: none; opacity: 0.6; }

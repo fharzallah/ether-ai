@@ -2,6 +2,51 @@
 // navigation, démo comparée, étapes de la réflexion approfondie.
 import { state, emit, on } from './lib/state.js';
 
+/**
+ * Titres lettre par lettre. Le titre garde son vrai texte (aria-label), les
+ * lettres découpées sont masquées aux lecteurs d'écran. Sans JavaScript, ou
+ * avec moins d'animations, rien n'est découpé : le texte s'affiche normalement.
+ * L'animation elle-même est en CSS (styles/main.css) : elle part sans attendre GSAP.
+ */
+export function initKinetic() {
+  const heads = [...document.querySelectorAll('[data-split]')];
+  for (const h of heads) {
+    h.setAttribute('aria-label', h.textContent.replace(/\s+/g, ' ').trim());
+    let i = 0;
+    const lines = h.querySelectorAll('.line');
+    for (const el of lines.length ? lines : [h]) {
+      const words = el.textContent.trim().split(/ +/);
+      el.textContent = '';
+      words.forEach((word, wi) => {
+        const w = document.createElement('span');
+        w.className = 'w';
+        w.setAttribute('aria-hidden', 'true');
+        for (const ch of word) {
+          const c = document.createElement('span');
+          c.className = 'ch';
+          c.textContent = ch;
+          c.style.setProperty('--i', String(i++));
+          w.append(c);
+        }
+        el.append(w);
+        if (wi < words.length - 1) el.append(' ');
+      });
+    }
+    h.classList.add('is-split');
+  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add('is-in');
+        io.unobserve(e.target);
+      }
+    },
+    { rootMargin: '0px 0px -8% 0px' },
+  );
+  heads.forEach((h) => io.observe(h));
+}
+
 export function initNav() {
   const nav = document.querySelector('[data-nav]');
   if (!nav) return;
