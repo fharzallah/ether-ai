@@ -60,6 +60,7 @@ function bootScene() {
       }),
     )
     .then(async (scene) => {
+      html.classList.add('scene-live');
       if (import.meta.env.DEV) window.__ether = scene;
       const motion = await motionReady;
       if (motion) scene.setScrollSource(motion.scrollValue);
@@ -75,8 +76,27 @@ function bootScene() {
 if (state.reducedMotion && !posterMode) showPoster();
 else if (!hasWebGL2()) showPoster();
 else {
-  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
-  const later = () => idle(bootScene, { timeout: 1500 });
-  if (document.readyState === 'complete') later();
-  else window.addEventListener('load', later, { once: true });
+  // La scène démarre à la première interaction (souris, toucher, molette,
+  // clavier, scroll) ou 5 s après le chargement. D'ici là, une image fixe de
+  // l'acte 0 tient sa place : le premier affichage reste léger, sans écran d'entrée.
+  const start = () => {
+    if (posterMode || devProgress !== null) {
+      bootScene();
+      return;
+    }
+    const events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'keydown', 'scroll'];
+    let started = false;
+    let timer = 0;
+    const go = () => {
+      if (started) return;
+      started = true;
+      for (const e of events) window.removeEventListener(e, go);
+      clearTimeout(timer);
+      bootScene();
+    };
+    for (const e of events) window.addEventListener(e, go, { passive: true });
+    timer = setTimeout(go, 5000);
+  };
+  if (document.readyState === 'complete') start();
+  else window.addEventListener('load', start, { once: true });
 }

@@ -151,12 +151,13 @@ strong { font-weight: 500; color: var(--text); }
 .js [data-split]:not(.is-split) { opacity: 0; animation: split-fallback 0s linear 2.5s forwards; }
 @keyframes split-fallback { to { opacity: 1; } }
 .is-split .w { display: inline-block; white-space: nowrap; }
+/* Repos : graisse finale, pour mesurer la largeur de chaque lettre (fixée en em
+   par ui.js) ; l'animation de graisse ne décale alors rien autour d'elle. */
 .is-split .ch {
   display: inline-block;
   opacity: 0;
   translate: 0 0.35em;
-  font-weight: 200;
-  font-variation-settings: "opsz" 144, "SOFT" 0;
+  text-align: center;
   transform: skewY(var(--skew, 0deg));
 }
 .is-split.is-in .ch {
@@ -256,6 +257,22 @@ main, .site-footer { position: relative; z-index: 2; }
   background-size: cover;
   background-repeat: no-repeat;
 }
+/* Image fixe de l'acte 0, le temps que la scène démarre ; elle s'efface ensuite. */
+.scene-still {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--bg) url(/hero-desktop.webp) 50% 50% / cover no-repeat;
+  transition: opacity 900ms ease;
+}
+@media (max-width: 767px) {
+  .scene-still { background-image: url(/hero-mobile.webp); }
+}
+.scene-live .scene-still { opacity: 0; }
+.no-js .scene-still,
+.scene-fallback .scene-still,
+.poster-mode .scene-still { display: none; }
 /* L'image fixe remplace la scène : sans JavaScript, sans WebGL, contexte perdu. */
 .no-js .scene-poster,
 .scene-fallback .scene-poster { display: block; }
@@ -634,6 +651,7 @@ main, .site-footer { position: relative; z-index: 2; }
 @media (prefers-reduced-motion: reduce) {
   .js [data-split]:not(.is-split) { opacity: 1; animation: none; }
   .scene-poster { display: block; }
+  .scene-still { display: none; }
   .scene-canvas { display: none; }
   .scroll-hint { animation: none; opacity: 0.6; }
   .logo .lg-s { animation: none !important; }

@@ -98,12 +98,13 @@ function cameraKeys(portrait) {
   const d = portrait ? 1.5 : 1;
   const x = portrait ? 0 : 1;
   const keys = [
-    [0.0, [0, 0, 5.5 * d], [0, 0, 0], 0.46 * x, portrait ? -0.42 : 0],
-    [0.1, [0, 0.02, 5.4 * d], [0, 0, 0], 0.46 * x, portrait ? -0.4 : 0],
+    [0.0, [0, 0, 5.5 * d], [0, 0, 0], 0.46 * x, portrait ? -0.64 : 0],
+    [0.1, [0, 0.02, 5.4 * d], [0, 0, 0], 0.46 * x, portrait ? -0.6 : 0],
     [0.2, [-0.05, 0.06, 3.6], [0.1, 0, -6], 0.32 * x, 0],
     [0.28, [-0.1, 0.1, 1.5], [0.1, 0, -10], 0.26 * x, 0],
-    [0.34, [0, 0.2, 4 * d], [0, 0, 0], 0.44 * x, portrait ? -0.18 : 0],
-    [0.44, [0.12, 0.26, 4.2 * d], [0, 0, 0], 0.44 * x, portrait ? -0.18 : 0],
+    // Acte 2 : le prisme assez à droite pour que la carte de la démo ne cache pas ses fissures.
+    [0.34, [0, 0.2, 4 * d], [0, 0, 0], 0.52 * x, portrait ? -0.18 : 0],
+    [0.44, [0.12, 0.26, 4.2 * d], [0, 0, 0], 0.52 * x, portrait ? -0.18 : 0],
     [0.475, [0, 0.35, 5.6 * d], [0, 0, -1.5], 0.36 * x, 0],
     [0.505, [0, 0.08, 4.4], [0, -0.05, -6], 0.3 * x, 0],
   ];
@@ -114,8 +115,9 @@ function cameraKeys(portrait) {
     [0.72, [0, 1.0, 6.5 * d], [0, 0, -5], 0.3 * x, 0],
     [0.8, [0, 1.2, 8.5 * d], [0, 0, -3], 0.3 * x, 0],
     [0.9, [0, 0.55, 7.4 * d], [0, 0.1, 0], 0.26 * x, 0.04],
-    [0.95, [0, 0.3, 7.4 * d], [0, 0.05, 0], 0.2 * x, 0.14],
-    [1.0, [0, 0.1, 7.4 * d], [0, 0.05, 0], 0, portrait ? 0.3 : 0.32],
+    // Logo reconstruit au-dessus de l'appel final, sans toucher le titre.
+    [0.95, [0, 0.3, 7.8 * d], [0, 0.05, 0], 0.2 * x, 0.16],
+    [1.0, [0, 0.1, 8.2 * d], [0, 0.05, 0], 0, portrait ? 0.4 : 0.44],
   );
   return keys;
 }
@@ -681,6 +683,6 @@ export async function createScene({ light, forcedProgress = null, onFallback }) 
     setProgress(p) {
       forcedProgress = p;
     },
-    debug: import.meta.env.DEV ? { scene, camera, renderer, composer, beamIn, beamTunnel, cracks, shards } : undefined,
+    debug: import.meta.env.DEV ? { scene, camera, renderer, composer, beamIn, beamTunnel, cracks, shards, state } : undefined,
   };
 }

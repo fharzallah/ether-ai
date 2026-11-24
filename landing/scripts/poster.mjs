@@ -51,6 +51,39 @@ try {
   writeFileSync(`${ROOT}public/poster.webp`, Buffer.from(webp.b64, 'base64'));
   console.log(`poster.webp : ${(webp.size / 1024).toFixed(1)} Ko (qualité ${webp.q})`);
 
+  // Image fixe de l'acte 0 : tient la place de la scène jusqu'à son démarrage.
+  for (const [name, w, h, dpr] of [['desktop', 1440, 900, 1], ['mobile', 375, 667, 2]]) {
+    const still = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: dpr });
+    await still.goto(`${BASE}/?poster&p=0`);
+    await still.waitForSelector('.scene-canvas.is-ready', { timeout: 30000 });
+    await still.waitForTimeout(2600);
+    const shot = (await still.screenshot({ type: 'png' })).toString('base64');
+    const out = await page.evaluate(
+      async ({ png, max }) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${png}`;
+        await img.decode();
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        for (const q of [0.8, 0.7, 0.6, 0.5]) {
+          const blob = await new Promise((r) => c.toBlob(r, 'image/webp', q));
+          if (blob.size <= max || q === 0.5) {
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            let s = '';
+            for (const b of bytes) s += String.fromCharCode(b);
+            return { b64: btoa(s), size: blob.size };
+          }
+        }
+      },
+      { png: shot, max: 40 * 1024 },
+    );
+    writeFileSync(`${ROOT}public/hero-${name}.webp`, Buffer.from(out.b64, 'base64'));
+    console.log(`hero-${name}.webp : ${(out.size / 1024).toFixed(1)} Ko`);
+    await still.close();
+  }
+
   // Images Open Graph : le poster, le mot-symbole et le titre de la page.
   for (const lang of ['fr', 'en']) {
     const d = loadDict(lang);

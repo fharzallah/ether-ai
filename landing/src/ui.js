@@ -8,7 +8,7 @@ import { state, emit, on } from './lib/state.js';
  * avec moins d'animations, rien n'est découpé : le texte s'affiche normalement.
  * L'animation elle-même est en CSS (styles/main.css) : elle part sans attendre GSAP.
  */
-export function initKinetic() {
+export async function initKinetic() {
   const heads = [...document.querySelectorAll('[data-split]')];
   for (const h of heads) {
     h.setAttribute('aria-label', h.textContent.replace(/\s+/g, ' ').trim());
@@ -33,6 +33,19 @@ export function initKinetic() {
       });
     }
     h.classList.add('is-split');
+  }
+  // Largeur de chaque lettre fixée en em, mesurée à la graisse finale une fois
+  // Fraunces chargée : l'animation de graisse ne déplace pas le reste de la ligne.
+  try {
+    await Promise.race([document.fonts ? document.fonts.load('340 64px Fraunces') : null, new Promise((r) => setTimeout(r, 1800))]);
+  } catch {
+    // Police indisponible : les largeurs seront celles de la police de secours.
+  }
+  for (const h of heads) {
+    const size = parseFloat(getComputedStyle(h).fontSize) || 16;
+    const chars = [...h.querySelectorAll('.ch')];
+    const widths = chars.map((c) => c.getBoundingClientRect().width);
+    chars.forEach((c, k) => c.style.setProperty('width', `${(widths[k] / size).toFixed(4)}em`));
   }
   const io = new IntersectionObserver(
     (entries) => {
