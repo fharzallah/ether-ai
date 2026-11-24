@@ -1,0 +1,128 @@
+{
+  "lang": "en",
+  "locale": "en_US",
+  "path": "/en/",
+  "alt": {
+    "lang": "fr",
+    "locale": "fr_FR",
+    "path": "/",
+    "label": "FR",
+    "name": "FR, version française"
+  },
+  "meta": {
+    "title": "ETHER, the free AI that finds the flaws in your idea",
+    "description": "A free AI that pulls apart your idea, your essay or your argument, then shows you how to fix it. No subscription. No flattery.",
+    "ogImage": "og-en.jpg",
+    "ogAlt": "The ETHER prism, cracked by three red lines, under the title: Your idea has flaws."
+  },
+  "skip": "Skip to content",
+  "nav": {
+    "label": "Main navigation",
+    "home": "ETHER, home",
+    "problem": "The problem",
+    "how": "How it thinks",
+    "features": "What it does",
+    "source": "Source code",
+    "menu": "Menu"
+  },
+  "ids": {
+    "problem": "problem",
+    "demo": "demo",
+    "how": "how-it-thinks",
+    "features": "features",
+    "why": "why",
+    "source": "source-code",
+    "final": "try"
+  },
+  "cta": {
+    "primary": "Try ETHER",
+    "code": "View the code",
+    "github": "View the code on GitHub"
+  },
+  "hero": {
+    "title1": "Your idea has flaws.",
+    "title2": "ETHER finds them first.",
+    "lead": "A free AI that pulls apart your idea, your essay or your argument, then shows you how to fix it. No subscription. No flattery.",
+    "note": "Free. 100 messages a day. Open source."
+  },
+  "problem": {
+    "title": "AI tells you you're right. Even when you're wrong.",
+    "body": "AI assistants learn partly from ratings given by humans. And humans rate the answers they like more highly. So you share an average idea, and you hear it's “really interesting”. You leave happy, and you've learned nothing."
+  },
+  "demo": {
+    "title": "ETHER does the opposite.",
+    "body": "It assumes your first draft has flaws. It shows you where they are, then how to fix them.",
+    "you": "You:",
+    "user": "I'm going to launch a news blog for young people. I'll post every day.",
+    "switchLabel": "Compare the answers",
+    "classicLabel": "A typical assistant",
+    "etherLabel": "ETHER",
+    "classic": "Great idea! A news blog for young people has real potential. Here are a few tips to get started…",
+    "objection1": "“News for young people” says nothing.",
+    "objection2": "Every major outlet already targets that audience, and you don't have their resources.",
+    "objection3": "Posting every day, alone, for three months: that plan ends in week three.",
+    "fixLead": "The fix:",
+    "fix": "pick one sharp angle. For example, explain one news story a week, in a three-minute read. Test that angle for two weeks before you grow.",
+    "note": "Illustrative example, not a recorded conversation."
+  },
+  "how": {
+    "title": "It doesn't answer on the first try.",
+    "body": "With deep thinking, your question goes through five steps before it reaches you.",
+    "step1": "Break down.",
+    "step1Text": "It splits your question into smaller ones.",
+    "step2": "Search.",
+    "step2Text": "It looks for sources on the web.",
+    "step3": "Analyse.",
+    "step3Text": "It cross-checks what it found.",
+    "step4": "Critique.",
+    "step4Text": "It attacks its own draft.",
+    "step5": "Synthesise.",
+    "step5Text": "It gives you the version that held up."
+  },
+  "features": {
+    "title": "Everything you need to think better.",
+    "f1": "It switches roles on its own.",
+    "f1Text": "Tutor, Debate, Writing, Creative, Image: it detects what you need, no command required. You can also create your own modes.",
+    "f2": "It reads your files.",
+    "f2Text": "PDF, Word, Excel. And if it didn't read everything, it tells you instead of making things up.",
+    "f3": "It searches the web.",
+    "f3Text": "Its answers rely on recent sources, not just on its memory.",
+    "f4": "It creates images and documents.",
+    "f4Text": "Images, and real Word and Excel files to download.",
+    "f5": "It goes where you go.",
+    "f5Text": "Install it on your phone or your Mac. Your conversations sync.",
+    "f6": "Your data is yours.",
+    "f6Text": "Export everything, or delete your account, in two clicks."
+  },
+  "why": {
+    "title": "Why not just use Claude or ChatGPT?",
+    "p1Lead": "Honesty is its default setting.",
+    "p1": "You can ask another assistant to be tough. But you have to remember every time, and it drifts back to polite after a few messages. ETHER is built to critique, in every mode, in every message.",
+    "p2Lead": "It doesn't stop at criticism.",
+    "p2": "Every flaw comes with a fix. You leave with a better version, not just a list of complaints.",
+    "p3Lead": "Free, no subscription.",
+    "p3": "100 messages a day, with several AI models as backup. No credit card."
+  },
+  "source": {
+    "title": "The code is open. Check it.",
+    "body": "ETHER is open source, under the MIT licence. You can read every line, suggest an improvement, or host your own ETHER for free on Cloudflare."
+  },
+  "final": {
+    "title": "Show it your idea.",
+    "body": "It'll tell you what breaks. Then how to fix it."
+  },
+  "footer": {
+    "text": "ETHER, an open source project under the MIT licence.",
+    "label": "Project links",
+    "github": "GitHub",
+    "licence": "Licence",
+    "security": "Report a vulnerability"
+  },
+  "scene": {
+    "prism": "I'm launching a news blog for young people.",
+    "phrase1": "Great idea!",
+    "phrase2": "So interesting.",
+    "phrase3": "You're absolutely right.",
+    "phrase4": "Love it."
+  }
+}
